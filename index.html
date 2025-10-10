@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planivio JS</title>
+    <link rel="stylesheet" href="./styles/main.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1 class="app-title">Planivio</h1>
+      <div class="config-container">
+        <button id="btn-config-dropdown" class="config-btn"></button>
+        <div id="config-dropdown" class="config-dropdown">
+          <div class="config-option">
+            <p>Cambia la apariencia.</p>
+            <button id="btn-cambiar-tema" class="btn-full-width">
+              Tema Oscuro/Claro
+            </button>
+          </div>
+          <div class="config-option">
+            <label>Color de acento:</label>
+            <div id="color-palette" class="color-palette">
+              <button
+                class="color-swatch"
+                data-color="#e74c3c"
+                style="background-color: #e74c3c"
+              ></button>
+              <button
+                class="color-swatch"
+                data-color="#2ecc71"
+                style="background-color: #2ecc71"
+              ></button>
+              <button
+                class="color-swatch"
+                data-color="#3498db"
+                style="background-color: #3498db"
+              ></button>
+              <button
+                class="color-swatch"
+                data-color="#e84393"
+                style="background-color: #e84393"
+              ></button>
+              <label
+                for="input-color-custom"
+                class="color-swatch custom-color-btn"
+                >+</label
+              >
+              <input
+                type="color"
+                id="input-color-custom"
+                class="color-input-hidden"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="app-container">
+      <aside id="panel-lateral" class="panel panel-izquierdo">
+        <div class="panel-header">
+          <h2 class="titulo-panel accent">Navegación</h2>
+          <button id="btn-toggle-panel" class="toggle-panel-btn"></button>
+        </div>
+        <div class="panel-content">
+          <ul id="main-nav" class="main-nav">
+            <li data-page="dashboard" class="nav-item">
+              <span class="nav-icon"></span
+              ><span class="nav-text">Dashboard</span>
+            </li>
+            <li data-page="tareas" class="nav-item">
+              <span class="nav-icon"></span><span class="nav-text">Tareas</span>
+            </li>
+            <li data-page="calendario" class="nav-item">
+              <span class="nav-icon"></span
+              ><span class="nav-text">Calendario</span>
+            </li>
+            <li data-page="cursos" class="nav-item">
+              <span class="nav-icon"></span><span class="nav-text">Cursos</span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <div class="main-content-area">
+        <div id="page-tareas" class="page">
+          <main class="panel panel-central">
+            <div class="panel-header">
+              <h2 id="titulo-tareas-pendientes" class="titulo-panel accent">
+                Tareas Pendientes
+              </h2>
+              <div class="filtros-container">
+                <label for="filtro-curso">Curso:</label>
+                <select id="filtro-curso" class="filtro-select"></select>
+                <button class="btn-filtro" data-sort="fecha">Fecha</button>
+                <button class="btn-filtro" data-sort="prioridad">
+                  Prioridad
+                </button>
+              </div>
+            </div>
+            <div class="tabla-container">
+              <table class="tabla-tareas">
+                <thead>
+                  <tr>
+                    <th data-sort="curso">Curso</th>
+                    <th data-sort="prioridad" class="col-prioridad">
+                      Prioridad
+                    </th>
+                    <th data-sort="titulo">Título</th>
+                    <th data-sort="fecha">Entrega</th>
+                  </tr>
+                </thead>
+                <tbody id="tabla-tareas-body"></tbody>
+              </table>
+            </div>
+          </main>
+          <section id="panel-creacion" class="panel">
+            <form id="form-nueva-tarea" class="form-nueva-tarea">
+              <h2 class="titulo-panel accent">Agregar Nueva Tarea</h2>
+              <div class="form-group">
+                <label for="select-curso-tarea">Curso:</label>
+                <select id="select-curso-tarea"></select>
+              </div>
+              <input
+                type="text"
+                id="input-titulo-tarea"
+                placeholder="Título de la tarea"
+                required
+              />
+              <textarea
+                id="input-desc-tarea"
+                placeholder="Descripción..."
+                rows="3"
+              ></textarea>
+              <div class="form-row">
+                <div>
+                  <label for="input-fecha-tarea">Fecha:</label>
+                  <input type="date" id="input-fecha-tarea" required />
+                </div>
+                <div>
+                  <label for="select-prioridad-tarea">Prioridad:</label>
+                  <select id="select-prioridad-tarea">
+                    <option value="Baja">Baja</option>
+                    <option value="Media" selected>Media</option>
+                    <option value="Alta">Alta</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" id="btn-guardar-tarea" class="btn-accent">
+                Guardar Tarea
+              </button>
+            </form>
+          </section>
+          <section id="panel-detalles" class="panel panel-derecho">
+            <button id="btn-cerrar-detalles" class="btn-cerrar-panel">
+              &times;
+            </button>
+            <h2 class="titulo-panel accent">Detalles de la Tarea</h2>
+            <div id="detalles-contenido">
+              <h3 id="det-titulo">Selecciona una tarea</h3>
+              <button id="btn-completar-tarea" class="btn-full-width" disabled>
+                Marcar como Completada
+              </button>
+              <button id="btn-editar-tarea" class="btn-full-width" disabled>
+                Editar Tarea
+              </button>
+              <h4>Descripción:</h4>
+              <p id="det-descripcion"></p>
+              <div class="subtareas-container">
+                <h4>Sub-tareas</h4>
+                <ul id="lista-subtareas"></ul>
+                <div class="form-agregar-subtarea">
+                  <input
+                    type="text"
+                    id="input-nueva-subtarea"
+                    placeholder="Nueva sub-tarea..."
+                  />
+                  <button id="btn-agregar-subtarea" class="btn-accent">
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div id="page-dashboard" class="page visible">
+          <div class="panel">
+            <h2 class="titulo-panel accent">Dashboard</h2>
+            <div class="dashboard-grid">
+              <div class="widget widget-enfoque">
+                <h3>Enfoque del Día</h3>
+                <p>Tus tareas más importantes para hoy.</p>
+                <ul id="widget-enfoque-lista"></ul>
+              </div>
+              <div class="widget widget-proximamente">
+                <h3>Próximamente</h3>
+                <p>Tareas para los siguientes 3 días.</p>
+                <ul id="widget-proximamente-lista"></ul>
+              </div>
+              <div class="widget widget-progreso">
+                <h3>Progreso Semanal</h3>
+                <p class="contador-progreso">Has completado</p>
+                <span id="widget-progreso-contador" class="numero-progreso"
+                  >0</span
+                >
+                <p class="contador-progreso">tareas esta semana.</p>
+              </div>
+              <div class="widget widget-accesos">
+                <h3>Accesos Rápidos</h3>
+                <div class="accesos-botones">
+                  <button data-action="ir-a-cursos" class="btn-full-width">
+                    Gestionar Cursos
+                  </button>
+                  <button
+                    data-action="nueva-tarea-modal"
+                    class="btn-full-width btn-accent"
+                  >
+                    Nueva Tarea
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-cursos" class="page">
+          <div class="panel">
+            <div class="panel-header">
+              <h2 class="titulo-panel accent">Mis Cursos</h2>
+              <button id="btn-nuevo-curso" class="btn-accent">
+                + Nuevo Curso
+              </button>
+            </div>
+            <div id="lista-cursos-container"></div>
+          </div>
+        </div>
+
+        <div id="page-calendario" class="page">
+          <div class="panel">
+            <h2 class="titulo-panel accent">Calendario</h2>
+            <p>¡Próximamente!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-confirmacion" class="modal-overlay">
+      <div class="modal-content">
+        <h2 id="confirm-title">Confirmar Acción</h2>
+        <p id="confirm-msg">¿Estás seguro?</p>
+        <div class="modal-actions">
+          <button id="btn-confirm-cancelar" class="btn-secondary">
+            Cancelar
+          </button>
+          <button id="btn-confirm-aceptar" class="btn-accent">Aceptar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-editar-tarea" class="modal-overlay">
+      <form id="form-editar-tarea" class="modal-content">
+        <h2>Editar Tarea</h2>
+        <label for="edit-titulo-tarea">Título:</label>
+        <input type="text" id="edit-titulo-tarea" required />
+        <label for="edit-desc-tarea">Descripción:</label>
+        <textarea id="edit-desc-tarea" rows="4"></textarea>
+        <div class="form-row">
+          <div>
+            <label for="edit-fecha-tarea">Fecha:</label>
+            <input type="date" id="edit-fecha-tarea" required />
+          </div>
+          <div>
+            <label for="edit-prioridad-tarea">Prioridad:</label>
+            <select id="edit-prioridad-tarea">
+              <option value="Baja">Baja</option>
+              <option value="Media">Media</option>
+              <option value="Alta">Alta</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn-accent">Actualizar Tarea</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="modal-nuevo-curso" class="modal-overlay">
+      <form id="form-nuevo-curso" class="modal-content">
+        <h2>Agregar Nuevo Curso</h2>
+        <label for="input-nombre-curso">Nombre del curso:</label>
+        <input
+          type="text"
+          id="input-nombre-curso"
+          placeholder="Ej: Derecho Constitucional I"
+          required
+        />
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn-accent">Guardar Curso</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="modal-renombrar-curso" class="modal-overlay">
+      <form id="form-renombrar-curso" class="modal-content">
+        <h2>Renombrar Curso</h2>
+        <input type="hidden" id="input-curso-original-nombre" />
+        <label for="input-renombrar-curso-nombre">Nuevo nombre:</label>
+        <input type="text" id="input-renombrar-curso-nombre" required />
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn-accent">Guardar Cambios</button>
+        </div>
+      </form>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

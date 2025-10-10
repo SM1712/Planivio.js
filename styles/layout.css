@@ -1,0 +1,138 @@
+/* --- HEADER SUPERIOR --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background-color: var(--bg-content);
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 5px var(--shadow-color);
+  z-index: 1000;
+  position: sticky;
+  top: 0;
+  transition: all var(--transition-speed) var(--transition-easing);
+}
+.app-title {
+  margin: 0;
+  font-size: 1.5em;
+  color: var(--accent-color);
+  transition: color var(--transition-speed) var(--transition-easing);
+}
+
+/* --- LAYOUT PRINCIPAL Y DE PÁGINAS --- */
+.app-container {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  height: calc(100vh - 70px);
+  overflow-x: hidden;
+}
+.panel {
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 5px 15px var(--shadow-color);
+  transition: all var(--transition-speed) var(--transition-easing);
+}
+.main-content-area {
+  flex-grow: 1;
+  display: flex;
+  gap: 10px;
+  min-width: 0;
+  overflow: hidden;
+}
+.page {
+  width: 100%;
+  flex-grow: 1;
+  display: none;
+  gap: 10px;
+}
+.page.visible {
+  display: flex; /* <-- ESTA ERA LA LÍNEA FALTANTE CRUCIAL */
+}
+
+#panel-lateral {
+  flex-shrink: 0;
+  flex-basis: 300px;
+  position: relative;
+}
+
+/* --- PANEL IZQUIERDO COLAPSABLE --- */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+.titulo-panel.accent {
+  color: var(--accent-color);
+  font-size: 1.3em;
+  margin: 0;
+  border-bottom: 2px solid var(--accent-color);
+  padding-bottom: 8px;
+  transition: all var(--transition-speed) var(--transition-easing);
+  margin-right: 15px;
+}
+.panel-header .toggle-panel-btn {
+  margin-left: auto;
+}
+.panel-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.1s ease-out;
+}
+#panel-lateral.panel-colapsado {
+  flex-basis: 90px;
+}
+#panel-lateral.panel-colapsado .titulo-panel,
+#panel-lateral.panel-colapsado .nav-text {
+  display: none;
+}
+#panel-lateral.panel-colapsado .panel-header {
+  justify-content: center;
+}
+#panel-lateral.panel-colapsado .nav-item {
+  justify-content: center;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 900px) {
+  body {
+    overflow: auto;
+  }
+
+  .app-container {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .page {
+    flex-direction: column;
+  }
+
+  .panel {
+    min-height: auto;
+  }
+
+  #panel-lateral,
+  #panel-creacion,
+  #panel-detalles {
+    flex: 1 1 auto;
+    width: 100%;
+  }
+
+  #panel-lateral.panel-colapsado {
+    flex-basis: auto;
+    width: 100%;
+  }
+
+  .app-container.detalle-visible .panel-central,
+  .app-container.detalle-visible #panel-detalles {
+    flex: initial;
+  }
+}
