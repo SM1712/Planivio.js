@@ -1,5 +1,3 @@
-// src/icons.js (Actualizado)
-
 export const ICONS = {
   collapse:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17.77 3.77L16 2L6 12L16 22L17.77 20.23L9.54 12Z"/></svg>',
@@ -15,4 +13,7 @@ export const ICONS = {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M17 12H12V17H17V12ZM16 1V3H8V1H6V3H5C3.89 3 3.01 3.89 3.01 5L3 19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.89 20.1 3 19 3H18V1H16ZM19 19H5V8H19V19Z"/></svg>',
   cursos:
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9L12 15L23 9L12 3ZM5 10.18V15.54L12 19L19 15.54V10.18L12 13.64L5 10.18Z"/></svg>',
+  // --- NOVEDAD: Nuevo icono de cierre ---
+  close:
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
 };

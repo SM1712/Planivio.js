@@ -2,13 +2,13 @@
 
 /* Lógica de visibilidad para paneles de la página de Tareas */
 #panel-detalles {
-  display: none; /* Oculto por defecto */
+  display: none;
 }
 .app-container.detalle-visible #panel-creacion {
-  display: none; /* Se oculta al ver detalles */
+  display: none;
 }
 .app-container.detalle-visible #panel-detalles {
-  display: flex; /* Se muestra al ver detalles */
+  display: flex;
 }
 
 .panel-central {
@@ -24,7 +24,7 @@
 .tabla-container {
   height: 100%;
   overflow-y: auto;
-  overflow-x: auto; /* Corregido para responsive */
+  overflow-x: auto;
 }
 .tabla-tareas {
   width: 100%;
@@ -197,7 +197,34 @@
 #lista-subtareas li input[type='checkbox']:checked + label::after {
   width: calc(100% - 30px);
 }
-.btn-cerrar-panel,
+
+.btn-cerrar-panel {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.btn-cerrar-panel svg {
+  width: 20px;
+  height: 20px;
+  fill: var(--text-muted);
+}
+.btn-cerrar-panel:hover {
+  background-color: var(--accent-color-hover);
+}
+.btn-cerrar-panel:hover svg {
+  fill: var(--accent-color);
+}
 .btn-delete-subtask {
   background: none;
   border: none;
@@ -210,19 +237,9 @@
   border-radius: 4px;
   transition: all 0.2s ease;
 }
-.btn-cerrar-panel:hover,
 .btn-delete-subtask:hover {
   background-color: var(--accent-color-hover);
   color: var(--accent-color);
-}
-.btn-cerrar-panel {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  font-size: 1.8rem;
-}
-.btn-delete-subtask {
-  margin-left: auto;
 }
 
 /* --- ESTILOS PÁGINA DASHBOARD --- */
@@ -395,4 +412,292 @@ p.contador-progreso {
 }
 .curso-card-actions button:hover svg {
   fill: var(--accent-color);
+}
+
+/* --- ESTILOS PÁGINA CALENDARIO (PROYECTO KAIROS) --- */
+#page-calendario {
+  gap: 10px;
+}
+.panel-calendario {
+  flex: 2;
+  padding: 0;
+}
+.panel-resumen {
+  flex: 1;
+  overflow-y: auto;
+}
+.calendario-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px;
+}
+.calendario-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+#cal-mes-ano {
+  color: var(--accent-color);
+  font-size: 1.5rem;
+  text-align: center;
+  margin: 0;
+  flex-grow: 1;
+}
+.cal-nav-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  transition: all 0.2s ease;
+}
+.cal-nav-btn:hover {
+  background-color: var(--accent-color-hover);
+  color: var(--accent-color);
+}
+#btn-nuevo-evento {
+  margin-left: auto;
+}
+.calendario-dias-semana {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+.calendario-dias-semana > div {
+  text-align: center;
+  font-weight: bold;
+  padding-bottom: 10px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.calendario-grid-wrapper {
+  position: relative;
+  flex-grow: 1;
+}
+.calendario-grid-base {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  grid-auto-rows: 1fr;
+  border-radius: 8px;
+  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+#calendario-eventos-grid {
+  z-index: 10;
+  pointer-events: none;
+}
+#calendario-grid {
+  z-index: 5;
+  background-color: transparent;
+  border-left: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-color);
+}
+#calendario-grid > div {
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  position: relative;
+}
+#calendario-eventos-grid > div {
+  position: relative;
+}
+.dia-mes {
+  cursor: pointer;
+  height: 100%;
+}
+.dia-mes:hover {
+  background-color: var(--accent-color-hover);
+}
+.dia-fantasma {
+  color: var(--text-muted);
+  background-color: #f8f9fa;
+}
+body.dark-theme .dia-fantasma {
+  background-color: #303134;
+}
+
+.dia-numero {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+.dia-hoy {
+  background-color: rgba(var(--accent-color-rgb), 0.15);
+}
+.dia-hoy .dia-numero {
+  font-weight: bold;
+  color: var(--accent-text-color);
+  background-color: var(--accent-color);
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 2px;
+  left: 2px;
+}
+
+.cal-puntos-container {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.cal-prioridad-fila {
+  display: flex;
+  gap: 2px;
+}
+
+.cal-evento-tarea {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.cal-evento-largo {
+  position: absolute;
+  width: 100%;
+  height: 6px;
+}
+.cal-evento-largo.evento-inicio {
+  border-radius: 3px 0 0 3px;
+}
+.cal-evento-largo.evento-fin {
+  border-radius: 0 3px 3px 0;
+}
+.cal-evento-largo.evento-inicio.evento-fin {
+  border-radius: 3px;
+}
+
+/* --- Estilos de Resumen del Mes/Día --- */
+.resumen-curso-titulo {
+  font-size: 1rem;
+  color: var(--accent-color);
+  margin-top: 20px;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.resumen-curso-titulo:first-child {
+  margin-top: 0;
+}
+.resumen-curso-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.resumen-curso-lista li {
+  padding: 4px 12px;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+}
+.resumen-subtitulo {
+  font-size: 0.9rem;
+  font-weight: bold;
+  margin-top: 10px;
+  margin-bottom: 5px;
+}
+.resumen-item-texto {
+  display: flex;
+  flex-direction: column;
+}
+.resumen-fecha-evento {
+  color: var(--text-muted);
+  font-size: 0.8em;
+}
+.resumen-curso-lista li.item-hoy::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 70%;
+  background-color: var(--accent-color);
+  border-radius: 2px;
+}
+
+#evento-detalles-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#evento-detalles-header .prioridad-indicador {
+  width: 18px;
+  height: 18px;
+}
+#evento-detalles-titulo {
+  margin: 0;
+  font-size: 1.5rem;
+}
+#evento-detalles-fechas {
+  margin: 0;
+  color: var(--text-muted);
+}
+.btn-editar-resumen {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+.btn-editar-resumen:hover {
+  background-color: var(--accent-color-hover);
+}
+.btn-editar-resumen svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--text-muted);
+}
+.btn-editar-resumen:hover svg {
+  fill: var(--accent-color);
+}
+
+.acciones-rapidas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* --- NOVEDAD: Estilo para la "muesca" de arrastre --- */
+#drag-selection-bar {
+  position: absolute;
+  background-color: var(--accent-color);
+  height: 4px;
+  border-radius: 2px;
+  pointer-events: none;
+  z-index: 15; /* Asegura que esté por encima de los números */
+}
+/* --- NOVEDAD: Estilo para resaltar las celdas durante el arrastre --- */
+.dia-mes.selection-range {
+  background-color: rgba(var(--accent-color-rgb), 0.3);
 }

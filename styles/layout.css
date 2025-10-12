@@ -37,6 +37,8 @@
   gap: 10px;
   box-shadow: 0 5px 15px var(--shadow-color);
   transition: all var(--transition-speed) var(--transition-easing);
+  /* --- NOVEDAD: La solución al problema de posicionamiento --- */
+  position: relative;
 }
 .main-content-area {
   flex-grow: 1;
@@ -52,13 +54,12 @@
   gap: 10px;
 }
 .page.visible {
-  display: flex; /* <-- ESTA ERA LA LÍNEA FALTANTE CRUCIAL */
+  display: flex;
 }
 
 #panel-lateral {
   flex-shrink: 0;
   flex-basis: 300px;
-  position: relative;
 }
 
 /* --- PANEL IZQUIERDO COLAPSABLE --- */
@@ -105,32 +106,26 @@
   body {
     overflow: auto;
   }
-
   .app-container {
     flex-direction: column;
     height: auto;
   }
-
   .page {
     flex-direction: column;
   }
-
   .panel {
     min-height: auto;
   }
-
   #panel-lateral,
   #panel-creacion,
   #panel-detalles {
     flex: 1 1 auto;
     width: 100%;
   }
-
   #panel-lateral.panel-colapsado {
     flex-basis: auto;
     width: 100%;
   }
-
   .app-container.detalle-visible .panel-central,
   .app-container.detalle-visible #panel-detalles {
     flex: initial;

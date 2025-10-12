@@ -14,7 +14,15 @@ export function cargarIconos() {
   ).innerHTML = ICONS.calendario;
   document.querySelector('.nav-item[data-page="cursos"] .nav-icon').innerHTML =
     ICONS.cursos;
+
+  // --- NOVEDAD: Cargamos el icono de cierre en el panel de tareas ---
+  const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
+  if (btnCerrarDetalles) {
+    btnCerrarDetalles.innerHTML = ICONS.close;
+  }
 }
+
+// ... (resto del archivo sin cambios) ...
 
 export function renderizarTareas() {
   const tbody = document.getElementById('tabla-tareas-body');

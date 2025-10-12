@@ -27,6 +27,11 @@ import {
   renombrarCurso,
   eliminarCurso,
 } from './pages/cursos.js';
+import {
+  inicializarCalendario,
+  renderizarCalendario,
+  agregarEvento,
+} from './pages/calendario.js';
 
 // --- INICIALIZACIÓN DE LA APLICACIÓN ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -35,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarIconos();
   updateRgbVariables();
   agregarEventListeners();
+  inicializarCalendario();
   cambiarPagina(state.paginaActual);
 });
 
@@ -73,6 +79,10 @@ function cambiarPagina(idPagina) {
 
   if (idPagina === 'cursos') {
     renderizarCursos();
+  }
+
+  if (idPagina === 'calendario') {
+    renderizarCalendario();
   }
 }
 
@@ -182,6 +192,7 @@ function cambiarColorAcento(color) {
   if (rgb) {
     const hoverColor = `rgba(${rgb.join(', ')}, 0.15)`;
     root.style.setProperty('--accent-color-hover', hoverColor);
+    root.style.setProperty('--accent-color-rgb', rgb.join(', '));
   }
   guardarDatos();
 }
@@ -307,6 +318,12 @@ function agregarEventListeners() {
     });
 
     pageTareas.addEventListener('change', (e) => {
+      const filtroCursoSelect = document.getElementById('filtro-curso');
+      if (e.target === filtroCursoSelect) {
+        state.filtroCurso = e.target.value;
+        renderizarTareas();
+        return;
+      }
       if (
         e.target.closest('#lista-subtareas') &&
         e.target.type === 'checkbox'
@@ -382,6 +399,89 @@ function agregarEventListeners() {
     });
   }
 
+  const btnNuevoEvento = document.getElementById('btn-nuevo-evento');
+  if (btnNuevoEvento) {
+    btnNuevoEvento.addEventListener('click', () => {
+      const form = document.getElementById('form-nuevo-evento');
+      form.reset();
+      document.getElementById('input-evento-id').value = '';
+      document.getElementById('modal-evento-titulo').textContent =
+        'Agregar Nuevo Evento';
+      document.getElementById('btn-guardar-evento').textContent =
+        'Guardar Evento';
+      mostrarModal('modal-nuevo-evento');
+    });
+  }
+
+  const formNuevoEvento = document.getElementById('form-nuevo-evento');
+  if (formNuevoEvento) {
+    formNuevoEvento.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const datosEvento = {
+        titulo: document.getElementById('input-evento-titulo').value.trim(),
+        fechaInicio: document.getElementById('input-evento-inicio').value,
+        fechaFin: document.getElementById('input-evento-fin').value,
+        color: document.getElementById('input-evento-color').value,
+      };
+
+      const eventoId = parseInt(
+        document.getElementById('input-evento-id').value,
+      );
+      if (eventoId) {
+        const index = state.eventos.findIndex((ev) => ev.id === eventoId);
+        if (index !== -1) {
+          state.eventos[index] = { ...state.eventos[index], ...datosEvento };
+        }
+      } else {
+        agregarEvento(datosEvento);
+      }
+
+      guardarDatos();
+      renderizarCalendario();
+
+      formNuevoEvento.reset();
+      document.getElementById('input-evento-id').value = '';
+      document.getElementById('modal-evento-titulo').textContent =
+        'Agregar Nuevo Evento';
+      document.getElementById('btn-guardar-evento').textContent =
+        'Guardar Evento';
+      document.getElementById('input-evento-color').value = '#3498db';
+      document.getElementById('input-evento-color-custom').value = '#3498db';
+      const swatches = document.querySelectorAll(
+        '#evento-color-palette .color-swatch',
+      );
+      swatches.forEach((s) => s.classList.remove('active'));
+      swatches[0].classList.add('active');
+      cerrarModal('modal-nuevo-evento');
+    });
+
+    const paleta = document.getElementById('evento-color-palette');
+    const inputColorOculto = document.getElementById('input-evento-color');
+    const inputColorCustom = document.getElementById(
+      'input-evento-color-custom',
+    );
+
+    paleta.addEventListener('click', (e) => {
+      if (e.target.matches('.color-swatch[data-color]')) {
+        const color = e.target.dataset.color;
+        inputColorOculto.value = color;
+        inputColorCustom.value = color;
+        paleta
+          .querySelectorAll('.color-swatch')
+          .forEach((s) => s.classList.remove('active'));
+        e.target.classList.add('active');
+      }
+    });
+
+    inputColorCustom.addEventListener('input', (e) => {
+      const color = e.target.value;
+      inputColorOculto.value = color;
+      paleta
+        .querySelectorAll('.color-swatch')
+        .forEach((s) => s.classList.remove('active'));
+    });
+  }
+
   document
     .getElementById('btn-confirm-cancelar')
     ?.addEventListener('click', () => cerrarModal('modal-confirmacion'));
@@ -408,14 +508,6 @@ function agregarEventListeners() {
         renderizarDetalles();
       }
       cerrarModal('modal-editar-tarea');
-    });
-  }
-
-  const filtroCursoSelect = document.getElementById('filtro-curso');
-  if (filtroCursoSelect) {
-    filtroCursoSelect.addEventListener('change', (e) => {
-      state.filtroCurso = e.target.value;
-      renderizarTareas();
     });
   }
 }

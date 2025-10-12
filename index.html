@@ -153,9 +153,7 @@
             </form>
           </section>
           <section id="panel-detalles" class="panel panel-derecho">
-            <button id="btn-cerrar-detalles" class="btn-cerrar-panel">
-              &times;
-            </button>
+            <button id="btn-cerrar-detalles" class="btn-cerrar-panel"></button>
             <h2 class="titulo-panel accent">Detalles de la Tarea</h2>
             <div id="detalles-contenido">
               <h3 id="det-titulo">Selecciona una tarea</h3>
@@ -185,7 +183,7 @@
           </section>
         </div>
 
-        <div id="page-dashboard" class="page visible">
+        <div id="page-dashboard" class="page">
           <div class="panel">
             <h2 class="titulo-panel accent">Dashboard</h2>
             <div class="dashboard-grid">
@@ -238,9 +236,39 @@
         </div>
 
         <div id="page-calendario" class="page">
-          <div class="panel">
-            <h2 class="titulo-panel accent">Calendario</h2>
-            <p>¡Próximamente!</p>
+          <div class="panel panel-calendario">
+            <div class="calendario-container">
+              <div class="calendario-header">
+                <button id="cal-btn-prev" class="cal-nav-btn">&lt;</button>
+                <h3 id="cal-mes-ano"></h3>
+                <button id="cal-btn-next" class="cal-nav-btn">&gt;</button>
+                <button id="btn-nuevo-evento" class="btn-accent">
+                  + Nuevo Evento
+                </button>
+              </div>
+              <div class="calendario-dias-semana">
+                <div>Lun</div>
+                <div>Mar</div>
+                <div>Mié</div>
+                <div>Jue</div>
+                <div>Vie</div>
+                <div>Sáb</div>
+                <div>Dom</div>
+              </div>
+              <div class="calendario-grid-wrapper">
+                <div
+                  id="calendario-eventos-grid"
+                  class="calendario-grid-base"
+                ></div>
+                <div id="calendario-grid" class="calendario-grid-base"></div>
+              </div>
+            </div>
+          </div>
+          <div id="calendario-resumen" class="panel panel-resumen">
+            <h3 id="resumen-titulo" class="titulo-panel accent">Este mes</h3>
+            <div id="resumen-contenido">
+              <p>Haz clic en un día para ver los detalles.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -333,6 +361,137 @@
           <button type="submit" class="btn-accent">Guardar Cambios</button>
         </div>
       </form>
+    </div>
+
+    <div id="modal-nuevo-evento" class="modal-overlay">
+      <form id="form-nuevo-evento" class="modal-content modal-compacto">
+        <h2 id="modal-evento-titulo">Agregar Nuevo Evento</h2>
+        <input type="hidden" id="input-evento-id" />
+        <div class="form-group">
+          <label for="input-evento-titulo">Título del evento:</label>
+          <input type="text" id="input-evento-titulo" required />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="input-evento-inicio">Fecha de Inicio:</label>
+            <input type="date" id="input-evento-inicio" required />
+          </div>
+          <div>
+            <label for="input-evento-fin">Fecha de Fin:</label>
+            <input type="date" id="input-evento-fin" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Color del evento:</label>
+          <div id="evento-color-palette" class="color-palette">
+            <button
+              type="button"
+              class="color-swatch active"
+              data-color="#3498db"
+              style="background-color: #3498db"
+            ></button>
+            <button
+              type="button"
+              class="color-swatch"
+              data-color="#2ecc71"
+              style="background-color: #2ecc71"
+            ></button>
+            <button
+              type="button"
+              class="color-swatch"
+              data-color="#f1c40f"
+              style="background-color: #f1c40f"
+            ></button>
+            <button
+              type="button"
+              class="color-swatch"
+              data-color="#e74c3c"
+              style="background-color: #e74c3c"
+            ></button>
+            <button
+              type="button"
+              class="color-swatch"
+              data-color="#9b59b6"
+              style="background-color: #9b59b6"
+            ></button>
+            <label
+              for="input-evento-color-custom"
+              class="color-swatch custom-color-btn"
+              >+</label
+            >
+            <input
+              type="color"
+              id="input-evento-color-custom"
+              class="color-input-hidden"
+              value="#3498db"
+            />
+          </div>
+          <input type="hidden" id="input-evento-color" value="#3498db" />
+        </div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button type="submit" id="btn-guardar-evento" class="btn-accent">
+            Guardar Evento
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="modal-evento-detalles" class="modal-overlay">
+      <div class="modal-content modal-compacto">
+        <div id="evento-detalles-header">
+          <span id="evento-detalles-color" class="prioridad-indicador"></span>
+          <h2 id="evento-detalles-titulo">Detalles del Evento</h2>
+        </div>
+        <p id="evento-detalles-fechas"></p>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cerrar
+          </button>
+          <button
+            id="btn-eliminar-evento"
+            class="btn-secondary"
+            style="margin-right: auto; background-color: #e74c3c; color: white"
+          >
+            Eliminar
+          </button>
+          <button id="btn-editar-evento" class="btn-accent">Editar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-accion-rapida" class="modal-overlay">
+      <div class="modal-content modal-compacto">
+        <h2 id="accion-rapida-titulo">11 de Octubre</h2>
+        <input type="hidden" id="accion-rapida-fecha" />
+        <div class="acciones-rapidas-container">
+          <button id="btn-accion-nueva-tarea" class="btn-full-width">
+            Nueva Tarea
+          </button>
+          <button id="btn-accion-nuevo-evento" class="btn-full-width">
+            Nuevo Evento
+          </button>
+        </div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./src/main.js"></script>
