@@ -1,10 +1,14 @@
 export let state = {
   cursos: ['General'],
   tareas: [],
-  eventos: [], // <-- AÑADE ESTA LÍNEA
+  eventos: [],
+  apuntes: [],
   config: { theme: 'light', accent_color: '#0078d7' },
   paginaActual: 'tareas',
-  tareaSeleccionadaId: null,
+  tareaSeleccionadald: null,
   ordenamiento: { col: 'fecha', reverse: false },
   filtroCurso: 'todos',
+  filtroCursoApuntes: 'todos',
+  apuntesEnModoSeleccion: false,
+  apuntesSeleccionadosIds: [],
 };

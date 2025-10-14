@@ -1,13 +1,15 @@
 import { state } from './state.js';
 import {
-  cargarIconos,
+  cargarlconos,
   renderizarTareas,
   renderizarDetalles,
   renderizarSubtareas,
-  actualizarIconoTogglePanel,
+  actualizariconoTogglePanel,
   mostrarModal,
   cerrarModal,
   mostrarConfirmacion,
+  mostrarAlerta,
+  mostrarPrompt,
   popularSelectorDeCursos,
   popularFiltroDeCursos,
 } from './ui.js';
@@ -18,6 +20,8 @@ import {
   hexToRgb,
   getTextColorForBg,
   darkenColor,
+  exportarDatosJSON,
+  importarDatosJSON,
 } from './utils.js';
 import { actualizarDashboard } from './pages/dashboard.js';
 import {
@@ -32,12 +36,18 @@ import {
   renderizarCalendario,
   agregarEvento,
 } from './pages/calendario.js';
+import {
+  inicializarApuntes,
+  renderizarPaginaApuntes,
+  renderizarEditor,
+  popularSelectorDeCursosApuntes,
+} from './pages/apuntes.js';
 
 // --- INICIALIZACIÓN DE LA APLICACIÓN ---
 document.addEventListener('DOMContentLoaded', () => {
   cargarDatos();
   aplicarTema();
-  cargarIconos();
+  cargarlconos();
   updateRgbVariables();
   agregarEventListeners();
   inicializarCalendario();
@@ -47,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- LÓGICA DE NAVEGACIÓN ---
 function cambiarPagina(idPagina) {
   state.paginaActual = idPagina;
-
   document
     .querySelectorAll('.page')
     .forEach((page) => page.classList.remove('visible'));
@@ -62,7 +71,7 @@ function cambiarPagina(idPagina) {
     document
       .querySelector('.app-container')
       .classList.remove('detalle-visible');
-    state.tareaSeleccionadaId = null;
+    state.tareaSeleccionadald = null;
   }
 
   if (idPagina === 'tareas') {
@@ -70,19 +79,21 @@ function cambiarPagina(idPagina) {
     popularFiltroDeCursos();
     renderizarTareas();
     renderizarDetalles();
-    validarFormularioTarea();
   }
-
   if (idPagina === 'dashboard') {
     actualizarDashboard();
   }
-
   if (idPagina === 'cursos') {
     renderizarCursos();
   }
-
   if (idPagina === 'calendario') {
     renderizarCalendario();
+  }
+  if (idPagina === 'apuntes') {
+    inicializarApuntes();
+    renderizarPaginaApuntes();
+    renderizarEditor();
+    popularSelectorDeCursosApuntes();
   }
 }
 
@@ -101,19 +112,20 @@ function agregarTarea(event) {
     completada: false,
     subtareas: [],
   };
+
   state.tareas.push(nuevaTarea);
   guardarDatos();
   renderizarTareas();
   document.getElementById('form-nueva-tarea').reset();
   document.getElementById('input-fecha-tarea').valueAsDate = new Date();
-  validarFormularioTarea();
 }
 
 function agregarSubtarea() {
   const input = document.getElementById('input-nueva-subtarea');
   const texto = input.value.trim();
-  if (!texto || state.tareaSeleccionadaId === null) return;
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadaId);
+  if (!texto || state.tareaSeleccionadald === null) return;
+
+  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
   if (tarea) {
     if (!tarea.subtareas) tarea.subtareas = [];
     tarea.subtareas.push({ texto: texto, completada: false });
@@ -124,7 +136,7 @@ function agregarSubtarea() {
 }
 
 function toggleSubtarea(index) {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadaId);
+  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
   if (tarea && tarea.subtareas[index]) {
     tarea.subtareas[index].completada = !tarea.subtareas[index].completada;
     guardarDatos();
@@ -133,11 +145,10 @@ function toggleSubtarea(index) {
 }
 
 function eliminarSubtarea(index) {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadaId);
+  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
   if (!tarea || !tarea.subtareas[index]) return;
 
   const subTexto = tarea.subtareas[index].texto;
-
   mostrarConfirmacion(
     'Eliminar Sub-tarea',
     `¿Estás seguro de que deseas eliminar la sub-tarea "${subTexto}"?`,
@@ -147,14 +158,6 @@ function eliminarSubtarea(index) {
       renderizarSubtareas(tarea);
     },
   );
-}
-
-function validarFormularioTarea() {
-  const btn = document.getElementById('btn-guardar-tarea');
-  if (!btn) return;
-  const tituloOk =
-    document.getElementById('input-titulo-tarea').value.trim() !== '';
-  btn.disabled = !tituloOk;
 }
 
 function aplicarTema() {
@@ -182,23 +185,25 @@ function cambiarTemaBase() {
 function cambiarColorAcento(color) {
   state.config.accent_color = color;
   const root = document.documentElement;
-
   root.style.setProperty('--accent-color', color);
+
   const activeColor = darkenColor(color, 15);
   root.style.setProperty('--accent-color-active', activeColor);
+
   const textColor = getTextColorForBg(activeColor);
   root.style.setProperty('--accent-text-color', textColor);
+
   const rgb = hexToRgb(color);
   if (rgb) {
     const hoverColor = `rgba(${rgb.join(', ')}, 0.15)`;
     root.style.setProperty('--accent-color-hover', hoverColor);
     root.style.setProperty('--accent-color-rgb', rgb.join(', '));
+    guardarDatos();
   }
-  guardarDatos();
 }
 
 function iniciarEdicionTarea() {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadaId);
+  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
   if (!tarea) return;
   document.getElementById('edit-titulo-tarea').value = tarea.titulo;
   document.getElementById('edit-desc-tarea').value = tarea.descripcion;
@@ -216,7 +221,7 @@ function agregarEventListeners() {
     document
       .getElementById('panel-lateral')
       .classList.toggle('panel-colapsado');
-    actualizarIconoTogglePanel();
+    actualizariconoTogglePanel();
   });
 
   document.getElementById('main-nav').addEventListener('click', (e) => {
@@ -242,10 +247,12 @@ function agregarEventListeners() {
   document
     .getElementById('btn-cambiar-tema')
     ?.addEventListener('click', cambiarTemaBase);
+
   document.getElementById('color-palette')?.addEventListener('click', (e) => {
     if (e.target.matches('.color-swatch[data-color]'))
       cambiarColorAcento(e.target.dataset.color);
   });
+
   document
     .getElementById('input-color-custom')
     ?.addEventListener('input', (e) => cambiarColorAcento(e.target.value));
@@ -259,7 +266,7 @@ function agregarEventListeners() {
       const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
 
       if (fila) {
-        state.tareaSeleccionadaId = parseInt(fila.dataset.id);
+        state.tareaSeleccionadald = parseInt(fila.dataset.id);
         renderizarTareas();
         renderizarDetalles();
         document
@@ -279,17 +286,18 @@ function agregarEventListeners() {
         eliminarSubtarea(parseInt(deleteSubtaskBtn.dataset.index));
         return;
       }
+
       switch (e.target.id) {
         case 'btn-cerrar-detalles':
           document
             .querySelector('.app-container')
             .classList.remove('detalle-visible');
-          state.tareaSeleccionadaId = null;
+          state.tareaSeleccionadald = null;
           renderizarTareas();
           break;
         case 'btn-completar-tarea':
           const tarea = state.tareas.find(
-            (t) => t.id === state.tareaSeleccionadaId,
+            (t) => t.id === state.tareaSeleccionadald,
           );
           if (tarea) {
             tarea.completada = !tarea.completada;
@@ -312,7 +320,6 @@ function agregarEventListeners() {
     });
 
     pageTareas.addEventListener('keyup', (e) => {
-      if (e.target.id === 'input-titulo-tarea') validarFormularioTarea();
       if (e.target.id === 'input-nueva-subtarea' && e.key === 'Enter')
         agregarSubtarea();
     });
@@ -324,6 +331,7 @@ function agregarEventListeners() {
         renderizarTareas();
         return;
       }
+
       if (
         e.target.closest('#lista-subtareas') &&
         e.target.type === 'checkbox'
@@ -338,7 +346,6 @@ function agregarEventListeners() {
     pageDashboard.addEventListener('click', (e) => {
       const target = e.target.closest('button[data-action]');
       if (!target) return;
-
       const action = target.dataset.action;
       if (action === 'ir-a-cursos') {
         cambiarPagina('cursos');
@@ -353,7 +360,6 @@ function agregarEventListeners() {
     pageCursos.addEventListener('click', (e) => {
       const btnEditar = e.target.closest('.btn-editar-curso');
       const btnEliminar = e.target.closest('.btn-eliminar-curso');
-
       if (btnEditar) {
         const nombreCurso = btnEditar.closest('.curso-card').dataset.curso;
         iniciarRenombrarCurso(nombreCurso);
@@ -423,10 +429,10 @@ function agregarEventListeners() {
         fechaFin: document.getElementById('input-evento-fin').value,
         color: document.getElementById('input-evento-color').value,
       };
-
       const eventoId = parseInt(
         document.getElementById('input-evento-id').value,
       );
+
       if (eventoId) {
         const index = state.eventos.findIndex((ev) => ev.id === eventoId);
         if (index !== -1) {
@@ -435,32 +441,16 @@ function agregarEventListeners() {
       } else {
         agregarEvento(datosEvento);
       }
-
       guardarDatos();
       renderizarCalendario();
-
-      formNuevoEvento.reset();
-      document.getElementById('input-evento-id').value = '';
-      document.getElementById('modal-evento-titulo').textContent =
-        'Agregar Nuevo Evento';
-      document.getElementById('btn-guardar-evento').textContent =
-        'Guardar Evento';
-      document.getElementById('input-evento-color').value = '#3498db';
-      document.getElementById('input-evento-color-custom').value = '#3498db';
-      const swatches = document.querySelectorAll(
-        '#evento-color-palette .color-swatch',
-      );
-      swatches.forEach((s) => s.classList.remove('active'));
-      swatches[0].classList.add('active');
       cerrarModal('modal-nuevo-evento');
     });
+  }
 
-    const paleta = document.getElementById('evento-color-palette');
-    const inputColorOculto = document.getElementById('input-evento-color');
-    const inputColorCustom = document.getElementById(
-      'input-evento-color-custom',
-    );
-
+  const paleta = document.getElementById('evento-color-palette');
+  const inputColorOculto = document.getElementById('input-evento-color');
+  const inputColorCustom = document.getElementById('input-evento-color-custom');
+  if (paleta && inputColorOculto && inputColorCustom) {
     paleta.addEventListener('click', (e) => {
       if (e.target.matches('.color-swatch[data-color]')) {
         const color = e.target.dataset.color;
@@ -485,6 +475,7 @@ function agregarEventListeners() {
   document
     .getElementById('btn-confirm-cancelar')
     ?.addEventListener('click', () => cerrarModal('modal-confirmacion'));
+
   document.querySelectorAll('[data-action="cerrar-modal"]').forEach((btn) => {
     btn.addEventListener('click', () =>
       cerrarModal(btn.closest('.modal-overlay').id),
@@ -496,7 +487,7 @@ function agregarEventListeners() {
     formEditarTarea.addEventListener('submit', (e) => {
       e.preventDefault();
       const tarea = state.tareas.find(
-        (t) => t.id === state.tareaSeleccionadaId,
+        (t) => t.id === state.tareaSeleccionadald,
       );
       if (tarea) {
         tarea.titulo = document.getElementById('edit-titulo-tarea').value;
@@ -510,4 +501,39 @@ function agregarEventListeners() {
       cerrarModal('modal-editar-tarea');
     });
   }
+
+  document
+    .getElementById('btn-exportar-datos')
+    ?.addEventListener('click', () => {
+      exportarDatosJSON(mostrarPrompt);
+      document.getElementById('config-dropdown').classList.remove('visible');
+    });
+
+  document
+    .getElementById('btn-importar-datos')
+    ?.addEventListener('click', () => {
+      mostrarConfirmacion(
+        'Importar Datos',
+        '¿Estás seguro? Esta acción sobreescribirá todos tus datos actuales. Se recomienda exportar primero.',
+        () => {
+          document.getElementById('input-importar-datos').click();
+          document
+            .getElementById('config-dropdown')
+            .classList.remove('visible');
+        },
+      );
+    });
+
+  const inputImportar = document.getElementById('input-importar-datos');
+  inputImportar?.addEventListener('change', (event) => {
+    importarDatosJSON(event, (error, message) => {
+      if (error) {
+        mostrarAlerta('Error de Importación', message);
+      } else {
+        mostrarAlerta('Éxito', message, () => {
+          location.reload();
+        });
+      }
+    });
+  });
 }

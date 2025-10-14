@@ -61,3 +61,75 @@ export function darkenColor(hex, percent) {
   const newRgb = rgb.map((col) => Math.max(0, col - amount));
   return `#${newRgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
+// ... al final de utils.js
+
+// REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN ASÍNCRONA
+export async function exportarDatosJSON(mostrarPrompt) {
+  const fecha = new Date().toISOString().split('T')[0];
+  const nombrePorDefecto = `planivio-backup-${fecha}`;
+
+  try {
+    const nombreArchivo = await mostrarPrompt(
+      'Exportar Datos',
+      'Ingresa un nombre para el archivo de respaldo:',
+      nombrePorDefecto,
+    );
+
+    if (!nombreArchivo) return; // Si el usuario no escribe nada, no exportar
+
+    const estadoParaExportar = { ...state };
+    delete estadoParaExportar.apuntesEnModoSeleccion;
+    delete estadoParaExportar.apuntesSeleccionadosIds;
+
+    const jsonString = JSON.stringify(estadoParaExportar, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nombreArchivo.endsWith('.json')
+      ? nombreArchivo
+      : `${nombreArchivo}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    // El usuario presionó "Cancelar", no hacemos nada.
+    console.log('Exportación cancelada por el usuario.');
+  }
+}
+
+// REEMPLAZA LA FUNCIÓN ANTERIOR
+export function importarDatosJSON(event, callback) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const nuevoEstado = JSON.parse(e.target.result);
+
+      Object.keys(state).forEach((key) => delete state[key]);
+      Object.assign(state, nuevoEstado);
+
+      guardarDatos();
+
+      // Llama al callback indicando éxito
+      callback(
+        null,
+        '¡Datos importados con éxito! La aplicación se recargará.',
+      );
+    } catch (error) {
+      console.error('Error al importar el archivo JSON:', error);
+      // Llama al callback indicando error
+      callback(
+        error,
+        'Error: El archivo seleccionado no es un archivo de respaldo de Planivio válido.',
+      );
+    }
+  };
+  reader.readAsText(file);
+}

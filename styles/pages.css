@@ -1,6 +1,9 @@
-/* --- ESTILOS PÁGINA DE TAREAS --- */
+/*
+==================================================
+  ESTILOS PÁGINA DE TAREAS
+==================================================
+*/
 
-/* Lógica de visibilidad para paneles de la página de Tareas */
 #panel-detalles {
   display: none;
 }
@@ -10,7 +13,6 @@
 .app-container.detalle-visible #panel-detalles {
   display: flex;
 }
-
 .panel-central {
   flex: 1;
   min-width: 0;
@@ -45,7 +47,6 @@
   padding: 10px;
   border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
-  text-align: center;
   transition: all var(--transition-speed) var(--transition-easing);
   white-space: nowrap;
   overflow: hidden;
@@ -63,7 +64,9 @@
   width: 80px;
   text-align: center;
 }
-.tabla-tareas td:not(:nth-child(2)),
+.tabla-tareas td:not(:nth-child(2)) {
+  text-align: left;
+}
 .tabla-tareas th:not(:nth-child(2)) {
   text-align: left;
 }
@@ -77,6 +80,10 @@
   height: 100%;
   padding: 0;
   border: none;
+  gap: 15px;
+}
+#form-nueva-tarea h2 {
+  margin-bottom: 5px; /* Reducido */
 }
 #form-nueva-tarea .form-row {
   display: flex;
@@ -88,12 +95,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-}
-#form-nueva-tarea > * {
-  margin-bottom: 15px;
-}
-#form-nueva-tarea h2 {
-  margin-bottom: 20px;
 }
 #form-nueva-tarea button[type='submit'] {
   margin-top: auto;
@@ -197,7 +198,6 @@
 #lista-subtareas li input[type='checkbox']:checked + label::after {
   width: calc(100% - 30px);
 }
-
 .btn-cerrar-panel {
   position: absolute;
   top: 15px;
@@ -242,7 +242,11 @@
   color: var(--accent-color);
 }
 
-/* --- ESTILOS PÁGINA DASHBOARD --- */
+/*
+==================================================
+  ESTILOS PÁGINA DASHBOARD
+==================================================
+*/
 #page-dashboard .panel {
   flex: 1;
   overflow-y: auto;
@@ -327,7 +331,11 @@ p.contador-progreso {
   color: var(--text-muted);
 }
 
-/* --- ESTILOS PÁGINA DE CURSOS --- */
+/*
+==================================================
+  ESTILOS PÁGINA DE CURSOS
+==================================================
+*/
 #page-cursos .panel {
   flex: 1;
   overflow-y: auto;
@@ -414,7 +422,11 @@ p.contador-progreso {
   fill: var(--accent-color);
 }
 
-/* --- ESTILOS PÁGINA CALENDARIO (PROYECTO KAIROS) --- */
+/*
+==================================================
+  ESTILOS PÁGINA CALENDARIO
+==================================================
+*/
 #page-calendario {
   gap: 10px;
 }
@@ -525,7 +537,6 @@ p.contador-progreso {
 body.dark-theme .dia-fantasma {
   background-color: #303134;
 }
-
 .dia-numero {
   position: absolute;
   top: 4px;
@@ -549,7 +560,6 @@ body.dark-theme .dia-fantasma {
   top: 2px;
   left: 2px;
 }
-
 .cal-puntos-container {
   position: absolute;
   top: 4px;
@@ -559,18 +569,15 @@ body.dark-theme .dia-fantasma {
   align-items: flex-end;
   gap: 2px;
 }
-
 .cal-prioridad-fila {
   display: flex;
   gap: 2px;
 }
-
 .cal-evento-tarea {
   width: 5px;
   height: 5px;
   border-radius: 50%;
 }
-
 .cal-evento-largo {
   position: absolute;
   width: 100%;
@@ -585,8 +592,6 @@ body.dark-theme .dia-fantasma {
 .cal-evento-largo.evento-inicio.evento-fin {
   border-radius: 3px;
 }
-
-/* --- Estilos de Resumen del Mes/Día --- */
 .resumen-curso-titulo {
   font-size: 1rem;
   color: var(--accent-color);
@@ -639,7 +644,6 @@ body.dark-theme .dia-fantasma {
   background-color: var(--accent-color);
   border-radius: 2px;
 }
-
 #evento-detalles-header {
   display: flex;
   align-items: center;
@@ -681,23 +685,461 @@ body.dark-theme .dia-fantasma {
 .btn-editar-resumen:hover svg {
   fill: var(--accent-color);
 }
-
 .acciones-rapidas-container {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-
-/* --- NOVEDAD: Estilo para la "muesca" de arrastre --- */
-#drag-selection-bar {
-  position: absolute;
-  background-color: var(--accent-color);
-  height: 4px;
-  border-radius: 2px;
-  pointer-events: none;
-  z-index: 15; /* Asegura que esté por encima de los números */
-}
-/* --- NOVEDAD: Estilo para resaltar las celdas durante el arrastre --- */
 .dia-mes.selection-range {
   background-color: rgba(var(--accent-color-rgb), 0.3);
+}
+
+/*
+==================================================
+  ESTILOS PÁGINA APUNTES
+==================================================
+*/
+
+/* --- Contenedor Principal y Layout --- */
+#panel-lista-apuntes {
+  width: 390px;
+  max-width: 390px;
+  flex-basis: 390px;
+  flex-shrink: 0;
+  flex-grow: 0;
+  min-height: 0;
+}
+#panel-editor-apuntes {
+  border: none;
+  padding: 0;
+}
+
+/* --- Barra de Acciones Contextual --- */
+.panel-header.contextual {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+}
+#panel-lista-apuntes.modo-seleccion .panel-header:not(.contextual) {
+  display: none;
+}
+#panel-lista-apuntes.modo-seleccion .panel-header.contextual {
+  display: flex;
+}
+#apuntes-selection-info {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.custom-checkbox-container {
+  position: relative;
+  width: 22px;
+  height: 22px;
+}
+.custom-checkbox-container input {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.custom-checkbox-container label {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+.custom-checkbox-container input:hover + label {
+  border-color: var(--accent-color);
+}
+.custom-checkbox-container input:checked + label {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.custom-checkbox-container input:indeterminate + label {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M1 3h6v2H1z'/%3e%3c/svg%3e");
+  background-size: 10px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+#btn-delete-selected,
+#btn-print-selected,
+#btn-download-selected {
+  width: 36px;
+  height: 36px;
+}
+#btn-delete-selected {
+  color: #e74c3c;
+}
+#btn-delete-selected:hover {
+  color: white;
+  background-color: #e74c3c;
+}
+
+/* --- Items de la Lista de Apuntes --- */
+/* --- Items de la Lista de Apuntes --- */
+#lista-apuntes {
+  list-style: none;
+  padding: 10px; /* <-- AÑADIDO: Espacio interior para que las tarjetas respiren */
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* <-- AÑADIDO: Separación uniforme entre cada apunte */
+}
+
+.apunte-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  /* border-bottom: 1px solid var(--border-color); -> ELIMINADO */
+  border: 1px solid var(--border-color); /* <-- AÑADIDO: Borde completo */
+  border-radius: 12px; /* <-- LA MAGIA: Esquinas redondeadas */
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+  position: relative;
+}
+.apunte-item:hover {
+  background-color: var(--accent-color-hover);
+}
+.apunte-item.active {
+  background-color: rgba(var(--accent-color-rgb), 0.15) !important;
+}
+.apunte-item.fijado {
+  background-color: rgba(var(--text-base-rgb), 0.04);
+}
+.apunte-item.seleccionado {
+  background-color: rgba(var(--accent-color-rgb), 0.1) !important;
+  border-left: 4px solid var(--accent-color);
+  padding-left: 11px;
+}
+.apunte-selection-control {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: none;
+}
+#panel-lista-apuntes.modo-seleccion .apunte-selection-control {
+  display: block;
+}
+.apunte-selection-control input[type='checkbox'] {
+  opacity: 0;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.apunte-selection-control label {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+.apunte-selection-control input[type='checkbox']:hover + label {
+  border-color: var(--accent-color);
+}
+.apunte-selection-control input[type='checkbox']:checked + label {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.apunte-item-content {
+  flex-grow: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.apunte-item-titulo {
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0 0 4px 0;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.apunte-item.active .apunte-item-titulo {
+  color: var(--accent-color);
+}
+.apunte-item-meta,
+.apunte-item-preview {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+
+  /* --- LA MAGIA ESTÁ AQUÍ --- */
+  overflow: hidden; /* Oculta el texto que se desborda */
+  text-overflow: ellipsis; /* Añade los puntos suspensivos */
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Número máximo de líneas a mostrar */
+  -webkit-box-orient: vertical;
+}
+.apunte-item-meta {
+  margin-bottom: 8px;
+}
+.apunte-item.active .apunte-item-preview {
+  color: var(--text-base);
+}
+.apunte-item-actions {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.apunte-menu-container {
+  position: relative;
+}
+.apunte-actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  width: 150px;
+  padding: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease-out;
+}
+.apunte-actions-dropdown.visible {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+.apunte-actions-dropdown button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.apunte-actions-dropdown button:hover {
+  background-color: var(--accent-color-hover);
+}
+.btn-eliminar-apunte-item {
+  color: var(--accent-color);
+}
+.btn-apunte-fijar svg {
+  width: 20px;
+  height: 20px;
+}
+.btn-apunte-fijar.active {
+  color: var(--accent-color);
+}
+
+/* --- ESTILOS DEL EDITOR DE APUNTES --- */
+#editor-wrapper {
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.editor-header {
+  display: flex;
+  align-items: center;
+  padding-right: 10px;
+  flex-shrink: 0;
+}
+#input-titulo-apunte {
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 20px 25px;
+  line-height: 1.3;
+  border: none;
+  background: transparent;
+  resize: none;
+  color: var(--text-base);
+  flex-grow: 1;
+}
+#input-titulo-apunte:focus {
+  outline: none;
+}
+trix-toolbar {
+  background-color: var(--bg-content);
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 10px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+trix-toolbar .trix-button-row {
+  flex-wrap: wrap;
+  height: auto;
+}
+trix-editor {
+  border: none !important;
+  background-color: var(--bg-content);
+  flex-grow: 1;
+  overflow-y: auto;
+  min-height: 150px;
+}
+trix-editor .trix-content {
+  padding: 15px 25px;
+}
+trix-editor:not([aria-placeholder=''])
+  > .trix-content:not(.trix-content--non-breaking-space)::before {
+  color: var(--text-muted);
+  opacity: 0.7;
+  font-size: 1rem;
+  white-space: pre-wrap;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 80%;
+  pointer-events: none;
+}
+.editor-footer {
+  padding: 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: var(--bg-content);
+  flex-shrink: 0;
+}
+.editor-footer .footer-izquierdo label,
+.editor-footer .footer-izquierdo select {
+  font-size: 0.85rem;
+}
+.editor-footer .footer-derecho button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+}
+/* --- CORRECCIÓN: Layout vertical para acciones de apunte --- */
+.apunte-item-actions {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column; /* <-- Esto coloca los iconos uno sobre otro */
+  align-items: center;
+  gap: 4px;
+}
+
+/* --- NUEVA REGLA: Estandarizar botones de icono --- */
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+.btn-icon:hover {
+  background-color: var(--accent-color-hover);
+  color: var(--accent-color);
+}
+
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor; /* El color se hereda del botón */
+}
+/* --- NUEVO: Contenedor para el menú del editor --- */
+/* --- NUEVO: Estilos para el Menú de Acciones del Editor --- */
+.editor-header {
+  position: relative;
+}
+
+.editor-menu-container {
+  position: relative; /* Clave para posicionar el menú desplegable */
+  flex-shrink: 0;
+}
+
+.editor-actions-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  width: 200px;
+  padding: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease-out;
+}
+
+.editor-actions-dropdown.visible {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.editor-actions-dropdown button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.editor-actions-dropdown button:hover {
+  background-color: var(--accent-color-hover);
+}
+/* --- NUEVO: Contenedor para el filtro de cursos --- */
+.apuntes-filtros-container {
+  padding: 0 15px 10px 15px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.apuntes-filtros-container .filtro-select {
+  width: 100%;
 }
