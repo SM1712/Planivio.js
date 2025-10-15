@@ -1,0 +1,84 @@
+/* --- ESTILOS PÁGINA DASHBOARD --- */
+#page-dashboard .panel {
+  flex: 1;
+  overflow-y: auto;
+  min-width: 0;
+}
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+.widget {
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 5px var(--shadow-color);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+.widget h3 {
+  margin: 0 0 8px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--accent-color);
+}
+.widget p {
+  margin: 0 0 15px 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+.widget ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.widget-enfoque,
+.widget-proximamente {
+  grid-column: 1 / -1;
+}
+.widget-progreso {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.numero-progreso {
+  font-size: 3rem;
+  font-weight: bold;
+  color: var(--accent-color);
+  line-height: 1.1;
+}
+p.contador-progreso {
+  margin: 5px 0;
+  color: var(--text-base);
+}
+.accesos-botones {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: auto;
+}
+.widget-task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.widget-task-item:last-child {
+  border-bottom: none;
+}
+.widget-task-info {
+  display: flex;
+  flex-direction: column;
+}
+.widget-task-title {
+  font-weight: 600;
+  color: var(--text-base);
+}
+.widget-task-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}

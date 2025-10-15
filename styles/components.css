@@ -186,6 +186,7 @@ button:disabled {
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .prioridad-alta {
   background-color: #e74c3c;
@@ -225,7 +226,7 @@ button:disabled {
   max-width: 550px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   border: 1px solid var(--border-color);
   box-shadow: 0 8px 25px var(--shadow-color);
   z-index: 1210;
@@ -240,38 +241,48 @@ button:disabled {
 .modal-compacto {
   max-width: 450px;
 }
-.modal-content .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.modal-content .form-row > div {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
 .modal-content h2 {
-  margin: 0 0 10px 0;
+  margin: 0;
   color: var(--accent-color);
   transition: color var(--transition-speed) var(--transition-easing);
-}
-.modal-content label {
-  margin-bottom: -8px;
-  font-size: 0.95rem;
 }
 .modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 #evento-color-palette .color-swatch.active {
   border: 2px solid var(--accent-color);
   transform: scale(1.1);
 }
 
-/* --- ESTILOS PARA FILTROS DE TAREAS --- */
+/* --- Estilos para Formularios en Modales --- */
+.modal-content .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-content .form-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.modal-content .form-row > div {
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-content label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+#modal-prompt input {
+  width: 100%;
+}
+
+/* --- FILTROS Y ACCIONES --- */
 .filtros-container {
   display: flex;
   gap: 8px;
@@ -308,25 +319,49 @@ button:disabled {
   border-color: var(--accent-color);
   font-weight: bold;
 }
-/* --- Estilos para Acciones de Datos en Configuración --- */
 .data-actions-container {
   display: flex;
   flex-direction: column;
-  gap: 8px; /* <-- Aumenta la separación entre botones */
+  gap: 8px;
 }
-
 .data-actions-container button {
-  border: 2px solid transparent; /* Prepara el espacio para el borde */
+  border: 2px solid transparent;
   transition: all 0.2s ease-in-out;
 }
-
 .data-actions-container button:hover:not(:disabled) {
-  box-shadow: none; /* <-- Elimina la sombra por defecto */
-  border: 2px solid var(--accent-color); /* <-- Añade el borde del color de acento */
+  box-shadow: none;
+  border: 2px solid var(--accent-color);
   background-color: var(--accent-color-hover);
 }
-/* --- Estilos para el Modal de Prompt --- */
-#modal-prompt input {
-  width: 100%;
-  margin-top: 10px;
+
+/* --- Estilos para Botones de Icono (Restaurado) --- */
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+.btn-icon:hover {
+  background-color: var(--accent-color-hover);
+  color: var(--accent-color);
+}
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+/* Estilos para Botón de Cerrar Panel (Restaurado) */
+.btn-cerrar-panel {
+  position: absolute;
+  top: 15px;
+  right: 15px;
 }

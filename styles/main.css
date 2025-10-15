@@ -1,50 +1,11 @@
 @import url('./base.css');
 @import url('./layout.css');
 @import url('./components.css');
-@import url('./pages.css');
-/* --- ESTILOS PARA IMPRESIÓN --- */
-@media print {
-  /* Oculta todo por defecto al imprimir */
-  body > *:not(#print-container) {
-    display: none !important;
-  }
 
-  /* Muestra únicamente el contenedor de impresión y su contenido */
-  #print-container {
-    display: block !important;
-  }
-
-  /* Estilos básicos para el contenido a imprimir */
-  @page {
-    margin: 2cm; /* Márgenes de la página */
-  }
-
-  #print-container h1 {
-    font-size: 20pt;
-    border-bottom: 2px solid #000;
-    padding-bottom: 8px;
-    margin-bottom: 20px;
-  }
-
-  #print-container .apunte-impreso {
-    margin-bottom: 25px;
-    page-break-inside: avoid; /* Evita que un apunte se corte entre dos páginas */
-  }
-
-  #print-container h2 {
-    font-size: 14pt;
-    margin-bottom: 2px;
-  }
-
-  #print-container p.meta {
-    font-size: 9pt;
-    color: #666;
-    margin-top: 0;
-    margin-bottom: 15px;
-  }
-
-  #print-container div.contenido {
-    font-size: 11pt;
-    line-height: 1.5;
-  }
-}
+/* --- ESTILOS MODULARES POR PÁGINA --- */
+@import url('./pages/dashboard.css');
+@import url('./pages/tareas.css');
+@import url('./pages/cursos.css');
+@import url('./pages/calendario.css');
+@import url('./pages/apuntes.css');
+@import url('./pages/proyectos.css'); /* <-- AÑADIR ESTA LÍNEA */

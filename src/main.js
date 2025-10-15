@@ -12,6 +12,8 @@ import {
   mostrarPrompt,
   popularSelectorDeCursos,
   popularFiltroDeCursos,
+  popularSelectorDeProyectos,
+  popularSelectorDeProyectosEdicion,
 } from './ui.js';
 import {
   updateRgbVariables,
@@ -42,6 +44,10 @@ import {
   renderizarEditor,
   popularSelectorDeCursosApuntes,
 } from './pages/apuntes.js';
+import {
+  inicializarProyectos,
+  renderizarProyectos,
+} from './pages/proyectos.js';
 
 // --- INICIALIZACIÓN DE LA APLICACIÓN ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -77,6 +83,7 @@ function cambiarPagina(idPagina) {
   if (idPagina === 'tareas') {
     popularSelectorDeCursos();
     popularFiltroDeCursos();
+    popularSelectorDeProyectos();
     renderizarTareas();
     renderizarDetalles();
   }
@@ -95,16 +102,21 @@ function cambiarPagina(idPagina) {
     renderizarEditor();
     popularSelectorDeCursosApuntes();
   }
+  if (idPagina === 'proyectos') {
+    inicializarProyectos();
+    renderizarProyectos();
+  }
 }
 
 // --- MANEJADORES DE LÓGICA ---
 function agregarTarea(event) {
   event.preventDefault();
-  const cursoSeleccionado = document.getElementById('select-curso-tarea').value;
 
   const nuevaTarea = {
     id: Date.now(),
-    curso: cursoSeleccionado,
+    curso: document.getElementById('select-curso-tarea').value,
+    proyectoId:
+      parseInt(document.getElementById('select-proyecto-tarea').value) || null,
     titulo: document.getElementById('input-titulo-tarea').value.trim(),
     descripcion: document.getElementById('input-desc-tarea').value.trim(),
     fecha: document.getElementById('input-fecha-tarea').value,
@@ -118,6 +130,7 @@ function agregarTarea(event) {
   renderizarTareas();
   document.getElementById('form-nueva-tarea').reset();
   document.getElementById('input-fecha-tarea').valueAsDate = new Date();
+  popularSelectorDeProyectos();
 }
 
 function agregarSubtarea() {
@@ -205,10 +218,14 @@ function cambiarColorAcento(color) {
 function iniciarEdicionTarea() {
   const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
   if (!tarea) return;
+
   document.getElementById('edit-titulo-tarea').value = tarea.titulo;
   document.getElementById('edit-desc-tarea').value = tarea.descripcion;
   document.getElementById('edit-fecha-tarea').value = tarea.fecha;
   document.getElementById('edit-prioridad-tarea').value = tarea.prioridad;
+
+  popularSelectorDeProyectosEdicion(tarea.proyectoId);
+
   mostrarModal('modal-editar-tarea');
 }
 
@@ -492,6 +509,10 @@ function agregarEventListeners() {
       if (tarea) {
         tarea.titulo = document.getElementById('edit-titulo-tarea').value;
         tarea.descripcion = document.getElementById('edit-desc-tarea').value;
+        tarea.proyectoId =
+          parseInt(
+            document.getElementById('edit-select-proyecto-tarea').value,
+          ) || null;
         tarea.fecha = document.getElementById('edit-fecha-tarea').value;
         tarea.prioridad = document.getElementById('edit-prioridad-tarea').value;
         guardarDatos();

@@ -112,6 +112,10 @@
               <span class="nav-icon"></span
               ><span class="nav-text">Apuntes</span>
             </li>
+            <li data-page="proyectos" class="nav-item">
+              <span class="nav-icon"></span
+              ><span class="nav-text">Proyectos</span>
+            </li>
           </ul>
         </div>
       </aside>
@@ -156,6 +160,10 @@
                 <label for="select-curso-tarea">Curso:</label>
                 <select id="select-curso-tarea"></select>
               </div>
+              <div class="form-group">
+                <label for="select-proyecto-tarea">Proyecto (Opcional):</label>
+                <select id="select-proyecto-tarea"></select>
+              </div>
               <input
                 type="text"
                 id="input-titulo-tarea"
@@ -189,7 +197,6 @@
 
           <section id="panel-detalles" class="panel panel-derecho">
             <button id="btn-cerrar-detalles" class="btn-cerrar-panel"></button>
-            <h2 class="titulo-panel accent">Detalles de la Tarea</h2>
             <div id="detalles-contenido">
               <h3 id="det-titulo">Selecciona una tarea</h3>
               <button id="btn-completar-tarea" class="btn-full-width" disabled>
@@ -198,6 +205,10 @@
               <button id="btn-editar-tarea" class="btn-full-width" disabled>
                 Editar Tarea
               </button>
+              <div id="det-proyecto-container" style="display: none">
+                <h4>Proyecto:</h4>
+                <p id="det-proyecto-nombre"></p>
+              </div>
               <h4>Descripción:</h4>
               <p id="det-descripcion"></p>
               <div class="subtareas-container">
@@ -395,6 +406,58 @@
             </div>
           </main>
         </div>
+
+        <div id="page-proyectos" class="page">
+          <main class="panel panel-proyectos-lista">
+            <div class="panel-header">
+              <h2 class="titulo-panel accent">Mis Proyectos</h2>
+              <button id="btn-nuevo-proyecto" class="btn-accent">
+                + Nuevo Proyecto
+              </button>
+            </div>
+            <div id="lista-proyectos-container"></div>
+          </main>
+          <section id="panel-proyecto-detalles" class="panel">
+            <div class="panel-header-flex">
+              <div id="proyecto-det-header-info">
+                <h3>Selecciona un proyecto</h3>
+              </div>
+              <div class="panel-header-actions">
+                <div class="editor-menu-container">
+                  <button id="btn-proyecto-menu" class="btn-icon"></button>
+                  <div
+                    id="proyecto-menu-dropdown"
+                    class="editor-actions-dropdown"
+                  >
+                    <button id="btn-detalles-editar-proyecto">
+                      Editar Proyecto
+                    </button>
+                    <button id="btn-detalles-agregar-tarea">
+                      Añadir Tarea
+                    </button>
+                    <button
+                      id="btn-detalles-eliminar-proyecto"
+                      class="btn-eliminar-item"
+                    >
+                      Eliminar Proyecto
+                    </button>
+                  </div>
+                </div>
+                <button
+                  id="btn-cerrar-detalles-proyecto"
+                  class="btn-icon btn-cerrar-panel"
+                ></button>
+              </div>
+            </div>
+            <p id="proyecto-det-descripcion"></p>
+            <div id="proyecto-det-stats-container">
+              <div class="proyecto-stats-grafica">
+                <canvas id="proyecto-grafica-progreso"></canvas>
+              </div>
+              <div id="proyecto-det-tareas-container"></div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
 
@@ -411,13 +474,37 @@
       </div>
     </div>
 
+    <div id="modal-prompt" class="modal-overlay">
+      <form id="form-prompt" class="modal-content">
+        <h2 id="prompt-title">Ingresar Valor</h2>
+        <p id="prompt-msg" style="margin-bottom: 10px"></p>
+        <input type="text" id="prompt-input" required />
+        <div class="modal-actions">
+          <button type="button" id="btn-prompt-cancelar" class="btn-secondary">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-prompt-aceptar" class="btn-accent">
+            Aceptar
+          </button>
+        </div>
+      </form>
+    </div>
+
     <div id="modal-editar-tarea" class="modal-overlay">
       <form id="form-editar-tarea" class="modal-content">
         <h2>Editar Tarea</h2>
-        <label for="edit-titulo-tarea">Título:</label>
-        <input type="text" id="edit-titulo-tarea" required />
-        <label for="edit-desc-tarea">Descripción:</label>
-        <textarea id="edit-desc-tarea" rows="4"></textarea>
+        <div class="form-group">
+          <label for="edit-titulo-tarea">Título:</label>
+          <input type="text" id="edit-titulo-tarea" required />
+        </div>
+        <div class="form-group">
+          <label for="edit-desc-tarea">Descripción:</label>
+          <textarea id="edit-desc-tarea" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="edit-select-proyecto-tarea">Proyecto (Opcional):</label>
+          <select id="edit-select-proyecto-tarea"></select>
+        </div>
         <div class="form-row">
           <div>
             <label for="edit-fecha-tarea">Fecha:</label>
@@ -617,22 +704,95 @@
         </div>
       </div>
     </div>
-    <div id="modal-prompt" class="modal-overlay">
-      <form id="form-prompt" class="modal-content">
-        <h2 id="prompt-title">Ingresar Valor</h2>
-        <p id="prompt-msg" style="margin-bottom: 10px"></p>
-        <input type="text" id="prompt-input" required />
+
+    <div id="modal-nuevo-proyecto" class="modal-overlay">
+      <form id="form-nuevo-proyecto" class="modal-content">
+        <h2 id="modal-proyecto-titulo">Agregar Nuevo Proyecto</h2>
+        <input type="hidden" id="input-proyecto-id" />
+
+        <label for="input-nombre-proyecto">Nombre del proyecto:</label>
+        <input
+          type="text"
+          id="input-nombre-proyecto"
+          placeholder="Ej: Ensayo Final de Filosofía"
+          required
+        />
+
+        <label for="input-desc-proyecto">Descripción (opcional):</label>
+        <textarea
+          id="input-desc-proyecto"
+          placeholder="Objetivo principal del proyecto..."
+          rows="3"
+        ></textarea>
+
+        <div class="form-group">
+          <label for="select-curso-proyecto">Asignar a Curso (Opcional):</label>
+          <select id="select-curso-proyecto"></select>
+        </div>
+
         <div class="modal-actions">
-          <button type="button" id="btn-prompt-cancelar" class="btn-secondary">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
             Cancelar
           </button>
-          <button type="submit" id="btn-prompt-aceptar" class="btn-accent">
-            Aceptar
+          <button type="submit" id="btn-guardar-proyecto" class="btn-accent">
+            Guardar Proyecto
           </button>
         </div>
       </form>
     </div>
+
+    <div id="modal-quick-add-tarea" class="modal-overlay">
+      <form id="form-quick-add-tarea" class="modal-content">
+        <h2>Añadir Tarea al Proyecto</h2>
+        <div class="form-group">
+          <label>Proyecto:</label>
+          <input type="text" id="quick-add-proyecto-nombre" readonly disabled />
+        </div>
+        <div class="form-group">
+          <label for="quick-add-curso-tarea">Curso:</label>
+          <select id="quick-add-curso-tarea"></select>
+        </div>
+        <div class="form-group">
+          <label for="quick-add-titulo-tarea">Título de la tarea:</label>
+          <input type="text" id="quick-add-titulo-tarea" required />
+        </div>
+        <div class="form-group">
+          <label for="quick-add-desc-tarea">Descripción (opcional):</label>
+          <textarea id="quick-add-desc-tarea" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="quick-add-fecha-tarea">Fecha:</label>
+            <input type="date" id="quick-add-fecha-tarea" required />
+          </div>
+          <div>
+            <label for="quick-add-prioridad-tarea">Prioridad:</label>
+            <select id="quick-add-prioridad-tarea">
+              <option value="Baja">Baja</option>
+              <option value="Media" selected>Media</option>
+              <option value="Alta">Alta</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button type="submit" class="btn-accent">Guardar Tarea</button>
+        </div>
+      </form>
+    </div>
+
     <script type="module" src="./src/main.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </body>
 </html>

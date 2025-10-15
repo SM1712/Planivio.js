@@ -16,9 +16,19 @@ export function cargarlconos() {
     ICONS.cursos;
   document.querySelector('.nav-item[data-page="apuntes"] .nav-icon').innerHTML =
     ICONS.apuntes;
+  document.querySelector(
+    '.nav-item[data-page="proyectos"] .nav-icon',
+  ).innerHTML = ICONS.proyectos;
+
   const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
   if (btnCerrarDetalles) {
     btnCerrarDetalles.innerHTML = ICONS.close;
+  }
+  const btnCerrarDetallesProyecto = document.getElementById(
+    'btn-cerrar-detalles-proyecto',
+  );
+  if (btnCerrarDetallesProyecto) {
+    btnCerrarDetallesProyecto.innerHTML = ICONS.close;
   }
 }
 
@@ -77,15 +87,21 @@ export function renderizarTareas() {
 export function renderizarDetalles() {
   const panel = document.getElementById('panel-detalles');
   if (!panel) return;
+
   const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
+
   const titulo = document.getElementById('det-titulo');
   const descripcion = document.getElementById('det-descripcion');
   const btnCompletar = document.getElementById('btn-completar-tarea');
   const btnEditar = document.getElementById('btn-editar-tarea');
   const subtareasContainer = document.querySelector('.subtareas-container');
+
+  const proyectoContainer = document.getElementById('det-proyecto-container');
+  const proyectoNombre = document.getElementById('det-proyecto-nombre');
+
   if (tarea) {
     titulo.textContent = tarea.titulo;
-    descripcion.textContent = tarea.descripcion;
+    descripcion.textContent = tarea.descripcion || 'Sin descripción.';
     btnCompletar.textContent = tarea.completada
       ? 'Marcar como Pendiente'
       : 'Marcar como Completada';
@@ -93,6 +109,18 @@ export function renderizarDetalles() {
     btnEditar.disabled = false;
     subtareasContainer.style.display = 'flex';
     renderizarSubtareas(tarea);
+
+    if (tarea.proyectoId) {
+      const proyecto = state.proyectos.find((p) => p.id === tarea.proyectoId);
+      if (proyecto) {
+        proyectoNombre.textContent = proyecto.nombre;
+        proyectoContainer.style.display = 'block';
+      } else {
+        proyectoContainer.style.display = 'none';
+      }
+    } else {
+      proyectoContainer.style.display = 'none';
+    }
   } else {
     titulo.textContent = 'Selecciona una tarea';
     descripcion.textContent = '';
@@ -100,6 +128,7 @@ export function renderizarDetalles() {
     btnCompletar.disabled = true;
     btnEditar.disabled = true;
     if (subtareasContainer) subtareasContainer.style.display = 'none';
+    if (proyectoContainer) proyectoContainer.style.display = 'none';
     const listaSubtareas = document.getElementById('lista-subtareas');
     if (listaSubtareas) listaSubtareas.innerHTML = '';
   }
@@ -157,7 +186,7 @@ export function mostrarConfirmacion(titulo, msg, callback) {
   if (confirmTitle) confirmTitle.textContent = titulo;
   if (confirmMsg) confirmMsg.textContent = msg;
 
-  cancelarBtn.style.display = 'inline-block'; // Asegura que sea visible
+  cancelarBtn.style.display = 'inline-block';
 
   mostrarModal('modal-confirmacion');
 
@@ -178,7 +207,7 @@ export function mostrarAlerta(titulo, msg, callback) {
   if (confirmTitle) confirmTitle.textContent = titulo;
   if (confirmMsg) confirmMsg.textContent = msg;
 
-  cancelarBtn.style.display = 'none'; // Oculta el botón de cancelar
+  cancelarBtn.style.display = 'none';
 
   const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
   aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
@@ -195,14 +224,59 @@ export function mostrarAlerta(titulo, msg, callback) {
   mostrarModal('modal-confirmacion');
 }
 
-export function popularSelectorDeCursos() {
-  const selector = document.getElementById('select-curso-tarea');
+export function mostrarPrompt(titulo, msg, defaultValue = '') {
+  return new Promise((resolve, reject) => {
+    const modal = document.getElementById('modal-prompt');
+    const form = document.getElementById('form-prompt');
+    const titleEl = document.getElementById('prompt-title');
+    const msgEl = document.getElementById('prompt-msg');
+    const inputEl = document.getElementById('prompt-input');
+    const aceptarBtn = document.getElementById('btn-prompt-aceptar');
+    const cancelarBtn = document.getElementById('btn-prompt-cancelar');
+
+    titleEl.textContent = titulo;
+    msgEl.textContent = msg;
+    inputEl.value = defaultValue;
+
+    mostrarModal('modal-prompt');
+    setTimeout(() => inputEl.focus(), 100);
+
+    const handleSubmit = (e) => {
+      e.preventDefault();
+      cleanup();
+      resolve(inputEl.value.trim());
+    };
+
+    const handleCancel = () => {
+      cleanup();
+      reject();
+    };
+
+    const cleanup = () => {
+      form.removeEventListener('submit', handleSubmit);
+      cancelarBtn.removeEventListener('click', handleCancel);
+      cerrarModal('modal-prompt');
+    };
+
+    form.addEventListener('submit', handleSubmit);
+    cancelarBtn.addEventListener('click', handleCancel);
+  });
+}
+
+export function popularSelectorDeCursos(selectorElement) {
+  const selector =
+    selectorElement || document.getElementById('select-curso-tarea');
   if (!selector) return;
 
   const valorSeleccionado = selector.value;
   selector.innerHTML = '';
   state.cursos.forEach((nombreCurso) => {
-    if (nombreCurso === 'General' && state.cursos.length > 1) return;
+    if (
+      nombreCurso === 'General' &&
+      state.cursos.length > 1 &&
+      selector.id !== 'quick-add-curso-tarea'
+    )
+      return;
     const opcion = document.createElement('option');
     opcion.value = nombreCurso;
     opcion.textContent = nombreCurso;
@@ -227,42 +301,41 @@ export function popularFiltroDeCursos() {
   });
   selector.value = state.filtroCurso;
 }
-// AÑADE ESTA NUEVA FUNCIÓN AL FINAL DE ui.js
-export function mostrarPrompt(titulo, msg, defaultValue = '') {
-  return new Promise((resolve, reject) => {
-    const modal = document.getElementById('modal-prompt');
-    const form = document.getElementById('form-prompt');
-    const titleEl = document.getElementById('prompt-title');
-    const msgEl = document.getElementById('prompt-msg');
-    const inputEl = document.getElementById('prompt-input');
-    const aceptarBtn = document.getElementById('btn-prompt-aceptar');
-    const cancelarBtn = document.getElementById('btn-prompt-cancelar');
 
-    titleEl.textContent = titulo;
-    msgEl.textContent = msg;
-    inputEl.value = defaultValue;
+export function popularSelectorDeProyectos() {
+  const selector = document.getElementById('select-proyecto-tarea');
+  if (!selector) return;
 
-    mostrarModal('modal-prompt');
-    setTimeout(() => inputEl.focus(), 100); // Pone el foco en el input
+  const valorSeleccionado = selector.value;
 
-    const handleSubmit = (e) => {
-      e.preventDefault();
-      cleanup();
-      resolve(inputEl.value.trim());
-    };
+  selector.innerHTML = '<option value="">Ninguno</option>';
 
-    const handleCancel = () => {
-      cleanup();
-      reject();
-    };
-
-    const cleanup = () => {
-      form.removeEventListener('submit', handleSubmit);
-      cancelarBtn.removeEventListener('click', handleCancel);
-      cerrarModal('modal-prompt');
-    };
-
-    form.addEventListener('submit', handleSubmit);
-    cancelarBtn.addEventListener('click', handleCancel);
+  state.proyectos.forEach((proyecto) => {
+    const opcion = document.createElement('option');
+    opcion.value = proyecto.id;
+    opcion.textContent = proyecto.nombre;
+    selector.appendChild(opcion);
   });
+
+  if (valorSeleccionado) {
+    selector.value = valorSeleccionado;
+  }
+}
+
+export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
+  const selector = document.getElementById('edit-select-proyecto-tarea');
+  if (!selector) return;
+
+  selector.innerHTML = '<option value="">Ninguno</option>';
+
+  state.proyectos.forEach((proyecto) => {
+    const opcion = document.createElement('option');
+    opcion.value = proyecto.id;
+    opcion.textContent = proyecto.nombre;
+    selector.appendChild(opcion);
+  });
+
+  if (proyectoIdSeleccionado) {
+    selector.value = proyectoIdSeleccionado;
+  }
 }
