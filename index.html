@@ -17,6 +17,7 @@
   </head>
   <body>
     <header class="app-header">
+      <button id="btn-toggle-sidebar" class="btn-icon"></button>
       <h1 class="app-title">Planivio</h1>
       <div class="config-container">
         <button id="btn-config-dropdown" class="config-btn"></button>
@@ -86,11 +87,11 @@
       </div>
     </header>
 
-    <div class="app-container">
-      <aside id="panel-lateral" class="panel panel-izquierdo">
+    <div class="app-container" id="app-container">
+      <div class="sidebar-overlay"></div>
+      <aside id="panel-lateral" class="panel">
         <div class="panel-header">
           <h2 class="titulo-panel accent">Navegación</h2>
-          <button id="btn-toggle-panel" class="toggle-panel-btn"></button>
         </div>
         <div class="panel-content">
           <ul id="main-nav" class="main-nav">
@@ -120,7 +121,7 @@
         </div>
       </aside>
 
-      <div class="main-content-area">
+      <div class="main-content-area" id="app-content">
         <div id="page-tareas" class="page">
           <main class="panel panel-central">
             <div class="panel-header">
@@ -152,7 +153,6 @@
               </table>
             </div>
           </main>
-
           <section id="panel-creacion" class="panel">
             <form id="form-nueva-tarea" class="form-nueva-tarea">
               <h2 class="titulo-panel accent">Agregar Nueva Tarea</h2>
@@ -194,7 +194,6 @@
               </button>
             </form>
           </section>
-
           <section id="panel-detalles" class="panel panel-derecho">
             <button id="btn-cerrar-detalles" class="btn-cerrar-panel"></button>
             <div id="detalles-contenido">
@@ -361,7 +360,6 @@
               <ul id="lista-apuntes"></ul>
             </div>
           </aside>
-
           <main id="panel-editor-apuntes" class="panel panel-central">
             <div id="editor-wrapper">
               <div class="editor-header">
@@ -473,7 +471,6 @@
         </div>
       </div>
     </div>
-
     <div id="modal-prompt" class="modal-overlay">
       <form id="form-prompt" class="modal-content">
         <h2 id="prompt-title">Ingresar Valor</h2>
@@ -489,7 +486,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-editar-tarea" class="modal-overlay">
       <form id="form-editar-tarea" class="modal-content">
         <h2>Editar Tarea</h2>
@@ -531,7 +527,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-nuevo-curso" class="modal-overlay">
       <form id="form-nuevo-curso" class="modal-content">
         <h2>Agregar Nuevo Curso</h2>
@@ -554,7 +549,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-renombrar-curso" class="modal-overlay">
       <form id="form-renombrar-curso" class="modal-content">
         <h2>Renombrar Curso</h2>
@@ -573,7 +567,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-nuevo-evento" class="modal-overlay">
       <form id="form-nuevo-evento" class="modal-content modal-compacto">
         <h2 id="modal-evento-titulo">Agregar Nuevo Evento</h2>
@@ -653,7 +646,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-evento-detalles" class="modal-overlay">
       <div class="modal-content modal-compacto">
         <div id="evento-detalles-header">
@@ -680,7 +672,6 @@
         </div>
       </div>
     </div>
-
     <div id="modal-accion-rapida" class="modal-overlay">
       <div class="modal-content modal-compacto">
         <h2 id="accion-rapida-titulo">11 de Octubre</h2>
@@ -704,12 +695,10 @@
         </div>
       </div>
     </div>
-
     <div id="modal-nuevo-proyecto" class="modal-overlay">
       <form id="form-nuevo-proyecto" class="modal-content">
         <h2 id="modal-proyecto-titulo">Agregar Nuevo Proyecto</h2>
         <input type="hidden" id="input-proyecto-id" />
-
         <label for="input-nombre-proyecto">Nombre del proyecto:</label>
         <input
           type="text"
@@ -717,19 +706,16 @@
           placeholder="Ej: Ensayo Final de Filosofía"
           required
         />
-
         <label for="input-desc-proyecto">Descripción (opcional):</label>
         <textarea
           id="input-desc-proyecto"
           placeholder="Objetivo principal del proyecto..."
           rows="3"
         ></textarea>
-
         <div class="form-group">
           <label for="select-curso-proyecto">Asignar a Curso (Opcional):</label>
           <select id="select-curso-proyecto"></select>
         </div>
-
         <div class="modal-actions">
           <button
             type="button"
@@ -744,7 +730,6 @@
         </div>
       </form>
     </div>
-
     <div id="modal-quick-add-tarea" class="modal-overlay">
       <form id="form-quick-add-tarea" class="modal-content">
         <h2>Añadir Tarea al Proyecto</h2>

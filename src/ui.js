@@ -2,7 +2,9 @@ import { state } from './state.js';
 import { ICONS } from './icons.js';
 
 export function cargarlconos() {
-  actualizariconoTogglePanel();
+  const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+  if (btnToggleSidebar) btnToggleSidebar.innerHTML = ICONS.menu;
+
   document.getElementById('btn-config-dropdown').innerHTML = ICONS.settings;
   document.querySelector(
     '.nav-item[data-page="dashboard"] .nav-icon',
@@ -157,16 +159,6 @@ export function actualizarFiltrosActivos() {
   document.querySelectorAll('.btn-filtro[data-sort]').forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.sort === state.ordenamiento.col);
   });
-}
-
-export function actualizariconoTogglePanel() {
-  const panel = document.getElementById('panel-lateral');
-  const btn = document.getElementById('btn-toggle-panel');
-  if (panel.classList.contains('panel-colapsado')) {
-    btn.innerHTML = ICONS.expand;
-  } else {
-    btn.innerHTML = ICONS.collapse;
-  }
 }
 
 export function mostrarModal(idModal) {

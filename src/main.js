@@ -4,7 +4,6 @@ import {
   renderizarTareas,
   renderizarDetalles,
   renderizarSubtareas,
-  actualizariconoTogglePanel,
   mostrarModal,
   cerrarModal,
   mostrarConfirmacion,
@@ -231,15 +230,33 @@ function iniciarEdicionTarea() {
 
 // --- EVENT LISTENERS ---
 function agregarEventListeners() {
+  const appContainer = document.getElementById('app-container');
+  const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+  const navPanel = document.getElementById('panel-lateral');
+
+  if (btnToggleSidebar) {
+    btnToggleSidebar.addEventListener('click', () => {
+      appContainer.classList.toggle('sidebar-visible');
+    });
+  }
+
+  if (navPanel) {
+    navPanel.addEventListener('click', (e) => {
+      if (e.target.closest('.nav-item')) {
+        appContainer.classList.remove('sidebar-visible');
+      }
+    });
+  }
+
+  const overlay = document.querySelector('.sidebar-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', () => {
+      appContainer.classList.remove('sidebar-visible');
+    });
+  }
+
   const configBtn = document.getElementById('btn-config-dropdown');
   const configDropdown = document.getElementById('config-dropdown');
-
-  document.getElementById('btn-toggle-panel').addEventListener('click', () => {
-    document
-      .getElementById('panel-lateral')
-      .classList.toggle('panel-colapsado');
-    actualizariconoTogglePanel();
-  });
 
   document.getElementById('main-nav').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
