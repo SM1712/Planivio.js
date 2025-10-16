@@ -1,0 +1,44 @@
+<div id="page-proyectos" class="page">
+  <main class="panel panel-proyectos-lista">
+    <div class="panel-header">
+      <h2 class="titulo-panel accent">Mis Proyectos</h2>
+      <button id="btn-nuevo-proyecto" class="btn-accent">
+        + Nuevo Proyecto
+      </button>
+    </div>
+    <div id="lista-proyectos-container"></div>
+  </main>
+  <section id="panel-proyecto-detalles" class="panel">
+    <div class="panel-header-flex">
+      <div id="proyecto-det-header-info">
+        <h3>Selecciona un proyecto</h3>
+      </div>
+      <div class="panel-header-actions">
+        <div class="editor-menu-container">
+          <button id="btn-proyecto-menu" class="btn-icon"></button>
+          <div id="proyecto-menu-dropdown" class="editor-actions-dropdown">
+            <button id="btn-detalles-editar-proyecto">Editar Proyecto</button>
+            <button id="btn-detalles-agregar-tarea">Añadir Tarea</button>
+            <button
+              id="btn-detalles-eliminar-proyecto"
+              class="btn-eliminar-item"
+            >
+              Eliminar Proyecto
+            </button>
+          </div>
+        </div>
+        <button
+          id="btn-cerrar-detalles-proyecto"
+          class="btn-icon btn-cerrar-panel"
+        ></button>
+      </div>
+    </div>
+    <p id="proyecto-det-descripcion"></p>
+    <div id="proyecto-det-stats-container">
+      <div class="proyecto-stats-grafica">
+        <canvas id="proyecto-grafica-progreso"></canvas>
+      </div>
+      <div id="proyecto-det-tareas-container"></div>
+    </div>
+  </section>
+</div>

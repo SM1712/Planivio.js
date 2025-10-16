@@ -1,10 +1,13 @@
 import { state } from './state.js';
 import { ICONS } from './icons.js';
 
-export function cargarlconos() {
-  const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
-  if (btnToggleSidebar) btnToggleSidebar.innerHTML = ICONS.menu;
+// ===============================================
+// == FUNCIONES DE UI GLOBALES Y REUTILIZABLES ===
+// ===============================================
 
+export function cargarIconos() {
+  // Configura iconos globales en el cascarón principal (index.html)
+  document.getElementById('btn-toggle-sidebar').innerHTML = ICONS.menu;
   document.getElementById('btn-config-dropdown').innerHTML = ICONS.settings;
   document.querySelector(
     '.nav-item[data-page="dashboard"] .nav-icon',
@@ -22,144 +25,19 @@ export function cargarlconos() {
     '.nav-item[data-page="proyectos"] .nav-icon',
   ).innerHTML = ICONS.proyectos;
 
+  // Los botones de cierre ahora se cargan con cada página, por lo que los buscamos de forma segura aquí.
+  // Esto se ejecutará cada vez que se cargue una página que los contenga.
   const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
-  if (btnCerrarDetalles) {
-    btnCerrarDetalles.innerHTML = ICONS.close;
-  }
+  if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
+
   const btnCerrarDetallesProyecto = document.getElementById(
     'btn-cerrar-detalles-proyecto',
   );
-  if (btnCerrarDetallesProyecto) {
+  if (btnCerrarDetallesProyecto)
     btnCerrarDetallesProyecto.innerHTML = ICONS.close;
-  }
 }
 
-export function renderizarTareas() {
-  const tbody = document.getElementById('tabla-tareas-body');
-  if (!tbody) return;
-  let tareasAMostrar = state.tareas;
-  if (state.filtroCurso !== 'todos') {
-    tareasAMostrar = state.tareas.filter((t) => t.curso === state.filtroCurso);
-  }
-  const col = state.ordenamiento.col;
-  const reverse = state.ordenamiento.reverse;
-  const tareasOrdenadas = [...tareasAMostrar].sort((a, b) => {
-    let valA, valB;
-    if (col === 'prioridad') {
-      const orden = { Alta: 0, Media: 1, Baja: 2 };
-      valA = orden[a.prioridad];
-      valB = orden[b.prioridad];
-    } else if (col === 'fecha') {
-      valA = new Date(a.fecha);
-      valB = new Date(b.fecha);
-    } else {
-      valA = String(a[col] || '').toLowerCase();
-      valB = String(b[col] || '').toLowerCase();
-    }
-    if (valA < valB) return reverse ? 1 : -1;
-    if (valA > valB) return reverse ? -1 : 1;
-    return 0;
-  });
-  const tareasFinales = tareasOrdenadas.sort(
-    (a, b) => a.completada - b.completada,
-  );
-  tbody.innerHTML = '';
-  tareasFinales.forEach((tarea) => {
-    const tr = document.createElement('tr');
-    tr.dataset.id = tarea.id;
-    if (tarea.completada) tr.classList.add('tarea-completada');
-    if (tarea.id === state.tareaSeleccionadald)
-      tr.classList.add('selected-task');
-    const [year, month, day] = tarea.fecha.split('-');
-    const fechaFormateada = `${day}/${month}/${year}`;
-    tr.innerHTML = `
-      <td>${tarea.curso}</td>
-      <td><span class="prioridad-indicador prioridad-${tarea.prioridad.toLowerCase()}"></span></td>
-      <td>${tarea.titulo}</td>
-      <td>${fechaFormateada}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-  const tituloTareas = document.getElementById('titulo-tareas-pendientes');
-  if (tituloTareas)
-    tituloTareas.textContent = `Tareas Pendientes (${tareasAMostrar.length})`;
-  actualizarFiltrosActivos();
-}
-
-export function renderizarDetalles() {
-  const panel = document.getElementById('panel-detalles');
-  if (!panel) return;
-
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald);
-
-  const titulo = document.getElementById('det-titulo');
-  const descripcion = document.getElementById('det-descripcion');
-  const btnCompletar = document.getElementById('btn-completar-tarea');
-  const btnEditar = document.getElementById('btn-editar-tarea');
-  const subtareasContainer = document.querySelector('.subtareas-container');
-
-  const proyectoContainer = document.getElementById('det-proyecto-container');
-  const proyectoNombre = document.getElementById('det-proyecto-nombre');
-
-  if (tarea) {
-    titulo.textContent = tarea.titulo;
-    descripcion.textContent = tarea.descripcion || 'Sin descripción.';
-    btnCompletar.textContent = tarea.completada
-      ? 'Marcar como Pendiente'
-      : 'Marcar como Completada';
-    btnCompletar.disabled = false;
-    btnEditar.disabled = false;
-    subtareasContainer.style.display = 'flex';
-    renderizarSubtareas(tarea);
-
-    if (tarea.proyectoId) {
-      const proyecto = state.proyectos.find((p) => p.id === tarea.proyectoId);
-      if (proyecto) {
-        proyectoNombre.textContent = proyecto.nombre;
-        proyectoContainer.style.display = 'block';
-      } else {
-        proyectoContainer.style.display = 'none';
-      }
-    } else {
-      proyectoContainer.style.display = 'none';
-    }
-  } else {
-    titulo.textContent = 'Selecciona una tarea';
-    descripcion.textContent = '';
-    btnCompletar.textContent = 'Marcar como Completada';
-    btnCompletar.disabled = true;
-    btnEditar.disabled = true;
-    if (subtareasContainer) subtareasContainer.style.display = 'none';
-    if (proyectoContainer) proyectoContainer.style.display = 'none';
-    const listaSubtareas = document.getElementById('lista-subtareas');
-    if (listaSubtareas) listaSubtareas.innerHTML = '';
-  }
-}
-
-export function renderizarSubtareas(tarea) {
-  const listaSubtareas = document.getElementById('lista-subtareas');
-  if (!listaSubtareas) return;
-  listaSubtareas.innerHTML = '';
-  if (!tarea.subtareas) tarea.subtareas = [];
-  tarea.subtareas.forEach((sub, index) => {
-    const li = document.createElement('li');
-    const checkboxId = `subtarea-${tarea.id}-${index}`;
-    li.innerHTML = `
-      <input type="checkbox" id="${checkboxId}" data-index="${index}" ${
-        sub.completada ? 'checked' : ''
-      }>
-      <label for="${checkboxId}">${sub.texto}</label>
-      <button class="btn-delete-subtask" data-index="${index}">&times;</button>
-    `;
-    listaSubtareas.appendChild(li);
-  });
-}
-
-export function actualizarFiltrosActivos() {
-  document.querySelectorAll('.btn-filtro[data-sort]').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.sort === state.ordenamiento.col);
-  });
-}
+// --- Funciones para Modales (son globales) ---
 
 export function mostrarModal(idModal) {
   document.getElementById(idModal)?.classList.add('visible');
@@ -173,21 +51,23 @@ export function mostrarConfirmacion(titulo, msg, callback) {
   const confirmTitle = document.getElementById('confirm-title');
   const confirmMsg = document.getElementById('confirm-msg');
   const aceptarBtn = document.getElementById('btn-confirm-aceptar');
-  const cancelarBtn = document.getElementById('btn-confirm-cancelar');
 
   if (confirmTitle) confirmTitle.textContent = titulo;
   if (confirmMsg) confirmMsg.textContent = msg;
 
-  cancelarBtn.style.display = 'inline-block';
-
-  mostrarModal('modal-confirmacion');
-
   const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
   aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
-  nuevoAceptarBtn.addEventListener('click', () => {
-    callback();
-    cerrarModal('modal-confirmacion');
-  });
+
+  nuevoAceptarBtn.addEventListener(
+    'click',
+    () => {
+      callback();
+      cerrarModal('modal-confirmacion');
+    },
+    { once: true },
+  );
+
+  mostrarModal('modal-confirmacion');
 }
 
 export function mostrarAlerta(titulo, msg, callback) {
@@ -198,8 +78,7 @@ export function mostrarAlerta(titulo, msg, callback) {
 
   if (confirmTitle) confirmTitle.textContent = titulo;
   if (confirmMsg) confirmMsg.textContent = msg;
-
-  cancelarBtn.style.display = 'none';
+  if (cancelarBtn) cancelarBtn.style.display = 'none';
 
   const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
   aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
@@ -223,15 +102,11 @@ export function mostrarPrompt(titulo, msg, defaultValue = '') {
     const titleEl = document.getElementById('prompt-title');
     const msgEl = document.getElementById('prompt-msg');
     const inputEl = document.getElementById('prompt-input');
-    const aceptarBtn = document.getElementById('btn-prompt-aceptar');
     const cancelarBtn = document.getElementById('btn-prompt-cancelar');
 
     titleEl.textContent = titulo;
     msgEl.textContent = msg;
     inputEl.value = defaultValue;
-
-    mostrarModal('modal-prompt');
-    setTimeout(() => inputEl.focus(), 100);
 
     const handleSubmit = (e) => {
       e.preventDefault();
@@ -250,12 +125,20 @@ export function mostrarPrompt(titulo, msg, defaultValue = '') {
       cerrarModal('modal-prompt');
     };
 
-    form.addEventListener('submit', handleSubmit);
-    cancelarBtn.addEventListener('click', handleCancel);
+    form.addEventListener('submit', handleSubmit, { once: true });
+    cancelarBtn.addEventListener('click', handleCancel, { once: true });
+
+    mostrarModal('modal-prompt');
+    setTimeout(() => inputEl.focus(), 100);
   });
 }
 
-export function popularSelectorDeCursos(selectorElement) {
+// --- Funciones de Ayuda para Selectores (reutilizables) ---
+
+export function popularSelectorDeCursos(
+  selectorElement,
+  omitirGeneral = false,
+) {
   const selector =
     selectorElement || document.getElementById('select-curso-tarea');
   if (!selector) return;
@@ -263,17 +146,15 @@ export function popularSelectorDeCursos(selectorElement) {
   const valorSeleccionado = selector.value;
   selector.innerHTML = '';
   state.cursos.forEach((nombreCurso) => {
-    if (
-      nombreCurso === 'General' &&
-      state.cursos.length > 1 &&
-      selector.id !== 'quick-add-curso-tarea'
-    )
+    if (omitirGeneral && nombreCurso === 'General' && state.cursos.length > 1) {
       return;
+    }
     const opcion = document.createElement('option');
     opcion.value = nombreCurso;
     opcion.textContent = nombreCurso;
     selector.appendChild(opcion);
   });
+
   if (state.cursos.includes(valorSeleccionado)) {
     selector.value = valorSeleccionado;
   }
@@ -294,21 +175,20 @@ export function popularFiltroDeCursos() {
   selector.value = state.filtroCurso;
 }
 
-export function popularSelectorDeProyectos() {
-  const selector = document.getElementById('select-proyecto-tarea');
+export function popularSelectorDeProyectos(
+  selectorId = 'select-proyecto-tarea',
+) {
+  const selector = document.getElementById(selectorId);
   if (!selector) return;
 
   const valorSeleccionado = selector.value;
-
   selector.innerHTML = '<option value="">Ninguno</option>';
-
   state.proyectos.forEach((proyecto) => {
     const opcion = document.createElement('option');
     opcion.value = proyecto.id;
     opcion.textContent = proyecto.nombre;
     selector.appendChild(opcion);
   });
-
   if (valorSeleccionado) {
     selector.value = valorSeleccionado;
   }
@@ -316,18 +196,8 @@ export function popularSelectorDeProyectos() {
 
 export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
   const selector = document.getElementById('edit-select-proyecto-tarea');
-  if (!selector) return;
-
-  selector.innerHTML = '<option value="">Ninguno</option>';
-
-  state.proyectos.forEach((proyecto) => {
-    const opcion = document.createElement('option');
-    opcion.value = proyecto.id;
-    opcion.textContent = proyecto.nombre;
-    selector.appendChild(opcion);
-  });
-
-  if (proyectoIdSeleccionado) {
+  popularSelectorDeProyectos('edit-select-proyecto-tarea');
+  if (selector && proyectoIdSeleccionado) {
     selector.value = proyectoIdSeleccionado;
   }
 }

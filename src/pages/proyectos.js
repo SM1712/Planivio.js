@@ -16,7 +16,6 @@ function calcularEstadisticasProyecto(proyectoId) {
     (t) => t.proyectoId === proyectoId,
   );
   const totalTareas = tareasDelProyecto.length;
-
   if (totalTareas === 0) {
     return {
       total: 0,
@@ -38,111 +37,12 @@ function calcularEstadisticasProyecto(proyectoId) {
   const baja = tareasDelProyecto.filter(
     (t) => !t.completada && t.prioridad === 'Baja',
   ).length;
-  const porcentaje =
-    totalTareas > 0 ? Math.round((completadas / totalTareas) * 100) : 0;
+  const porcentaje = Math.round((completadas / totalTareas) * 100);
 
   return { total: totalTareas, completadas, alta, media, baja, porcentaje };
 }
 
-export function inicializarProyectos() {
-  const btnNuevoProyecto = document.getElementById('btn-nuevo-proyecto');
-  if (btnNuevoProyecto.dataset.initialized) return;
-
-  const formNuevoProyecto = document.getElementById('form-nuevo-proyecto');
-  const container = document.getElementById('lista-proyectos-container');
-  const btnCerrarDetalles = document.getElementById(
-    'btn-cerrar-detalles-proyecto',
-  );
-  const formQuickAdd = document.getElementById('form-quick-add-tarea');
-
-  const btnMenuProyecto = document.getElementById('btn-proyecto-menu');
-  const menuDropdown = document.getElementById('proyecto-menu-dropdown');
-  btnMenuProyecto.innerHTML = ICONS.dots_vertical;
-
-  btnMenuProyecto.addEventListener('click', (e) => {
-    e.stopPropagation();
-    menuDropdown.classList.toggle('visible');
-  });
-
-  document
-    .getElementById('btn-detalles-editar-proyecto')
-    .addEventListener('click', () => {
-      iniciarEdicionProyecto(state.proyectoSeleccionadoId);
-      menuDropdown.classList.remove('visible');
-    });
-
-  document
-    .getElementById('btn-detalles-agregar-tarea')
-    .addEventListener('click', () => {
-      abrirModalQuickAdd();
-      menuDropdown.classList.remove('visible');
-    });
-
-  document
-    .getElementById('btn-detalles-eliminar-proyecto')
-    .addEventListener('click', () => {
-      eliminarProyecto(state.proyectoSeleccionadoId);
-      menuDropdown.classList.remove('visible');
-    });
-
-  btnNuevoProyecto.addEventListener('click', () =>
-    iniciarEdicionProyecto(null),
-  );
-
-  formNuevoProyecto.addEventListener('submit', (e) => {
-    e.preventDefault();
-    agregarOEditarProyecto();
-  });
-
-  container.addEventListener('click', (e) => {
-    const card = e.target.closest('.proyecto-card');
-    const editBtn = e.target.closest('.btn-editar-proyecto');
-    const deleteBtn = e.target.closest('.btn-eliminar-proyecto');
-
-    if (editBtn) {
-      e.stopPropagation();
-      iniciarEdicionProyecto(parseInt(card.dataset.id));
-      return;
-    }
-    if (deleteBtn) {
-      e.stopPropagation();
-      eliminarProyecto(parseInt(card.dataset.id));
-      return;
-    }
-    if (card) {
-      state.proyectoSeleccionadoId = parseInt(card.dataset.id);
-      document
-        .getElementById('page-proyectos')
-        .classList.add('detalle-visible');
-      renderizarProyectos();
-      renderizarDetallesProyecto();
-    }
-  });
-
-  if (btnCerrarDetalles) {
-    btnCerrarDetalles.addEventListener('click', () => {
-      state.proyectoSeleccionadoId = null;
-      document
-        .getElementById('page-proyectos')
-        .classList.remove('detalle-visible');
-      renderizarProyectos();
-      renderizarDetallesProyecto();
-    });
-  }
-
-  formQuickAdd.addEventListener('submit', (e) => {
-    e.preventDefault();
-    agregarTareaDesdeModal();
-  });
-
-  btnNuevoProyecto.dataset.initialized = 'true';
-}
-
-// REEMPLAZA ESTA FUNCIÓN EN proyectos.js
-
-// REEMPLAZA ESTA FUNCIÓN EN proyectos.js
-
-export function renderizarProyectos() {
+function renderizarProyectos() {
   const container = document.getElementById('lista-proyectos-container');
   if (!container) return;
   container.innerHTML = '';
@@ -164,15 +64,15 @@ export function renderizarProyectos() {
     let statsHtml = '';
     if (stats.total > 0) {
       statsHtml = `
-        <div class="proyecto-stats">
-          <div class="proyecto-stats-header">
-            <span class="proyecto-stats-texto">${stats.completadas} de ${stats.total} tareas</span>
-            <span class="proyecto-stats-porcentaje">${stats.porcentaje}%</span>
-          </div>
-          <div class="progreso-barra-container">
-            <div class="progreso-barra-relleno" style="width: ${stats.porcentaje}%;"></div>
-          </div>
-        </div>`;
+            <div class="proyecto-stats">
+                <div class="proyecto-stats-header">
+                    <span class="proyecto-stats-texto">${stats.completadas} de ${stats.total} tareas</span>
+                    <span class="proyecto-stats-porcentaje">${stats.porcentaje}%</span>
+                </div>
+                <div class="progreso-barra-container">
+                    <div class="progreso-barra-relleno" style="width: ${stats.porcentaje}%;"></div>
+                </div>
+            </div>`;
     } else {
       statsHtml =
         '<span class="proyecto-stats-texto">Sin tareas asignadas.</span>';
@@ -184,65 +84,29 @@ export function renderizarProyectos() {
     }
 
     card.innerHTML = `
-      <div class="proyecto-card-header">
-        <h4>${proyecto.nombre}</h4>
-        ${cursoAsignadoHtml}
-      </div>
-      <p>${proyecto.descripcion || 'Sin descripción.'}</p>
-      ${statsHtml}
-      <div class="proyecto-card-actions">
-        <button class="btn-icon btn-editar-proyecto" title="Editar Proyecto">${ICONS.edit}</button>
-        <button class="btn-icon btn-eliminar-proyecto" title="Eliminar Proyecto">${ICONS.delete}</button>
-      </div>
-    `;
+            <div class="proyecto-card-header">
+                <h4>${proyecto.nombre}</h4>
+                ${cursoAsignadoHtml}
+            </div>
+            <p>${proyecto.descripcion || 'Sin descripción.'}</p>
+            ${statsHtml}
+            <div class="proyecto-card-actions">
+                <button class="btn-icon btn-editar-proyecto" title="Editar Proyecto">${ICONS.edit}</button>
+                <button class="btn-icon btn-eliminar-proyecto" title="Eliminar Proyecto">${ICONS.delete}</button>
+            </div>
+        `;
     container.appendChild(card);
   });
-}
-
-function renderizarDetallesProyecto() {
-  const headerInfo = document.getElementById('proyecto-det-header-info');
-  const descEl = document.getElementById('proyecto-det-descripcion');
-  const statsContainer = document.getElementById(
-    'proyecto-det-stats-container',
-  );
-
-  if (graficaDeProyecto) graficaDeProyecto.destroy();
-
-  const proyecto = state.proyectos.find(
-    (p) => p.id === state.proyectoSeleccionadoId,
-  );
-
-  if (proyecto) {
-    let cursoAsignadoHtml = '';
-    if (proyecto.curso && proyecto.curso !== 'General') {
-      cursoAsignadoHtml = `<h5 class="proyecto-curso-asignado">${proyecto.curso}</h5>`;
-    }
-    headerInfo.innerHTML = `<h3>${proyecto.nombre}</h3>${cursoAsignadoHtml}`;
-    descEl.textContent =
-      proyecto.descripcion || 'Este proyecto no tiene una descripción.';
-
-    const stats = calcularEstadisticasProyecto(proyecto.id);
-
-    if (stats.total === 0) {
-      statsContainer.style.display = 'none';
-      document.getElementById('proyecto-det-tareas-container').innerHTML =
-        '<h4>¡No hay tareas asignadas a este proyecto!</h4>';
-    } else {
-      statsContainer.style.display = 'block';
-      renderizarGraficaProyecto(stats);
-      renderizarListasDeTareas(proyecto.id);
-    }
-  } else {
-    statsContainer.style.display = 'none';
-    headerInfo.innerHTML = `<h3>Selecciona un proyecto</h3>`;
-    descEl.textContent = '';
-  }
 }
 
 function renderizarGraficaProyecto(stats) {
   const ctx = document
     .getElementById('proyecto-grafica-progreso')
-    .getContext('2d');
+    ?.getContext('2d');
+  if (!ctx) return;
+  if (graficaDeProyecto) {
+    graficaDeProyecto.destroy();
+  }
   graficaDeProyecto = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -255,7 +119,7 @@ function renderizarGraficaProyecto(stats) {
       datasets: [
         {
           data: [stats.completadas, stats.alta, stats.media, stats.baja],
-          backgroundColor: ['#3498db', '#e74c3c', '#f39c12', '#2ecc71'], // CORREGIDO
+          backgroundColor: ['#3498db', '#e74c3c', '#f39c12', '#2ecc71'],
           borderColor: getComputedStyle(document.body)
             .getPropertyValue('--bg-content')
             .trim(),
@@ -265,6 +129,7 @@ function renderizarGraficaProyecto(stats) {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       cutout: '70%',
       plugins: {
         legend: {
@@ -272,7 +137,7 @@ function renderizarGraficaProyecto(stats) {
           labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' },
         },
         tooltip: {
-          callbacks: { label: (c) => `${c.label}: ${c.parsed} tarea(s)` },
+          callbacks: { label: (c) => ` ${c.label}: ${c.parsed} tarea(s)` },
         },
       },
     },
@@ -281,11 +146,13 @@ function renderizarGraficaProyecto(stats) {
 
 function renderizarListasDeTareas(proyectoId) {
   const container = document.getElementById('proyecto-det-tareas-container');
+  if (!container) return;
+
   const tareasPendientes = state.tareas.filter(
     (t) => t.proyectoId === proyectoId && !t.completada,
   );
-
   let html = '<div class="tareas-por-prioridad">';
+
   if (tareasPendientes.length > 0) html += '<h4>Tareas Pendientes</h4>';
 
   ['Alta', 'Media', 'Baja'].forEach((prioridad) => {
@@ -304,27 +171,70 @@ function renderizarListasDeTareas(proyectoId) {
     tareasPendientes.length === 0 &&
     state.tareas.filter((t) => t.proyectoId === proyectoId).length > 0
   ) {
-    html += '<h4>¡Todas las tareas de este proyecto están completadas! 🎉</h4>';
+    html += '<h4>¡Todas las tareas de este proyecto están completadas!</h4>';
   }
 
   html += '</div>';
   container.innerHTML = html;
 }
 
+function renderizarDetallesProyecto() {
+  if (graficaDeProyecto) {
+    graficaDeProyecto.destroy();
+    graficaDeProyecto = null;
+  }
+  const headerInfo = document.getElementById('proyecto-det-header-info');
+  const descEl = document.getElementById('proyecto-det-descripcion');
+  const statsContainer = document.getElementById(
+    'proyecto-det-stats-container',
+  );
+  const tareasContainer = document.getElementById(
+    'proyecto-det-tareas-container',
+  );
+
+  if (!headerInfo || !descEl || !statsContainer || !tareasContainer) return;
+
+  const proyecto = state.proyectos.find(
+    (p) => p.id === state.proyectoSeleccionadoId,
+  );
+  if (proyecto) {
+    headerInfo.innerHTML = `<h3>${proyecto.nombre}</h3>${proyecto.curso && proyecto.curso !== 'General' ? `<h5 class="proyecto-curso-asignado">${proyecto.curso}</h5>` : ''}`;
+    descEl.textContent =
+      proyecto.descripcion || 'Este proyecto no tiene una descripción.';
+    const stats = calcularEstadisticasProyecto(proyecto.id);
+
+    if (stats.total === 0) {
+      statsContainer.style.display = 'none';
+      tareasContainer.innerHTML =
+        '<h4>¡No hay tareas asignadas a este proyecto!</h4>';
+    } else {
+      statsContainer.style.display = 'grid';
+      renderizarGraficaProyecto(stats);
+      renderizarListasDeTareas(proyecto.id);
+    }
+  } else {
+    headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
+    descEl.textContent = '';
+    statsContainer.style.display = 'none';
+    tareasContainer.innerHTML = '';
+  }
+}
+
 function agregarOEditarProyecto() {
-  const id = parseInt(document.getElementById('input-proyecto-id').value);
+  const idInput = document.getElementById('input-proyecto-id');
+  const id = idInput ? parseInt(idInput.value) : null;
   const nombre = document.getElementById('input-nombre-proyecto').value.trim();
   const descripcion = document
     .getElementById('input-desc-proyecto')
     .value.trim();
   const curso = document.getElementById('select-curso-proyecto').value;
 
-  if (!nombre)
+  if (!nombre) {
     return mostrarAlerta(
       'Campo Requerido',
       'El nombre del proyecto no puede estar vacío.',
     );
-
+  }
   if (id) {
     const proyecto = state.proyectos.find((p) => p.id === id);
     if (proyecto)
@@ -337,7 +247,6 @@ function agregarOEditarProyecto() {
       curso: curso || null,
     });
   }
-
   guardarDatos();
   renderizarProyectos();
   renderizarDetallesProyecto();
@@ -346,17 +255,21 @@ function agregarOEditarProyecto() {
 
 function iniciarEdicionProyecto(id) {
   const proyecto = id ? state.proyectos.find((p) => p.id === id) : null;
-  document.getElementById('form-nuevo-proyecto').reset();
+  const form = document.getElementById('form-nuevo-proyecto');
+  if (form) form.reset();
 
   const selectorCurso = document.getElementById('select-curso-proyecto');
-  selectorCurso.innerHTML = '<option value="">Ninguno</option>';
-  state.cursos.forEach((c) => {
-    if (c === 'General') return;
-    const opt = document.createElement('option');
-    opt.value = c;
-    opt.textContent = c;
-    selectorCurso.appendChild(opt);
-  });
+  if (selectorCurso) {
+    selectorCurso.innerHTML = '<option value="">Ninguno</option>';
+    state.cursos.forEach((c) => {
+      if (c === 'General') return;
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      selectorCurso.appendChild(opt);
+    });
+    selectorCurso.value = proyecto?.curso || '';
+  }
 
   document.getElementById('modal-proyecto-titulo').textContent = proyecto
     ? 'Editar Proyecto'
@@ -369,7 +282,6 @@ function iniciarEdicionProyecto(id) {
     proyecto?.nombre || '';
   document.getElementById('input-desc-proyecto').value =
     proyecto?.descripcion || '';
-  selectorCurso.value = proyecto?.curso || '';
 
   mostrarModal('modal-nuevo-proyecto');
 }
@@ -377,28 +289,52 @@ function iniciarEdicionProyecto(id) {
 function eliminarProyecto(id) {
   const proyecto = state.proyectos.find((p) => p.id === id);
   if (!proyecto) return;
-
   mostrarConfirmacion(
     'Eliminar Proyecto',
-    `¿Estás seguro de que quieres eliminar el proyecto "${proyecto.nombre}"?`,
+    `¿Estás seguro de que quieres eliminar el proyecto "${proyecto.nombre}"? Las tareas asociadas no se borrarán, solo se desvincularán.`,
     () => {
       state.proyectos = state.proyectos.filter((p) => p.id !== id);
       state.tareas.forEach((t) => {
-        if (t.proyectoId === id) delete t.proyectoId;
+        if (t.proyectoId === id) t.proyectoId = null;
       });
-
       if (state.proyectoSeleccionadoId === id) {
         state.proyectoSeleccionadoId = null;
         document
           .getElementById('page-proyectos')
-          .classList.remove('detalle-visible');
-        renderizarDetallesProyecto();
+          ?.classList.remove('detalle-visible');
       }
-
       guardarDatos();
       renderizarProyectos();
+      renderizarDetallesProyecto();
     },
   );
+}
+
+function abrirModalQuickAdd() {
+  const proyecto = state.proyectos.find(
+    (p) => p.id === state.proyectoSeleccionadoId,
+  );
+  if (!proyecto) return;
+
+  const form = document.getElementById('form-quick-add-tarea');
+  if (form) form.reset();
+
+  document.getElementById('quick-add-proyecto-nombre').value = proyecto.nombre;
+  const selectorCurso = document.getElementById('quick-add-curso-tarea');
+  if (selectorCurso) {
+    popularSelectorDeCursos(selectorCurso);
+    if (proyecto.curso) {
+      selectorCurso.value = proyecto.curso;
+    } else {
+      const primerCurso = state.cursos.find((c) => c !== 'General');
+      if (primerCurso) selectorCurso.value = primerCurso;
+    }
+  }
+
+  const inputFecha = document.getElementById('quick-add-fecha-tarea');
+  if (inputFecha) inputFecha.valueAsDate = new Date();
+
+  mostrarModal('modal-quick-add-tarea');
 }
 
 function agregarTareaDesdeModal() {
@@ -413,14 +349,12 @@ function agregarTareaDesdeModal() {
     completada: false,
     subtareas: [],
   };
-
   if (!nuevaTarea.titulo || !nuevaTarea.fecha) {
     return mostrarAlerta(
       'Campos Requeridos',
       'El título y la fecha son obligatorios.',
     );
   }
-
   state.tareas.push(nuevaTarea);
   guardarDatos();
   renderizarProyectos();
@@ -428,25 +362,110 @@ function agregarTareaDesdeModal() {
   cerrarModal('modal-quick-add-tarea');
 }
 
-function abrirModalQuickAdd() {
-  const proyecto = state.proyectos.find(
-    (p) => p.id === state.proyectoSeleccionadoId,
+export function inicializarProyectos() {
+  // ===== CORRECCIÓN: INYECTAR ÍCONOS ESPECÍFICOS DE LA PÁGINA AQUÍ =====
+  const btnCerrarDetalles = document.getElementById(
+    'btn-cerrar-detalles-proyecto',
   );
-  if (!proyecto) return;
+  if (btnCerrarDetalles) {
+    btnCerrarDetalles.innerHTML = ICONS.close;
+  }
+  const btnMenuProyecto = document.getElementById('btn-proyecto-menu');
+  if (btnMenuProyecto) {
+    btnMenuProyecto.innerHTML = ICONS.dots_vertical;
+  }
+  // =================================================================
 
-  document.getElementById('form-quick-add-tarea').reset();
-  document.getElementById('quick-add-proyecto-nombre').value = proyecto.nombre;
+  renderizarProyectos();
+  renderizarDetallesProyecto();
 
-  const selectorCurso = document.getElementById('quick-add-curso-tarea');
-  popularSelectorDeCursos(selectorCurso);
-  if (proyecto.curso) {
-    selectorCurso.value = proyecto.curso;
-  } else {
-    // Si el proyecto no tiene curso, selecciona el primer curso disponible que no sea "General"
-    const primerCurso = state.cursos.find((c) => c !== 'General');
-    if (primerCurso) selectorCurso.value = primerCurso;
+  const btnNuevoProyecto = document.getElementById('btn-nuevo-proyecto');
+  if (btnNuevoProyecto && !btnNuevoProyecto.dataset.initialized) {
+    btnNuevoProyecto.addEventListener('click', () =>
+      iniciarEdicionProyecto(null),
+    );
+    btnNuevoProyecto.dataset.initialized = 'true';
   }
 
-  document.getElementById('quick-add-fecha-tarea').valueAsDate = new Date();
-  mostrarModal('modal-quick-add-tarea');
+  const formNuevoProyecto = document.getElementById('form-nuevo-proyecto');
+  if (formNuevoProyecto) {
+    formNuevoProyecto.addEventListener('submit', (e) => {
+      e.preventDefault();
+      agregarOEditarProyecto();
+    });
+  }
+
+  const container = document.getElementById('lista-proyectos-container');
+  if (container) {
+    container.addEventListener('click', (e) => {
+      const card = e.target.closest('.proyecto-card');
+      if (!card) return;
+
+      if (e.target.closest('.btn-editar-proyecto')) {
+        e.stopPropagation();
+        iniciarEdicionProyecto(parseInt(card.dataset.id));
+        return;
+      }
+      if (e.target.closest('.btn-eliminar-proyecto')) {
+        e.stopPropagation();
+        eliminarProyecto(parseInt(card.dataset.id));
+        return;
+      }
+
+      state.proyectoSeleccionadoId = parseInt(card.dataset.id);
+      document
+        .getElementById('page-proyectos')
+        ?.classList.add('detalle-visible');
+      renderizarProyectos();
+      renderizarDetallesProyecto();
+    });
+  }
+
+  if (btnCerrarDetalles) {
+    btnCerrarDetalles.addEventListener('click', () => {
+      state.proyectoSeleccionadoId = null;
+      document
+        .getElementById('page-proyectos')
+        ?.classList.remove('detalle-visible');
+      renderizarProyectos();
+      renderizarDetallesProyecto();
+    });
+  }
+
+  const formQuickAdd = document.getElementById('form-quick-add-tarea');
+  if (formQuickAdd) {
+    formQuickAdd.addEventListener('submit', (e) => {
+      e.preventDefault();
+      agregarTareaDesdeModal();
+    });
+  }
+
+  const menuDropdown = document.getElementById('proyecto-menu-dropdown');
+  if (btnMenuProyecto && menuDropdown) {
+    btnMenuProyecto.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menuDropdown.classList.toggle('visible');
+    });
+  }
+
+  document
+    .getElementById('btn-detalles-editar-proyecto')
+    ?.addEventListener('click', () => {
+      iniciarEdicionProyecto(state.proyectoSeleccionadoId);
+      if (menuDropdown) menuDropdown.classList.remove('visible');
+    });
+
+  document
+    .getElementById('btn-detalles-agregar-tarea')
+    ?.addEventListener('click', () => {
+      abrirModalQuickAdd();
+      if (menuDropdown) menuDropdown.classList.remove('visible');
+    });
+
+  document
+    .getElementById('btn-detalles-eliminar-proyecto')
+    ?.addEventListener('click', () => {
+      eliminarProyecto(state.proyectoSeleccionadoId);
+      if (menuDropdown) menuDropdown.classList.remove('visible');
+    });
 }

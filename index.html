@@ -121,342 +121,7 @@
         </div>
       </aside>
 
-      <div class="main-content-area" id="app-content">
-        <div id="page-tareas" class="page">
-          <main class="panel panel-central">
-            <div class="panel-header">
-              <h2 id="titulo-tareas-pendientes" class="titulo-panel accent">
-                Tareas Pendientes
-              </h2>
-              <div class="filtros-container">
-                <label for="filtro-curso">Curso:</label>
-                <select id="filtro-curso" class="filtro-select"></select>
-                <button class="btn-filtro" data-sort="fecha">Fecha</button>
-                <button class="btn-filtro" data-sort="prioridad">
-                  Prioridad
-                </button>
-              </div>
-            </div>
-            <div class="tabla-container">
-              <table class="tabla-tareas">
-                <thead>
-                  <tr>
-                    <th data-sort="curso">Curso</th>
-                    <th data-sort="prioridad" class="col-prioridad">
-                      Prioridad
-                    </th>
-                    <th data-sort="titulo">Título</th>
-                    <th data-sort="fecha">Entrega</th>
-                  </tr>
-                </thead>
-                <tbody id="tabla-tareas-body"></tbody>
-              </table>
-            </div>
-          </main>
-          <section id="panel-creacion" class="panel">
-            <form id="form-nueva-tarea" class="form-nueva-tarea">
-              <h2 class="titulo-panel accent">Agregar Nueva Tarea</h2>
-              <div class="form-group">
-                <label for="select-curso-tarea">Curso:</label>
-                <select id="select-curso-tarea"></select>
-              </div>
-              <div class="form-group">
-                <label for="select-proyecto-tarea">Proyecto (Opcional):</label>
-                <select id="select-proyecto-tarea"></select>
-              </div>
-              <input
-                type="text"
-                id="input-titulo-tarea"
-                placeholder="Título de la tarea"
-                required
-              />
-              <textarea
-                id="input-desc-tarea"
-                placeholder="Descripción..."
-                rows="3"
-              ></textarea>
-              <div class="form-row">
-                <div>
-                  <label for="input-fecha-tarea">Fecha:</label>
-                  <input type="date" id="input-fecha-tarea" required />
-                </div>
-                <div>
-                  <label for="select-prioridad-tarea">Prioridad:</label>
-                  <select id="select-prioridad-tarea">
-                    <option value="Baja">Baja</option>
-                    <option value="Media" selected>Media</option>
-                    <option value="Alta">Alta</option>
-                  </select>
-                </div>
-              </div>
-              <button type="submit" id="btn-guardar-tarea" class="btn-accent">
-                Guardar Tarea
-              </button>
-            </form>
-          </section>
-          <section id="panel-detalles" class="panel panel-derecho">
-            <button id="btn-cerrar-detalles" class="btn-cerrar-panel"></button>
-            <div id="detalles-contenido">
-              <h3 id="det-titulo">Selecciona una tarea</h3>
-              <button id="btn-completar-tarea" class="btn-full-width" disabled>
-                Marcar como Completada
-              </button>
-              <button id="btn-editar-tarea" class="btn-full-width" disabled>
-                Editar Tarea
-              </button>
-              <div id="det-proyecto-container" style="display: none">
-                <h4>Proyecto:</h4>
-                <p id="det-proyecto-nombre"></p>
-              </div>
-              <h4>Descripción:</h4>
-              <p id="det-descripcion"></p>
-              <div class="subtareas-container">
-                <h4>Sub-tareas</h4>
-                <ul id="lista-subtareas"></ul>
-                <div class="form-agregar-subtarea">
-                  <input
-                    type="text"
-                    id="input-nueva-subtarea"
-                    placeholder="Nueva sub-tarea..."
-                  />
-                  <button id="btn-agregar-subtarea" class="btn-accent">
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div id="page-dashboard" class="page">
-          <div class="panel">
-            <h2 class="titulo-panel accent">Dashboard</h2>
-            <div class="dashboard-grid">
-              <div class="widget widget-enfoque">
-                <h3>Enfoque del Día</h3>
-                <p>Tus tareas más importantes para hoy.</p>
-                <ul id="widget-enfoque-lista"></ul>
-              </div>
-              <div class="widget widget-proximamente">
-                <h3>Próximamente</h3>
-                <p>Tareas para los siguientes 3 días.</p>
-                <ul id="widget-proximamente-lista"></ul>
-              </div>
-              <div class="widget widget-progreso">
-                <h3>Progreso Semanal</h3>
-                <p class="contador-progreso">Has completado</p>
-                <span id="widget-progreso-contador" class="numero-progreso"
-                  >0</span
-                >
-                <p class="contador-progreso">tareas esta semana.</p>
-              </div>
-              <div class="widget widget-accesos">
-                <h3>Accesos Rápidos</h3>
-                <div class="accesos-botones">
-                  <button data-action="ir-a-cursos" class="btn-full-width">
-                    Gestionar Cursos
-                  </button>
-                  <button
-                    data-action="nueva-tarea-modal"
-                    class="btn-full-width btn-accent"
-                  >
-                    Nueva Tarea
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div id="page-cursos" class="page">
-          <div class="panel">
-            <div class="panel-header">
-              <h2 class="titulo-panel accent">Mis Cursos</h2>
-              <button id="btn-nuevo-curso" class="btn-accent">
-                + Nuevo Curso
-              </button>
-            </div>
-            <div id="lista-cursos-container"></div>
-          </div>
-        </div>
-
-        <div id="page-calendario" class="page">
-          <div class="panel panel-calendario">
-            <div class="calendario-container">
-              <div class="calendario-header">
-                <button id="cal-btn-prev" class="cal-nav-btn">&lt;</button>
-                <h3 id="cal-mes-ano"></h3>
-                <button id="cal-btn-next" class="cal-nav-btn">&gt;</button>
-                <button id="btn-nuevo-evento" class="btn-accent">
-                  + Nuevo Evento
-                </button>
-              </div>
-              <div class="calendario-dias-semana">
-                <div>Lun</div>
-                <div>Mar</div>
-                <div>Mié</div>
-                <div>Jue</div>
-                <div>Vie</div>
-                <div>Sáb</div>
-                <div>Dom</div>
-              </div>
-              <div class="calendario-grid-wrapper">
-                <div
-                  id="calendario-eventos-grid"
-                  class="calendario-grid-base"
-                ></div>
-                <div id="calendario-grid" class="calendario-grid-base"></div>
-              </div>
-            </div>
-          </div>
-          <div id="calendario-resumen" class="panel panel-resumen">
-            <h3 id="resumen-titulo" class="titulo-panel accent">Este mes</h3>
-            <div id="resumen-contenido">
-              <p>Haz clic en un día para ver los detalles.</p>
-            </div>
-          </div>
-        </div>
-
-        <div id="page-apuntes" class="page">
-          <aside id="panel-lista-apuntes" class="panel panel-izquierdo">
-            <div class="panel-header">
-              <h2 class="titulo-panel accent">Mis Apuntes</h2>
-              <button
-                id="btn-nuevo-apunte"
-                class="btn-accent"
-                style="min-width: 40px"
-              >
-                +
-              </button>
-            </div>
-            <div id="apuntes-actions-bar" class="panel-header contextual">
-              <span id="apuntes-selection-info"></span>
-              <div class="actions-group">
-                <div class="custom-checkbox-container" title="Seleccionar Todo">
-                  <input type="checkbox" id="select-all-apuntes" />
-                  <label for="select-all-apuntes"></label>
-                </div>
-                <button
-                  id="btn-delete-selected"
-                  class="btn-icon"
-                  title="Eliminar Seleccionados"
-                ></button>
-                <button
-                  id="btn-print-selected"
-                  class="btn-icon"
-                  title="Imprimir"
-                ></button>
-                <button
-                  id="btn-download-selected"
-                  class="btn-icon"
-                  title="Descargar"
-                ></button>
-              </div>
-            </div>
-            <div class="apuntes-filtros-container">
-              <select id="filtro-curso-apuntes" class="filtro-select"></select>
-            </div>
-            <div class="panel-content" style="overflow-y: auto; padding: 0">
-              <ul id="lista-apuntes"></ul>
-            </div>
-          </aside>
-          <main id="panel-editor-apuntes" class="panel panel-central">
-            <div id="editor-wrapper">
-              <div class="editor-header">
-                <textarea
-                  id="input-titulo-apunte"
-                  rows="1"
-                  placeholder="Título..."
-                ></textarea>
-                <div class="editor-menu-container">
-                  <button id="btn-editor-menu" class="btn-icon"></button>
-                  <div
-                    id="editor-menu-dropdown"
-                    class="editor-actions-dropdown"
-                  >
-                    <button id="btn-descargar-actual">
-                      Descargar como PDF
-                    </button>
-                    <button id="btn-imprimir-actual">Imprimir</button>
-                  </div>
-                </div>
-              </div>
-              <input id="trix-input-content" type="hidden" />
-              <trix-editor
-                input="trix-input-content"
-                class="trix-content"
-                placeholder="¡Hola! :D&#10;&#10;Escribe aquí para crear una nota nueva.&#10;&#10;Para pegar texto desde otra página, te recomiendo usar Ctrl+Shift+V para evitar problemas de formato."
-              ></trix-editor>
-              <div class="editor-footer">
-                <div class="footer-izquierdo">
-                  <label for="select-curso-apunte">Curso:</label>
-                  <select
-                    id="select-curso-apunte"
-                    class="filtro-select"
-                  ></select>
-                </div>
-                <div class="footer-derecho">
-                  <button id="btn-eliminar-apunte" class="btn-secondary">
-                    Eliminar Apunte
-                  </button>
-                </div>
-              </div>
-            </div>
-          </main>
-        </div>
-
-        <div id="page-proyectos" class="page">
-          <main class="panel panel-proyectos-lista">
-            <div class="panel-header">
-              <h2 class="titulo-panel accent">Mis Proyectos</h2>
-              <button id="btn-nuevo-proyecto" class="btn-accent">
-                + Nuevo Proyecto
-              </button>
-            </div>
-            <div id="lista-proyectos-container"></div>
-          </main>
-          <section id="panel-proyecto-detalles" class="panel">
-            <div class="panel-header-flex">
-              <div id="proyecto-det-header-info">
-                <h3>Selecciona un proyecto</h3>
-              </div>
-              <div class="panel-header-actions">
-                <div class="editor-menu-container">
-                  <button id="btn-proyecto-menu" class="btn-icon"></button>
-                  <div
-                    id="proyecto-menu-dropdown"
-                    class="editor-actions-dropdown"
-                  >
-                    <button id="btn-detalles-editar-proyecto">
-                      Editar Proyecto
-                    </button>
-                    <button id="btn-detalles-agregar-tarea">
-                      Añadir Tarea
-                    </button>
-                    <button
-                      id="btn-detalles-eliminar-proyecto"
-                      class="btn-eliminar-item"
-                    >
-                      Eliminar Proyecto
-                    </button>
-                  </div>
-                </div>
-                <button
-                  id="btn-cerrar-detalles-proyecto"
-                  class="btn-icon btn-cerrar-panel"
-                ></button>
-              </div>
-            </div>
-            <p id="proyecto-det-descripcion"></p>
-            <div id="proyecto-det-stats-container">
-              <div class="proyecto-stats-grafica">
-                <canvas id="proyecto-grafica-progreso"></canvas>
-              </div>
-              <div id="proyecto-det-tareas-container"></div>
-            </div>
-          </section>
-        </div>
-      </div>
+      <div class="main-content-area" id="app-content"></div>
     </div>
 
     <div id="modal-confirmacion" class="modal-overlay">
@@ -471,6 +136,7 @@
         </div>
       </div>
     </div>
+
     <div id="modal-prompt" class="modal-overlay">
       <form id="form-prompt" class="modal-content">
         <h2 id="prompt-title">Ingresar Valor</h2>
@@ -486,6 +152,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-editar-tarea" class="modal-overlay">
       <form id="form-editar-tarea" class="modal-content">
         <h2>Editar Tarea</h2>
@@ -527,6 +194,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-nuevo-curso" class="modal-overlay">
       <form id="form-nuevo-curso" class="modal-content">
         <h2>Agregar Nuevo Curso</h2>
@@ -549,6 +217,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-renombrar-curso" class="modal-overlay">
       <form id="form-renombrar-curso" class="modal-content">
         <h2>Renombrar Curso</h2>
@@ -567,6 +236,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-nuevo-evento" class="modal-overlay">
       <form id="form-nuevo-evento" class="modal-content modal-compacto">
         <h2 id="modal-evento-titulo">Agregar Nuevo Evento</h2>
@@ -646,6 +316,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-evento-detalles" class="modal-overlay">
       <div class="modal-content modal-compacto">
         <div id="evento-detalles-header">
@@ -672,6 +343,7 @@
         </div>
       </div>
     </div>
+
     <div id="modal-accion-rapida" class="modal-overlay">
       <div class="modal-content modal-compacto">
         <h2 id="accion-rapida-titulo">11 de Octubre</h2>
@@ -695,6 +367,7 @@
         </div>
       </div>
     </div>
+
     <div id="modal-nuevo-proyecto" class="modal-overlay">
       <form id="form-nuevo-proyecto" class="modal-content">
         <h2 id="modal-proyecto-titulo">Agregar Nuevo Proyecto</h2>
@@ -730,6 +403,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-quick-add-tarea" class="modal-overlay">
       <form id="form-quick-add-tarea" class="modal-content">
         <h2>Añadir Tarea al Proyecto</h2>
@@ -777,7 +451,7 @@
     </div>
 
     <script type="module" src="./src/main.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </body>
 </html>

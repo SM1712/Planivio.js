@@ -1,0 +1,37 @@
+<div id="page-dashboard" class="page">
+  <div class="panel">
+    <h2 class="titulo-panel accent">Dashboard</h2>
+    <div class="dashboard-grid">
+      <div class="widget widget-enfoque">
+        <h3>Enfoque del Día</h3>
+        <p>Tus tareas más importantes para hoy.</p>
+        <ul id="widget-enfoque-lista"></ul>
+      </div>
+      <div class="widget widget-proximamente">
+        <h3>Próximamente</h3>
+        <p>Tareas para los siguientes 3 días.</p>
+        <ul id="widget-proximamente-lista"></ul>
+      </div>
+      <div class="widget widget-progreso">
+        <h3>Progreso Semanal</h3>
+        <p class="contador-progreso">Has completado</p>
+        <span id="widget-progreso-contador" class="numero-progreso">0</span>
+        <p class="contador-progreso">tareas esta semana.</p>
+      </div>
+      <div class="widget widget-accesos">
+        <h3>Accesos Rápidos</h3>
+        <div class="accesos-botones">
+          <button data-action="ir-a-cursos" class="btn-full-width">
+            Gestionar Cursos
+          </button>
+          <button
+            data-action="nueva-tarea-modal"
+            class="btn-full-width btn-accent"
+          >
+            Nueva Tarea
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

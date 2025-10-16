@@ -1,24 +1,11 @@
 import { state } from '../state.js';
 
-/**
- * Función principal que actualiza todos los widgets del dashboard.
- */
-export function actualizarDashboard() {
-  renderizarWidgetEnfoque();
-  renderizarWidgetProximamente();
-  actualizarWidgetProgreso();
-}
-
-/**
- * Renderiza el widget "Enfoque del Día".
- */
 function renderizarWidgetEnfoque() {
   const lista = document.getElementById('widget-enfoque-lista');
   if (!lista) return;
 
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-
   const tareasDeHoy = state.tareas.filter((t) => {
     if (t.completada) return false;
     const fechaTarea = new Date(t.fecha + 'T00:00:00');
@@ -29,29 +16,23 @@ function renderizarWidgetEnfoque() {
     lista.innerHTML = '<li><p>¡Ninguna tarea pendiente para hoy!</p></li>';
     return;
   }
-
   lista.innerHTML = tareasDeHoy
     .map(
       (t) => `
-    <li class="widget-task-item">
-      <span class="prioridad-indicador prioridad-${t.prioridad.toLowerCase()}"></span>
-      <div class="widget-task-info">
-        <strong class="widget-task-title">${t.titulo}</strong>
-        <span class="widget-task-meta">${t.curso}</span>
-      </div>
-    </li>
-  `,
+            <li class="widget-task-item">
+                <span class="prioridad-indicador prioridad-${t.prioridad.toLowerCase()}"></span>
+                <div class="widget-task-info">
+                    <strong class="widget-task-title">${t.titulo}</strong>
+                    <span class="widget-task-meta">${t.curso}</span>
+                </div>
+            </li>`,
     )
     .join('');
 }
 
-/**
- * Renderiza el widget "Próximamente".
- */
 function renderizarWidgetProximamente() {
   const lista = document.getElementById('widget-proximamente-lista');
   if (!lista) return;
-
   const hoy = new Date();
   const tresDiasDespues = new Date();
   hoy.setHours(0, 0, 0, 0);
@@ -70,31 +51,48 @@ function renderizarWidgetProximamente() {
     lista.innerHTML = '<li><p>Nada en el horizonte cercano.</p></li>';
     return;
   }
-
   lista.innerHTML = tareasProximas
     .map((t) => {
-      const [_, month, day] = t.fecha.split('-');
+      const [, month, day] = t.fecha.split('-');
       const fechaFormateada = `${day}/${month}`;
       return `
-      <li class="widget-task-item">
-        <span class="prioridad-indicador prioridad-${t.prioridad.toLowerCase()}"></span>
-        <div class="widget-task-info">
-          <strong class="widget-task-title">${t.titulo}</strong>
-          <span class="widget-task-meta">${t.curso} - Entrega: ${fechaFormateada}</span>
-        </div>
-      </li>
-    `;
+                <li class="widget-task-item">
+                    <span class="prioridad-indicador prioridad-${t.prioridad.toLowerCase()}"></span>
+                    <div class="widget-task-info">
+                        <strong class="widget-task-title">${t.titulo}</strong>
+                        <span class="widget-task-meta">${t.curso} - Entrega: ${fechaFormateada}</span>
+                    </div>
+                </li>`;
     })
     .join('');
 }
 
-/**
- * Actualiza el contador del widget "Progreso Semanal".
- */
 function actualizarWidgetProgreso() {
   const contador = document.getElementById('widget-progreso-contador');
   if (!contador) return;
-
   const tareasCompletadas = state.tareas.filter((t) => t.completada).length;
   contador.textContent = tareasCompletadas;
+}
+
+export function inicializarDashboard() {
+  actualizarWidgetProgreso();
+  renderizarWidgetEnfoque();
+  renderizarWidgetProximamente();
+
+  const pageDashboard = document.getElementById('page-dashboard');
+  if (pageDashboard) {
+    pageDashboard.addEventListener('click', (e) => {
+      const button = e.target.closest('button[data-action]');
+      if (!button) return;
+
+      const action = button.dataset.action;
+      // Para cambiar de página, simulamos un clic en el elemento de navegación.
+      // Esto asegura que la lógica de `cambiarPagina` en `main.js` se ejecute correctamente.
+      if (action === 'ir-a-cursos') {
+        document.querySelector('.nav-item[data-page="cursos"]')?.click();
+      } else if (action === 'nueva-tarea-modal') {
+        document.querySelector('.nav-item[data-page="tareas"]')?.click();
+      }
+    });
+  }
 }
