@@ -613,6 +613,7 @@ function toggleFijarApunte(id) {
 }
 
 export function inicializarApuntes() {
+  apunteActivoId = state.apunteActivold;
   const selectCursoApunte = document.getElementById('select-curso-apunte');
   if (selectCursoApunte) {
     popularSelectorDeCursos(selectCursoApunte);

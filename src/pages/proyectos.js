@@ -11,7 +11,7 @@ import { ICONS } from '../icons.js';
 
 let graficaDeProyecto = null;
 
-function calcularEstadisticasProyecto(proyectoId) {
+export function calcularEstadisticasProyecto(proyectoId) {
   const tareasDelProyecto = state.tareas.filter(
     (t) => t.proyectoId === proyectoId,
   );
@@ -179,10 +179,7 @@ function renderizarListasDeTareas(proyectoId) {
 }
 
 function renderizarDetallesProyecto() {
-  if (graficaDeProyecto) {
-    graficaDeProyecto.destroy();
-    graficaDeProyecto = null;
-  }
+  // --- Obtener elementos del DOM ---
   const headerInfo = document.getElementById('proyecto-det-header-info');
   const descEl = document.getElementById('proyecto-det-descripcion');
   const statsContainer = document.getElementById(
@@ -192,31 +189,74 @@ function renderizarDetallesProyecto() {
     'proyecto-det-tareas-container',
   );
 
-  if (!headerInfo || !descEl || !statsContainer || !tareasContainer) return;
+  // --- 1. Limpieza inicial: Destruir gráfico anterior si existe ---
+  if (graficaDeProyecto) {
+    graficaDeProyecto.destroy();
+    graficaDeProyecto = null;
+  }
 
+  // --- Verificación temprana: Si faltan elementos cruciales, salimos ---
+  if (!headerInfo || !descEl || !statsContainer || !tareasContainer) {
+    console.error(
+      'Error: Faltan elementos esenciales del DOM en el panel de detalles del proyecto.',
+    );
+    return; // Detiene la ejecución si algo falta
+  }
+
+  // --- 2. Buscar el proyecto seleccionado en el estado ---
   const proyecto = state.proyectos.find(
     (p) => p.id === state.proyectoSeleccionadoId,
   );
+
+  // --- 3. Renderizar según si se encontró un proyecto o no ---
   if (proyecto) {
-    headerInfo.innerHTML = `<h3>${proyecto.nombre}</h3>${proyecto.curso && proyecto.curso !== 'General' ? `<h5 class="proyecto-curso-asignado">${proyecto.curso}</h5>` : ''}`;
+    // --- Rellenar datos básicos del proyecto ---
+    headerInfo.innerHTML = `<h3>${proyecto.nombre}</h3>${
+      proyecto.curso && proyecto.curso !== 'General'
+        ? `<h5 class="proyecto-curso-asignado">${proyecto.curso}</h5>`
+        : ''
+    }`;
     descEl.textContent =
       proyecto.descripcion || 'Este proyecto no tiene una descripción.';
+
+    // --- Calcular estadísticas ---
     const stats = calcularEstadisticasProyecto(proyecto.id);
 
+    // --- Mostrar/Ocultar secciones y renderizar contenido ---
     if (stats.total === 0) {
+      // Si no hay tareas, ocultar estadísticas y mostrar mensaje
       statsContainer.style.display = 'none';
       tareasContainer.innerHTML =
         '<h4>¡No hay tareas asignadas a este proyecto!</h4>';
+      // No se renderiza gráfico
     } else {
-      statsContainer.style.display = 'grid';
-      renderizarGraficaProyecto(stats);
+      // Si hay tareas, mostrar estadísticas y renderizar listas/gráfico
+      statsContainer.style.display = 'grid'; // O 'block', según tu diseño
+
+      // Renderizar la lista de tareas inmediatamente
       renderizarListasDeTareas(proyecto.id);
+
+      // Retrasar LIGERAMENTE el renderizado del gráfico
+      setTimeout(() => {
+        const canvasEl = document.getElementById('proyecto-grafica-progreso');
+        // Doble chequeo: que el canvas exista y aún esté en el DOM
+        if (canvasEl && document.contains(canvasEl)) {
+          renderizarGraficaProyecto(stats);
+        } else {
+          // Mensaje útil si algo sale mal con el canvas
+          console.warn(
+            "Canvas 'proyecto-grafica-progreso' no encontrado o listo al intentar renderizar gráfico. ¿Estás seguro de estar en la página de proyectos?",
+          );
+        }
+      }, 50); // 50ms de retraso suelen ser suficientes
     }
   } else {
+    // --- Limpiar el panel si no hay ningún proyecto seleccionado ---
     headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
     descEl.textContent = '';
     statsContainer.style.display = 'none';
     tareasContainer.innerHTML = '';
+    // El gráfico ya fue destruido al inicio si existía.
   }
 }
 
@@ -378,6 +418,14 @@ export function inicializarProyectos() {
 
   renderizarProyectos();
   renderizarDetallesProyecto();
+
+  if (state.proyectoSeleccionadoId !== null) {
+    document.getElementById('page-proyectos')?.classList.add('detalle-visible');
+  } else {
+    document
+      .getElementById('page-proyectos')
+      ?.classList.remove('detalle-visible');
+  }
 
   const btnNuevoProyecto = document.getElementById('btn-nuevo-proyecto');
   if (btnNuevoProyecto && !btnNuevoProyecto.dataset.initialized) {

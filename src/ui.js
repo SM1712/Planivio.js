@@ -201,3 +201,50 @@ export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
     selector.value = proyectoIdSeleccionado;
   }
 }
+
+export function mostrarModalOnboarding() {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('modal-onboarding');
+    const form = document.getElementById('form-onboarding');
+    const inputEl = document.getElementById('input-onboarding-nombre');
+
+    mostrarModal('modal-onboarding');
+    setTimeout(() => inputEl.focus(), 100);
+
+    form.addEventListener(
+      'submit',
+      (e) => {
+        e.preventDefault();
+        const nombre = inputEl.value.trim();
+        if (nombre) {
+          cerrarModal('modal-onboarding');
+          resolve(nombre);
+        }
+      },
+      { once: true },
+    );
+  });
+}
+// Añade esta función en ui.js
+export function mostrarNotificacion(titulo, opciones) {
+  // Primero, verificamos que el navegador soporte la API
+  if (!('Notification' in window)) {
+    console.warn('Este navegador no soporta notificaciones de escritorio.');
+    return;
+  }
+
+  // Si tenemos permiso, creamos la notificación
+  if (Notification.permission === 'granted') {
+    new Notification(titulo, opciones);
+  }
+  // Si el permiso no ha sido denegado (es 'default'), lo pedimos.
+  else if (Notification.permission !== 'denied') {
+    Notification.requestPermission().then((permission) => {
+      // Si el usuario lo concede, creamos la notificación
+      if (permission === 'granted') {
+        new Notification(titulo, opciones);
+      }
+    });
+  }
+  // Si el permiso fue denegado, no podemos hacer nada.
+}

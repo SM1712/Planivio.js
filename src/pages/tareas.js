@@ -236,49 +236,101 @@ function ordenarPor(columna) {
 // ===================================
 
 export function inicializarTareas() {
+  // --- 1. Sincronización (Implícita al usar state.tareaSeleccionadaId directamente) ---
+
+  // --- 2. Carga de Elementos UI Específicos de la Página ---
   cargarIconos(); // Carga iconos específicos de la página
+
+  // --- 3. Poblar Selectores ---
   popularSelectorDeCursos(document.getElementById('select-curso-tarea'), true);
   popularFiltroDeCursos();
-  popularSelectorDeProyectos();
-  renderizarTareas();
-  renderizarDetalles();
+  popularSelectorDeProyectos(); // Para el formulario de nueva tarea
 
+  // --- 4. Renderizado Inicial ---
+  renderizarTareas(); // Renderiza la tabla de tareas
+  renderizarDetalles(); // Renderiza el panel de detalles (usará state.tareaSeleccionadaId)
+
+  // --- 5. Mostrar/Ocultar Panel de Detalles y SCROLL A LA TAREA ---
+  const appContainer = document.querySelector('.app-container');
+  if (appContainer) {
+    if (state.tareaSeleccionadaId !== null) {
+      appContainer.classList.add('detalle-visible');
+
+      // --- ✨ LÓGICA DE SCROLL AÑADIDA AQUÍ ---
+      // Usamos un pequeño setTimeout para asegurar que la tabla esté renderizada
+      setTimeout(() => {
+        const tablaBody = document.getElementById('tabla-tareas-body');
+        if (tablaBody) {
+          // Buscamos la fila (tr) que corresponde a la tarea seleccionada
+          const filaSeleccionada = tablaBody.querySelector(
+            `tr[data-id="${state.tareaSeleccionadaId}"]`,
+          );
+
+          // Si encontramos la fila, la hacemos visible
+          if (filaSeleccionada) {
+            filaSeleccionada.scrollIntoView({
+              behavior: 'smooth', // Desplazamiento suave
+              block: 'center', // Intenta centrarla verticalmente
+            });
+            console.log(
+              `Scrolling hacia la tarea con ID: ${state.tareaSeleccionadaId}`,
+            ); // Log de depuración
+          } else {
+            console.warn(
+              `No se encontró la fila para la tarea con ID: ${state.tareaSeleccionadaId}`,
+            ); // Log si no se encuentra
+          }
+        }
+      }, 100); // 100ms de retraso
+      // --- FIN DE LA LÓGICA DE SCROLL ---
+    } else {
+      appContainer.classList.remove('detalle-visible');
+    }
+  } else {
+    console.error("No se encontró el contenedor principal '.app-container'");
+  }
+
+  // --- 6. Configuración de Event Listeners (Solo una vez) ---
   const pageTareas = document.getElementById('page-tareas');
-  if (!pageTareas) return;
+  if (!pageTareas || pageTareas.dataset.initialized === 'true') {
+    return;
+  }
+  pageTareas.dataset.initialized = 'true';
 
+  // Listener principal para clics
   pageTareas.addEventListener('click', (e) => {
     const fila = e.target.closest('tr[data-id]');
+    const header = e.target.closest('th[data-sort]');
+    const filtroBtn = e.target.closest('.btn-filtro[data-sort]');
+    const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
+
     if (fila) {
-      state.tareaSeleccionadaId = parseInt(fila.dataset.id);
+      state.tareaSeleccionadaId = parseInt(fila.dataset.id, 10);
       renderizarTareas();
       renderizarDetalles();
-      document.querySelector('.app-container').classList.add('detalle-visible');
+      if (appContainer) appContainer.classList.add('detalle-visible');
       return;
     }
-
-    const header = e.target.closest('th[data-sort]');
     if (header) {
       ordenarPor(header.dataset.sort);
+      return;
     }
-
-    const filtroBtn = e.target.closest('.btn-filtro[data-sort]');
     if (filtroBtn) {
       ordenarPor(filtroBtn.dataset.sort);
+      return;
     }
-
-    const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
     if (deleteSubtaskBtn) {
-      eliminarSubtarea(parseInt(deleteSubtaskBtn.dataset.index));
+      eliminarSubtarea(parseInt(deleteSubtaskBtn.dataset.index, 10));
+      return;
     }
 
     switch (e.target.id) {
       case 'btn-cerrar-detalles':
-        document
-          .querySelector('.app-container')
-          .classList.remove('detalle-visible');
+        if (appContainer) appContainer.classList.remove('detalle-visible');
         state.tareaSeleccionadaId = null;
         renderizarTareas();
         break;
+
       case 'btn-completar-tarea':
         const tarea = state.tareas.find(
           (t) => t.id === state.tareaSeleccionadaId,
@@ -290,19 +342,23 @@ export function inicializarTareas() {
           renderizarDetalles();
         }
         break;
+
       case 'btn-editar-tarea':
         iniciarEdicionTarea();
         break;
+
       case 'btn-agregar-subtarea':
         agregarSubtarea();
         break;
     }
   });
 
+  // Listener para form Nueva Tarea
   document
     .getElementById('form-nueva-tarea')
     ?.addEventListener('submit', agregarTarea);
 
+  // Listener para form Editar Tarea
   document
     .getElementById('form-editar-tarea')
     ?.addEventListener('submit', (e) => {
@@ -326,16 +382,18 @@ export function inicializarTareas() {
       cerrarModal('modal-editar-tarea');
     });
 
+  // Listener para cambios (select filtro, checkboxes subtareas)
   pageTareas.addEventListener('change', (e) => {
     if (e.target.id === 'filtro-curso') {
       state.filtroCurso = e.target.value;
       renderizarTareas();
     }
     if (e.target.closest('#lista-subtareas') && e.target.type === 'checkbox') {
-      toggleSubtarea(parseInt(e.target.dataset.index));
+      toggleSubtarea(parseInt(e.target.dataset.index, 10));
     }
   });
 
+  // Listener para Enter en input nueva subtarea
   pageTareas.addEventListener('keyup', (e) => {
     if (e.target.id === 'input-nueva-subtarea' && e.key === 'Enter') {
       agregarSubtarea();

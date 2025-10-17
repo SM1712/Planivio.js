@@ -4,11 +4,7 @@
   overflow-y: auto;
   min-width: 0;
 }
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
-}
+
 .widget {
   background-color: var(--bg-content);
   border: 1px solid var(--border-color);
@@ -19,47 +15,45 @@
   display: flex;
   flex-direction: column;
 }
+
 .widget h3 {
   margin: 0 0 8px 0;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border-color);
   color: var(--accent-color);
 }
+
 .widget p {
   margin: 0 0 15px 0;
   font-size: 0.9rem;
   color: var(--text-muted);
 }
+
 .widget ul {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-.widget-enfoque,
-.widget-proximamente {
-  grid-column: 1 / -1;
-}
-.widget-progreso {
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
+
 .numero-progreso {
   font-size: 3rem;
   font-weight: bold;
   color: var(--accent-color);
   line-height: 1.1;
 }
+
 p.contador-progreso {
   margin: 5px 0;
   color: var(--text-base);
 }
+
 .accesos-botones {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: auto;
 }
+
 .widget-task-item {
   display: flex;
   align-items: center;
@@ -67,18 +61,362 @@ p.contador-progreso {
   padding: 10px 0;
   border-bottom: 1px solid var(--border-color);
 }
+
 .widget-task-item:last-child {
   border-bottom: none;
 }
+
 .widget-task-info {
   display: flex;
   flex-direction: column;
 }
+
 .widget-task-title {
   font-weight: 600;
   color: var(--text-base);
 }
+
 .widget-task-meta {
   font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.saludo-dinamico {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-base);
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.racha-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+#widget-racha-icono {
+  font-size: 2.5rem;
+}
+
+.widget-racha {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.widget-task-item .event-color-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 2px solid rgba(var(--text-base-rgb), 0.2);
+}
+
+/* ===================================== */
+/* == NUEVO LAYOUT DEL DASHBOARD GRID == */
+/* ===================================== */
+
+.dashboard-grid {
+  display: grid;
+  gap: 20px;
+  /* Por defecto (móvil): una sola columna. El orden es el del HTML. */
+  grid-template-columns: 1fr;
+}
+
+/* Layout para pantallas de escritorio (más de 900px) */
+@media (min-width: 900px) {
+  .dashboard-grid {
+    /* Creamos una cuadrícula compleja de 3 columnas */
+    grid-template-columns: repeat(3, 1fr);
+    /* Definimos las áreas con nombres para posicionar cada widget */
+    grid-template-areas:
+      'enfoque    enfoque      racha'
+      'proximamente eventos    progreso'
+      'proximamente eventos    accesos';
+  }
+
+  /* Asignamos cada widget a su área definida en la cuadrícula */
+  .widget-enfoque {
+    grid-area: enfoque;
+  }
+  .widget-proximamente {
+    grid-area: proximamente;
+  }
+  .widget-eventos {
+    grid-area: eventos;
+  }
+  .widget-racha {
+    grid-area: racha;
+  }
+  .widget-progreso {
+    grid-area: progreso;
+  }
+  .widget-accesos {
+    grid-area: accesos;
+  }
+}
+/* --- Estilos para Widget de Carga Semanal (Bar Chart v5 FINAL) --- */
+.widget-workload {
+  display: flex;
+  flex-direction: column;
+}
+
+.widget-workload h3 {
+  margin-bottom: 15px; /* Espacio entre título y gráfico */
+  flex-shrink: 0;
+}
+
+.heatmap-container {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 10px;
+  width: 100%;
+  flex-grow: 1;
+  align-items: flex-end; /* ✨ NUEVO: Alinea las barras en la parte inferior */
+}
+
+.heatmap-day {
+  display: flex;
+  flex-direction: column; /* Letra arriba, barra abajo */
+  align-items: center;
+  justify-content: flex-end; /* ✨ CAMBIO: Alinea el contenido (letra+barra) ABAJO */
+  position: relative;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  height: 100%; /* Asegura que el contenedor del día ocupe todo el alto disponible */
+}
+
+.heatmap-day.current-day-box {
+  border-color: var(--accent-color);
+}
+
+.heatmap-day .day-initial {
+  font-size: 0.8rem; /* Reducimos un poco para móviles */
+  font-weight: 600;
+  color: var(--text-muted);
+  z-index: 1;
+  margin-bottom: 4px; /* ✨ CAMBIO: Espacio entre la letra y la barra */
+  transition: all 0.3s ease;
+
+  /* Centrado vertical dentro de su propio espacio (importante para el círculo) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px; /* Altura fija para la letra y su posible círculo */
+}
+
+.heatmap-day span.day-initial.current {
+  color: var(--accent-color);
+  font-weight: bold;
+  border-radius: 50%;
+  background-color: rgba(var(--accent-color-rgb), 0.15);
+  width: 26px; /* Asegura tamaño del círculo */
+}
+
+.heatmap-bar {
+  width: 100%;
+  background-color: var(--accent-color);
+  border-radius: 6px;
+  transition:
+    height 0.4s ease-out,
+    opacity 0.4s ease-out;
+  min-height: 10px; /* ✨ CAMBIO: Altura mínima para la barra */
+  /* La opacidad se sigue controlando desde JS */
+}
+
+/* --- Estilos para Widget Pomodoro --- */
+.widget-pomodoro {
+  /* Lo centramos todo para darle un look de "controlador" */
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.pomodoro-timer-display {
+  font-size: 4.5rem; /* Hacemos el número bien grande */
+  font-weight: bold;
+  color: var(--accent-color);
+  line-height: 1.1;
+  margin: 10px 0;
+  font-family:
+    'Inter', monospace; /* Una fuente monoespaciada se ve bien en contadores */
+}
+
+.pomodoro-status {
+  font-weight: 500;
+  margin-bottom: 20px;
+}
+
+.pomodoro-controls {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  margin-top: auto; /* Empuja los botones hacia abajo */
+}
+
+.pomodoro-controls button {
+  flex-grow: 1; /* Hace que los botones ocupen el mismo espacio */
+}
+
+/* --- Estilos para Widget Apuntes Recientes (Actualizado) --- */
+.widget-apuntes-recientes {
+  /* Mantén cualquier grid-area si lo definiste */
+}
+
+.widget-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  max-height: 200px;
+}
+
+/* ✨ CAMBIOS CLAVE AQUÍ: Más redondeado */
+.widget-list li {
+  padding: 10px 15px; /* Añadimos padding horizontal para que no se pegue el texto */
+  margin-bottom: 5px; /* Espacio entre los elementos de la lista */
+  border-bottom: none; /* Quitamos el borde inferior, ahora cada item es una "caja" */
+  border-radius: 8px; /* <-- Hacemos las esquinas redondeadas */
+  cursor: pointer;
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  transition:
+    background-color 0.2s ease,
+    transform 0.1s ease; /* Añadimos transform para un pequeño efecto */
+}
+
+.widget-list li:last-child {
+  margin-bottom: 0; /* No hay margen inferior para el último elemento */
+}
+
+.widget-list li:hover {
+  background-color: var(--accent-color-hover);
+  transform: translateY(-1px); /* Pequeño levantamiento al pasar el ratón */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Sutil sombra al hacer hover */
+}
+/* FIN DE CAMBIOS CLAVE */
+
+.widget-list li p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.apunte-reciente-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.apunte-reciente-titulo {
+  font-weight: 600;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.apunte-reciente-curso {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* --- Estilos para Widget Progreso de Proyectos --- */
+.widget-proyectos-progreso {
+  /* Si usas grid-area, defínelo aquí */
+}
+
+/* Reutilizamos .widget-list, pero añadimos estilos específicos */
+#widget-proyectos-lista li {
+  /* Hereda estilos de .widget-list li, pero podemos sobreescribir si es necesario */
+  padding: 12px 15px; /* Un poco más de padding vertical */
+}
+
+.proyecto-progreso-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px; /* Espacio entre nombre, stats y barra */
+}
+
+.proyecto-progreso-nombre {
+  font-weight: 600;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.proyecto-progreso-stats {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Reutilizamos las clases de la barra de progreso de cursos.css o proyectos.css */
+/* Asegúrate de que estas clases estén disponibles globalmente o cópialas aquí */
+.progreso-barra-container {
+  width: 100%;
+  height: 8px;
+  background-color: var(--border-color); /* Fondo de la barra */
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px; /* Pequeño espacio sobre la barra */
+}
+
+.progreso-barra-relleno {
+  height: 100%;
+  background-color: var(--accent-color);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* --- Estilos para Widget Tareas Vencidas --- */
+.widget-tareas-vencidas {
+  /* Define grid-area si es necesario para el layout de escritorio */
+}
+
+/* Opcional: Estilo para el icono en el título */
+.widget-title-icon {
+  margin-right: 8px; /* Espacio entre el icono y el texto */
+  /* Puedes añadir más estilos aquí si quieres, ej: font-size */
+}
+
+/* Los estilos de .widget-list, li, :hover, etc. se reutilizan */
+/* Si quieres un fondo distinto para los items vencidos, puedes hacerlo aquí */
+#widget-vencidas-lista li {
+  /* background-color: rgba(231, 76, 60, 0.05); /* Rojo muy sutil (Opcional) */
+}
+
+/* Estilos para el contenido del item (similar a Apuntes Recientes) */
+.tarea-vencida-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.tarea-vencida-titulo {
+  font-weight: 600;
+  color: var(--text-base); /* O un color rojo sutil si prefieres: #e74c3c */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tarea-vencida-curso {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Ajustes finos para tablets (entre 768px y 900px) */
+@media (min-width: 768px) and (max-width: 899px) {
+  .dashboard-grid {
+    /* En tablets, usamos un layout simple de 2 columnas */
+    grid-template-columns: 1fr 1fr;
+  }
+  .widget-enfoque,
+  .widget-proximamente,
+  .widget-eventos {
+    /* Los widgets más largos ocupan todo el ancho */
+    grid-column: 1 / -1;
+  }
 }

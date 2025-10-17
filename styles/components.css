@@ -365,3 +365,7 @@ button:disabled {
   top: 15px;
   right: 15px;
 }
+/* Para evitar que el modal de bienvenida se cierre accidentalmente */
+#modal-onboarding {
+  pointer-events: all; /* Asegura que el fondo oscuro no se pueda clickear */
+}

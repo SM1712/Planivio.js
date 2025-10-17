@@ -1,23 +1,80 @@
 <div id="page-dashboard" class="page">
   <div class="panel">
-    <h2 class="titulo-panel accent">Dashboard</h2>
+    <div class="panel-header">
+      <h2 class="titulo-panel accent">Dashboard</h2>
+    </div>
     <div class="dashboard-grid">
+      <div class="widget widget-racha">
+        <h3>Racha Diaria</h3>
+        <div class="racha-display">
+          <span id="widget-racha-icono"></span>
+          <span id="widget-racha-contador" class="numero-progreso">0</span>
+        </div>
+        <p id="widget-racha-texto" class="contador-progreso"></p>
+      </div>
+      <div class="widget widget-workload">
+        <h3>Carga de tareas pendientes</h3>
+        <div id="workload-heatmap-container" class="heatmap-container"></div>
+      </div>
+      <div class="widget widget-pomodoro">
+        <h3>Contador de Foco</h3>
+        <div class="pomodoro-timer-display" id="pomodoro-timer">25:00</div>
+        <p class="pomodoro-status" id="pomodoro-status">¡Hora de enfocarse!</p>
+        <div class="pomodoro-controls">
+          <button id="btn-pomodoro-start" class="btn-accent">
+            Iniciar Foco
+          </button>
+          <button id="btn-pomodoro-reset" class="btn-secondary">
+            Reiniciar
+          </button>
+        </div>
+      </div>
+
       <div class="widget widget-enfoque">
         <h3>Enfoque del Día</h3>
         <p>Tus tareas más importantes para hoy.</p>
         <ul id="widget-enfoque-lista"></ul>
       </div>
+
+      <div class="widget widget-apuntes-recientes">
+        <h3>Apuntes Recientes</h3>
+        <ul id="widget-apuntes-lista" class="widget-list">
+          <li><p>No hay apuntes recientes.</p></li>
+        </ul>
+      </div>
+      <div class="widget widget-tareas-vencidas">
+        <h3><span class="widget-title-icon">🚩</span> Tareas Vencidas</h3>
+        <ul id="widget-vencidas-lista" class="widget-list">
+          <li><p>¡Ninguna tarea vencida!</p></li>
+        </ul>
+      </div>
+
+      <div class="widget widget-proyectos-progreso">
+        <h3>Progreso de Proyectos</h3>
+        <ul id="widget-proyectos-lista" class="widget-list">
+          <li><p>No tienes proyectos creados.</p></li>
+        </ul>
+      </div>
+
       <div class="widget widget-proximamente">
         <h3>Próximamente</h3>
         <p>Tareas para los siguientes 3 días.</p>
         <ul id="widget-proximamente-lista"></ul>
       </div>
+
+      <div class="widget widget-eventos">
+        <h3>Eventos Próximos</h3>
+        <p>Tus eventos para los próximos 7 días.</p>
+        <ul id="widget-eventos-lista"></ul>
+      </div>
+
       <div class="widget widget-progreso">
         <h3>Progreso Semanal</h3>
         <p class="contador-progreso">Has completado</p>
         <span id="widget-progreso-contador" class="numero-progreso">0</span>
         <p class="contador-progreso">tareas esta semana.</p>
       </div>
+
       <div class="widget widget-accesos">
         <h3>Accesos Rápidos</h3>
         <div class="accesos-botones">

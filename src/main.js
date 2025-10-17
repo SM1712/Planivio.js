@@ -5,6 +5,7 @@ import {
   mostrarAlerta,
   mostrarPrompt,
   cerrarModal,
+  mostrarModalOnboarding,
 } from './ui.js';
 import {
   updateRgbVariables,
@@ -33,7 +34,7 @@ const pageInitializers = {
   proyectos: inicializarProyectos,
 };
 
-async function cambiarPagina(idPagina) {
+export async function cambiarPagina(idPagina) {
   state.paginaActual = idPagina;
   const appContent = document.getElementById('app-content');
   if (!appContent) return;
@@ -108,10 +109,16 @@ function agregarEventListenersGlobales() {
   document.getElementById('main-nav').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && navItem.dataset.page) {
+      const idPagina = navItem.dataset.page;
       cambiarPagina(navItem.dataset.page);
       document
         .getElementById('app-container')
         .classList.remove('sidebar-visible');
+      if (idPagina === 'proyectos') {
+        state.proyectoSeleccionadoId = null;
+        // Opcional pero recomendado: guardar el estado reseteado inmediatamente
+        guardarDatos();
+      }
     }
   });
 
@@ -204,5 +211,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   cargarIconos();
   updateRgbVariables();
   agregarEventListenersGlobales();
-  await cambiarPagina(state.paginaActual || 'dashboard');
+
+  if (!state.config.userName) {
+    const nombre = await mostrarModalOnboarding();
+    state.config.userName = nombre;
+    guardarDatos();
+
+    mostrarAlerta(
+      `¡Hola, ${nombre}!`,
+      'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
+      () => {
+        cambiarPagina('cursos');
+      },
+    );
+  } else {
+    await cambiarPagina(state.paginaActual || 'dashboard');
+  }
 });
