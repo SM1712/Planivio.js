@@ -21,69 +21,6 @@
       <h1 class="app-title">Planivio</h1>
       <div class="config-container">
         <button id="btn-config-dropdown" class="config-btn"></button>
-        <div id="config-dropdown" class="config-dropdown">
-          <div class="config-option">
-            <p>Cambia la apariencia.</p>
-            <button id="btn-cambiar-tema" class="btn-full-width">
-              Tema Oscuro/Claro
-            </button>
-          </div>
-          <div class="config-option">
-            <label>Color de acento:</label>
-            <div id="color-palette" class="color-palette">
-              <button
-                class="color-swatch"
-                data-color="#e74c3c"
-                style="background-color: #e74c3c"
-              ></button>
-              <button
-                class="color-swatch"
-                data-color="#2ecc71"
-                style="background-color: #2ecc71"
-              ></button>
-              <button
-                class="color-swatch"
-                data-color="#3498db"
-                style="background-color: #3498db"
-              ></button>
-              <button
-                class="color-swatch"
-                data-color="#e84393"
-                style="background-color: #e84393"
-              ></button>
-              <label
-                for="input-color-custom"
-                class="color-swatch custom-color-btn"
-                >+</label
-              >
-              <input
-                type="color"
-                id="input-color-custom"
-                class="color-input-hidden"
-              />
-            </div>
-          </div>
-          <div class="config-option">
-            <label>Portabilidad de Datos</label>
-            <div class="data-actions-container">
-              <button id="btn-exportar-datos" class="btn-full-width">
-                Exportar Datos (.json)
-              </button>
-              <button
-                id="btn-importar-datos"
-                class="btn-full-width btn-secondary"
-              >
-                Importar Datos (.json)
-              </button>
-              <input
-                type="file"
-                id="input-importar-datos"
-                accept=".json"
-                style="display: none"
-              />
-            </div>
-          </div>
-        </div>
       </div>
     </header>
 
@@ -260,15 +197,15 @@
           <div id="evento-color-palette" class="color-palette">
             <button
               type="button"
-              class="color-swatch active"
-              data-color="#3498db"
-              style="background-color: #3498db"
+              class="color-swatch"
+              data-color="#e74c3c"
+              style="background-color: #e74c3c"
             ></button>
             <button
               type="button"
               class="color-swatch"
-              data-color="#2ecc71"
-              style="background-color: #2ecc71"
+              data-color="#f39c12"
+              style="background-color: #f39c12"
             ></button>
             <button
               type="button"
@@ -279,8 +216,14 @@
             <button
               type="button"
               class="color-swatch"
-              data-color="#e74c3c"
-              style="background-color: #e74c3c"
+              data-color="#2ecc71"
+              style="background-color: #2ecc71"
+            ></button>
+            <button
+              type="button"
+              class="color-swatch"
+              data-color="#3498db"
+              style="background-color: #3498db"
             ></button>
             <button
               type="button"
@@ -288,17 +231,13 @@
               data-color="#9b59b6"
               style="background-color: #9b59b6"
             ></button>
-            <label
-              for="input-evento-color-custom"
-              class="color-swatch custom-color-btn"
-              >+</label
-            >
-            <input
-              type="color"
-              id="input-evento-color-custom"
-              class="color-input-hidden"
-              value="#3498db"
-            />
+            <div class="custom-color-swatch">
+              <input
+                type="color"
+                id="input-evento-color-custom"
+                value="#3498db"
+              />
+            </div>
           </div>
           <input type="hidden" id="input-evento-color" value="#3498db" />
         </div>
@@ -448,6 +387,246 @@
           <button type="submit" class="btn-accent">Guardar Tarea</button>
         </div>
       </form>
+    </div>
+    <div id="modal-configuraciones" class="modal-overlay">
+      <div class="modal-content modal-config">
+        <button
+          class="btn-icon btn-cerrar-modal"
+          data-action="cerrar-modal"
+          style="position: absolute; top: 15px; right: 15px"
+        ></button>
+        <div class="settings-container">
+          <aside class="settings-nav">
+            <h2 class="settings-main-title">Configuraciones</h2>
+            <ul id="settings-nav-list">
+              <li class="settings-nav-item active" data-tab="usuario">
+                <span class="nav-icon"></span
+                ><span class="nav-text">Usuario</span>
+              </li>
+              <li class="settings-nav-item" data-tab="personalizacion">
+                <span class="nav-icon"></span
+                ><span class="nav-text">Personalización</span>
+              </li>
+              <li class="settings-nav-item" data-tab="dashboard">
+                <span class="nav-icon"></span
+                ><span class="nav-text">Dashboard</span>
+              </li>
+            </ul>
+          </aside>
+
+          <main class="settings-content">
+            <div
+              id="settings-usuario"
+              class="settings-pane active"
+              data-tab="usuario"
+            >
+              <h3>Perfil de Usuario</h3>
+              <div class="config-option">
+                <label for="input-nombre-usuario">Nombre de Usuario:</label>
+                <input
+                  type="text"
+                  id="input-nombre-usuario"
+                  placeholder="Tu nombre..."
+                />
+              </div>
+              <h3>Portabilidad de Datos</h3>
+              <div class="data-actions-container">
+                <button id="btn-exportar-datos" class="btn-full-width">
+                  Exportar Datos (.json)
+                </button>
+                <button
+                  id="btn-importar-datos"
+                  class="btn-full-width btn-secondary"
+                >
+                  Importar Datos (.json)
+                </button>
+                <input
+                  type="file"
+                  id="input-importar-datos"
+                  accept=".json"
+                  style="display: none"
+                />
+              </div>
+            </div>
+
+            <div
+              id="settings-personalizacion"
+              class="settings-pane"
+              data-tab="personalizacion"
+            >
+              <h3>Tema y Apariencia</h3>
+              <div class="config-option">
+                <p>Cambia la apariencia general de la aplicación.</p>
+                <button id="btn-cambiar-tema" class="btn-full-width">
+                  Tema Oscuro/Claro
+                </button>
+              </div>
+              <div class="config-option">
+                <label>Color de Acento:</label>
+                <div id="color-palette" class="color-palette">
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#e74c3c"
+                    style="background-color: #e74c3c"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#3498db"
+                    style="background-color: #3498db"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#2ecc71"
+                    style="background-color: #2ecc71"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#e84393"
+                    style="background-color: #e84393"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#9b59b6"
+                    style="background-color: #9b59b6"
+                  ></button>
+                  <div class="custom-color-swatch">
+                    <input
+                      type="color"
+                      id="input-color-custom"
+                      value="#0078d7"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              id="settings-dashboard"
+              class="settings-pane"
+              data-tab="dashboard"
+            >
+              <h3>Dashboard</h3>
+              <p>
+                Selecciona los widgets que quieres que se muestren en tu
+                dashboard.
+              </p>
+              <div class="widget-toggle-list">
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-racha"
+                    data-widget-key="racha"
+                  />
+                  <label for="toggle-widget-racha">Racha Diaria</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-enfoque"
+                    data-widget-key="enfoque"
+                  />
+                  <label for="toggle-widget-enfoque">Enfoque del Día</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-proximamente"
+                    data-widget-key="proximamente"
+                  />
+                  <label for="toggle-widget-proximamente">Próximamente</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-eventos"
+                    data-widget-key="eventos"
+                  />
+                  <label for="toggle-widget-eventos">Eventos Próximos</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-progresoSemanal"
+                    data-widget-key="progresoSemanal"
+                  />
+                  <label for="toggle-widget-progresoSemanal"
+                    >Progreso Semanal</label
+                  >
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-accesos"
+                    data-widget-key="accesos"
+                  />
+                  <label for="toggle-widget-accesos">Accesos Rápidos</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-cargaSemanal"
+                    data-widget-key="cargaSemanal"
+                  />
+                  <label for="toggle-widget-cargaSemanal">Carga Semanal</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-pomodoro"
+                    data-widget-key="pomodoro"
+                  />
+                  <label for="toggle-widget-pomodoro">Contador de Foco</label>
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-apuntesRecientes"
+                    data-widget-key="apuntesRecientes"
+                  />
+                  <label for="toggle-widget-apuntesRecientes"
+                    >Apuntes Recientes</label
+                  >
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-progresoProyectos"
+                    data-widget-key="progresoProyectos"
+                  />
+                  <label for="toggle-widget-progresoProyectos"
+                    >Progreso Proyectos</label
+                  >
+                </div>
+
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-widget-tareasVencidas"
+                    data-widget-key="tareasVencidas"
+                  />
+                  <label for="toggle-widget-tareasVencidas"
+                    >Tareas Vencidas</label
+                  >
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
     </div>
     <div id="modal-onboarding" class="modal-overlay">
       <form id="form-onboarding" class="modal-content modal-compacto">

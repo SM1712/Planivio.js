@@ -1,4 +1,4 @@
-import { state } from './state.js';
+import { state, state as defaultState } from './state.js';
 
 export function updateRgbVariables() {
   const computedStyle = getComputedStyle(document.body);
@@ -9,19 +9,88 @@ export function updateRgbVariables() {
   }
 }
 
+// En utils.js o main.js (dentro de cargarDatos)
 export function cargarDatos() {
   const datosGuardados = localStorage.getItem('planivioData');
+
+  // 1. Define el estado inicial completo CLONADO (incluyendo widgetsVisibles por defecto)
+  //    Usamos JSON.parse(JSON.stringify(...)) para crear una copia profunda y evitar modificar el original importado.
+  const estadoInicialCompleto = JSON.parse(JSON.stringify(defaultState));
+
   if (datosGuardados) {
     try {
       const estadoGuardado = JSON.parse(datosGuardados);
-      // Ojo: esta es la única función que modifica directamente el state importado.
-      Object.assign(state, estadoGuardado, { paginaActual: 'tareas' });
+
+      // 2. Fusiona los datos guardados sobre el estado inicial completo.
+      //    Esto asegura que mantenemos la estructura base y añadimos/sobrescribimos con lo guardado.
+      const estadoFinal = {
+        ...estadoInicialCompleto, // Empieza con la estructura por defecto completa
+        ...estadoGuardado, // Sobrescribe claves existentes con lo guardado
+        config: {
+          // Fusiona 'config' explícitamente para asegurar sub-propiedades
+          ...estadoInicialCompleto.config, // Defaults de config
+          ...(estadoGuardado.config || {}), // Lo guardado en config (si existe)
+          // ✨ Asegura que widgetsVisibles exista y tenga defaults si falta en lo guardado
+          widgetsVisibles: {
+            ...estadoInicialCompleto.config.widgetsVisibles, // Defaults de widgetsVisibles
+            ...(estadoGuardado.config?.widgetsVisibles || {}), // Lo guardado en widgetsVisibles (si existe)
+          },
+        },
+        // Si tienes otros objetos anidados en 'state' que necesiten fusión, añádelos aquí de forma similar a 'config'.
+      };
+
+      // 3. Limpia el estado global actual antes de aplicar el estado final.
+      //    Esto es importante si la estructura guardada es muy antigua y tiene claves obsoletas.
+      Object.keys(state).forEach((key) => delete state[key]);
+
+      // 4. Aplica el estado final fusionado al 'state' global.
+      Object.assign(state, estadoFinal);
+
+      console.log(
+        '[cargarDatos] Datos cargados y fusionados:',
+        JSON.parse(JSON.stringify(state)),
+      ); // Loguea una copia para ver el resultado
     } catch (error) {
-      console.error('Error al parsear los datos de localStorage:', error);
+      console.error(
+        '[cargarDatos] Error al parsear o fusionar datos de localStorage. Se usará el estado inicial.',
+        error,
+      );
+      // Si falla, asegura que 'state' tenga al menos la estructura inicial limpia.
+      Object.keys(state).forEach((key) => delete state[key]);
+      Object.assign(state, estadoInicialCompleto); // Aplica estado inicial limpio
     }
+  } else {
+    // Si no hay datos guardados, el 'state' ya debería tener los valores iniciales importados.
+    // Verificamos por si acaso, especialmente widgetsVisibles.
+    if (!state.config || typeof state.config.widgetsVisibles !== 'object') {
+      console.warn(
+        '[cargarDatos] No se encontraron datos guardados y el estado inicial parece incompleto. Re-inicializando config.widgetsVisibles.',
+      );
+      // Asegura que al menos la configuración exista
+      if (!state.config) state.config = {};
+      state.config.widgetsVisibles =
+        estadoInicialCompleto.config.widgetsVisibles;
+    }
+    console.log(
+      '[cargarDatos] No se encontraron datos guardados, usando estado inicial.',
+    );
+  }
+
+  // --- Verificación Final ---
+  // Aseguramos que widgetsVisibles exista después de todo el proceso
+  if (!state.config || typeof state.config.widgetsVisibles !== 'object') {
+    console.error(
+      '[cargarDatos] Fallo CRÍTICO final: state.config.widgetsVisibles sigue sin estar definido correctamente.',
+    );
+    // Como último recurso, lo forzamos aquí
+    if (!state.config) state.config = {};
+    state.config.widgetsVisibles = JSON.parse(
+      JSON.stringify(defaultState.config.widgetsVisibles),
+    );
   }
 }
 
+// Asegúrate de que guardarDatos también esté exportado y funcione correctamente
 export function guardarDatos() {
   localStorage.setItem('planivioData', JSON.stringify(state));
 }

@@ -337,18 +337,17 @@ export function inicializarTareas() {
         );
         if (tarea) {
           tarea.completada = !tarea.completada;
+          // ✨ AÑADIDO: Guardar/Limpiar fecha de completado
+          if (tarea.completada) {
+            const hoyStr = new Date().toISOString().split('T')[0];
+            tarea.fechaCompletado = hoyStr;
+          } else {
+            tarea.fechaCompletado = null;
+          }
           guardarDatos();
           renderizarTareas();
           renderizarDetalles();
         }
-        break;
-
-      case 'btn-editar-tarea':
-        iniciarEdicionTarea();
-        break;
-
-      case 'btn-agregar-subtarea':
-        agregarSubtarea();
         break;
     }
   });

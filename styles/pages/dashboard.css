@@ -407,6 +407,52 @@ p.contador-progreso {
   color: var(--text-muted);
 }
 
+/* Contenedor para saludo y frase a la derecha */
+.header-info-usuario {
+  display: flex;
+  flex-direction: column; /* ✨ ASEGURA QUE ESTÉ EN 'column' para apilar */
+  align-items: flex-end; /* Alinea ambos textos a la derecha */
+  text-align: right; /* Asegura alineación del texto interno */
+  margin-left: auto; /* Empuja este bloque a la derecha */
+}
+
+.saludo-dinamico {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-base);
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.frase-dinamica {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 4px 0 0 0; /* Espacio sobre la frase */
+  padding: 0;
+  font-style: italic;
+  max-width: 350px;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* --- Ajustes Responsivos para el Header --- */
+@media (max-width: 600px) {
+  #page-dashboard .panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  .header-info-usuario {
+    align-items: flex-start; /* ✨ Alinea a la izquierda en móvil */
+    text-align: left;
+    margin-left: 0;
+  }
+  .frase-dinamica {
+    max-width: 100%;
+  }
+}
+
 /* Ajustes finos para tablets (entre 768px y 900px) */
 @media (min-width: 768px) and (max-width: 899px) {
   .dashboard-grid {

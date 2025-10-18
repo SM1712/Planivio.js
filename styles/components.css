@@ -1,126 +1,18 @@
-/* --- DROPDOWN DE CONFIGURACIÓN --- */
-.config-container {
-  margin-left: auto;
-  position: relative;
-}
-.config-btn {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--accent-color);
-  transition: all var(--transition-speed) var(--transition-easing);
-}
-.config-btn:hover {
-  background-color: var(--accent-color-hover);
-  border-color: var(--border-color);
-}
-.config-btn svg {
-  width: 24px;
-  height: 24px;
-}
-.config-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  background-color: var(--bg-content);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 15px var(--shadow-color);
-  width: 280px;
-  padding: 15px;
-  z-index: 1200;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  visibility: hidden;
-  opacity: 0;
-  transform: translateY(-10px);
-  transition: all var(--transition-speed) var(--transition-easing);
-}
-.config-dropdown.visible {
-  visibility: visible;
-  opacity: 1;
-  transform: translateY(0);
-}
-.config-dropdown .config-option {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.config-dropdown .config-option p,
-.config-dropdown .config-option label {
-  margin: 0;
-  font-size: 0.9rem;
-  transition: color var(--transition-speed) var(--transition-easing);
-}
-.color-palette {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.color-swatch {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 2px solid var(--border-color);
-  cursor: pointer;
-  padding: 0;
-  transition: all var(--transition-speed) var(--transition-easing);
-}
-.color-swatch:hover {
-  transform: scale(1.1);
-}
-.custom-color-btn {
-  background-color: var(--bg-content);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.5em;
-  font-weight: bold;
-  line-height: 1;
-  color: var(--text-base);
-  transition: all var(--transition-speed) var(--transition-easing);
-}
-.color-input-hidden {
-  display: none;
-}
-.toggle-panel-btn {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-base);
-  transition: all var(--transition-speed) var(--transition-easing);
-}
-.toggle-panel-btn svg {
-  transition: transform var(--transition-speed) var(--transition-easing);
-}
-.toggle-panel-btn:hover {
-  background-color: var(--accent-color-hover);
-  border-color: var(--border-color);
-}
+/* ==========================================================================
+   Base Component Styles & General UI Elements
+   ========================================================================== */
 
-/* --- NAVEGACIÓN PRINCIPAL --- */
+/* --- NAVEGACIÓN PRINCIPAL (Sidebar) --- */
 .main-nav {
   list-style: none;
   padding: 0;
   margin: 15px 0 0 0;
 }
+
 .nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  display: flex; /* ✨ Asegura que sea un contenedor flex */
+  align-items: center; /* ✨ Centra verticalmente el ícono y el texto */
+  gap: 12px; /* Espacio entre ícono y texto */
   padding: 12px 15px;
   border-radius: 8px;
   cursor: pointer;
@@ -128,21 +20,67 @@
   font-weight: 500;
   margin-bottom: 5px;
   transition: all 0.2s ease-out;
+  /* ✨ Evita que el texto se vaya a la siguiente línea si es largo */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .nav-item:hover:not(.active) {
   background-color: var(--accent-color-hover);
 }
+
 .nav-item.active {
   background-color: var(--accent-color);
   color: var(--accent-text-color);
   font-weight: bold;
 }
+
+.nav-icon {
+  flex-shrink: 0; /* ✨ Evita que el ícono se encoja */
+  display: flex; /* Asegura alineación si el SVG tiene padding interno */
+  align-items: center;
+  justify-content: center;
+}
+
 .nav-icon svg {
   width: 22px;
   height: 22px;
+  fill: currentColor; /* Asegura que tome el color del .nav-item */
 }
 
-/* --- ESTILOS GENERALES DE COMPONENTES --- */
+.nav-text {
+  flex-grow: 1; /* Permite que el texto ocupe el espacio restante */
+  overflow: hidden; /* Oculta el texto si no cabe */
+  text-overflow: ellipsis; /* Añade "..." al final */
+}
+
+/* --- Estilos del Header Principal --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* O el gap que prefieras */
+  background-color: var(--bg-content);
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 2px 5px var(--shadow-color);
+  z-index: 1000;
+  position: sticky;
+  top: 0;
+}
+
+.app-title {
+  /* Tus estilos existentes para el título */
+  margin-right: auto; /* ✨ EMPUJA todo lo que sigue a la derecha */
+}
+
+/* --- Restaurar/Asegurar Estilos del Contenedor y Botón --- */
+.config-container {
+  margin-left: 0; /* Quitamos el margen anterior si lo tenía */
+  position: relative; /* Mantenemos position relative */
+}
+
+/* --- General Form Elements --- */
 button,
 input,
 select,
@@ -156,9 +94,21 @@ textarea {
   color: var(--text-base);
   transition: all var(--transition-speed) var(--transition-easing);
 }
+
+/* --- Buttons --- */
+button {
+  cursor: pointer;
+}
 button:hover:not(:disabled) {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
+button:disabled {
+  background-color: #555 !important;
+  color: #aaa !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
 .btn-accent {
   background-color: var(--accent-color);
   color: var(--accent-text-color);
@@ -168,19 +118,81 @@ button:hover:not(:disabled) {
 .btn-accent:hover {
   background-color: var(--accent-color-active);
 }
+
 .btn-secondary {
-  background-color: var(--border-color);
-  border: none;
+  background-color: rgba(var(--text-base-rgb), 0.1); /* Lighter secondary */
+  border: 1px solid var(--border-color);
+  color: var(--text-base);
 }
-button:disabled {
-  background-color: #555 !important;
-  color: #aaa !important;
-  cursor: not-allowed;
-  box-shadow: none !important;
+.btn-secondary:hover {
+  background-color: rgba(var(--text-base-rgb), 0.15);
 }
+
 .btn-full-width {
   width: 100%;
 }
+
+/* Icon Buttons (General) */
+.btn-icon {
+  background: none;
+  border: none;
+  padding: 5px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+.btn-icon:hover {
+  background-color: var(--accent-color-hover);
+  color: var(--accent-color);
+}
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.config-btn {
+  /* Hereda de .btn-icon pero aseguramos el redondeo */
+  border-radius: 50% !important; /* Forzamos el redondeo */
+  width: 40px;
+  height: 40px;
+  border: 1px solid transparent;
+  color: var(--accent-color);
+  /* Asegúrate que las propiedades de flex (display, align, justify) de .btn-icon estén presentes */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.config-btn:hover {
+  background-color: var(--accent-color-hover);
+  border-color: var(--border-color);
+}
+.config-btn svg {
+  width: 24px;
+  height: 24px;
+}
+
+.toggle-panel-btn {
+  /* Sidebar toggle (not used?) */
+  /* Inherits .btn-icon styles */
+}
+
+.btn-cerrar-panel {
+  /* Close button on detail panels (Tasks, Projects) */
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  /* Inherits .btn-icon styles */
+}
+
+/* --- Priority Indicators --- */
 .prioridad-indicador {
   display: inline-block;
   width: 12px;
@@ -198,91 +210,59 @@ button:disabled {
   background-color: #2ecc71;
 }
 
-/* --- OVERLAYS Y MODALES --- */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
-  z-index: 1200;
+/* --- Color Palette --- */
+.color-palette {
   display: flex;
-  justify-content: center;
   align-items: center;
-  visibility: hidden;
-  opacity: 0;
+  gap: 10px;
+}
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  padding: 0;
   transition: all var(--transition-speed) var(--transition-easing);
 }
-.modal-overlay.visible {
-  visibility: visible;
-  opacity: 1;
+.color-swatch:hover {
+  transform: scale(1.1);
 }
-.modal-content {
-  background-color: var(--bg-content);
-  padding: 30px;
-  border-radius: 12px;
-  width: 90%;
-  max-width: 550px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  border: 1px solid var(--border-color);
-  box-shadow: 0 8px 25px var(--shadow-color);
-  z-index: 1210;
-  transform: translateY(-20px);
-  opacity: 0;
-  transition: all 0.3s ease-out;
-}
-.modal-overlay.visible .modal-content {
-  transform: translateY(0);
-  opacity: 1;
-}
-.modal-compacto {
-  max-width: 450px;
-}
-.modal-content h2 {
-  margin: 0;
-  color: var(--accent-color);
-  transition: color var(--transition-speed) var(--transition-easing);
-}
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 10px;
-}
-#evento-color-palette .color-swatch.active {
-  border: 2px solid var(--accent-color);
+#evento-color-palette .color-swatch.active, /* For event modal */
+#color-palette .color-swatch.active {
+  /* For settings modal */
+  border-color: var(--accent-color);
   transform: scale(1.1);
 }
 
-/* --- Estilos para Formularios en Modales --- */
-.modal-content .form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+/* Custom Color Input integrated */
+.custom-color-swatch {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  overflow: hidden;
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+  transition: transform 0.2s ease;
 }
-.modal-content .form-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
+.custom-color-swatch:hover {
+  transform: scale(1.1);
 }
-.modal-content .form-row > div {
-  flex: 1 1 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.modal-content label {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-#modal-prompt input {
-  width: 100%;
+#input-color-custom {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 40px;
+  height: 40px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
 }
 
-/* --- FILTROS Y ACCIONES --- */
+/* --- Filters --- */
 .filtros-container {
   display: flex;
   gap: 8px;
@@ -319,53 +299,419 @@ button:disabled {
   border-color: var(--accent-color);
   font-weight: bold;
 }
-.data-actions-container {
+
+/* ==========================================================================
+   Modals
+   ========================================================================== */
+
+/* --- General Modal Styles --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0; /* Replaces top, left, width, height */
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    visibility 0s linear var(--transition-speed),
+    opacity var(--transition-speed) ease;
+  z-index: 1100; /* Base z-index for overlays */
+}
+.modal-overlay.visible {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+.modal-content {
+  background-color: var(--bg-content);
+  padding: 30px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 550px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 25px var(--shadow-color);
+  position: relative; /* Needed for absolute positioning of close button */
+  transform: translateY(-20px) scale(0.95);
+  opacity: 0;
+  transition:
+    transform 0.3s ease-out,
+    opacity 0.3s ease-out;
+  z-index: 1110; /* Content above overlay */
+}
+.modal-overlay.visible .modal-content {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.modal-compacto {
+  max-width: 450px;
+} /* Specific size variant */
+
+/* Modal Header */
+.modal-content h2,
+.modal-content h3 {
+  margin: 0;
+  color: var(--accent-color);
+}
+
+/* Modal Actions (buttons at the bottom) */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Close button INSIDE modal content */
+.modal-content .btn-cerrar-modal {
+  position: absolute;
+  top: 10px; /* Adjust as needed */
+  right: 10px;
+  width: 40px; /* Larger click area */
+  height: 40px;
+  z-index: 1120; /* Above modal content */
+}
+
+/* --- Specific Modals Z-index --- */
+/* Base z-index for the settings modal */
+#modal-configuraciones {
+  z-index: 1200;
+}
+#modal-configuraciones .modal-content {
+  z-index: 1210;
+}
+
+/* Higher z-index ONLY for confirmation and prompt */
+#modal-confirmacion,
+#modal-prompt {
+  z-index: 1300;
+}
+#modal-confirmacion .modal-content,
+#modal-prompt .modal-content {
+  z-index: 1310;
+}
+
+/* Onboarding modal specific style */
+#modal-onboarding {
+  pointer-events: none; /* Prevent closing by clicking overlay */
+}
+#modal-onboarding .modal-content {
+  pointer-events: all; /* Allow interaction with the content */
+}
+
+/* --- Form Styles Within Modals --- */
+.modal-content .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
-.data-actions-container button {
-  border: 2px solid transparent;
-  transition: all 0.2s ease-in-out;
+.modal-content .form-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
 }
-.data-actions-container button:hover:not(:disabled) {
-  box-shadow: none;
-  border: 2px solid var(--accent-color);
-  background-color: var(--accent-color-hover);
+.modal-content .form-row > div {
+  flex: 1 1 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-content label {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+#modal-prompt input {
+  width: 100%;
 }
 
-/* --- Estilos para Botones de Icono (Restaurado) --- */
-.btn-icon {
-  background: none;
-  border: none;
-  padding: 5px;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  color: var(--text-muted);
+/* ==========================================================================
+   Settings Modal Specific Styles
+   ========================================================================== */
+.modal-config {
+  /* Specific styles for the settings modal */
+  max-width: 800px;
+  padding: 0; /* Remove default padding */
+  overflow: hidden; /* Prevent content spill */
+  max-height: 85vh;
 }
-.btn-icon:hover {
-  background-color: var(--accent-color-hover);
+
+.settings-container {
+  display: flex;
+  height: 550px;
+  max-height: 85vh;
+}
+
+.settings-nav {
+  flex: 0 0 200px;
+  background-color: rgba(var(--text-base-rgb), 0.04);
+  padding: 25px 15px;
+  border-right: 1px solid var(--border-color);
+}
+
+.settings-main-title {
+  margin: 0 0 20px 0;
+  padding: 0 10px;
+  font-size: 1.2rem;
   color: var(--accent-color);
 }
-.btn-icon svg {
+
+#settings-nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 5px;
+  transition: all 0.2s ease-out;
+}
+.settings-nav-item:hover:not(.active) {
+  background-color: var(--accent-color-hover);
+}
+.settings-nav-item.active {
+  background-color: var(--accent-color);
+  color: var(--accent-text-color);
+  font-weight: bold;
+}
+.settings-nav-item .nav-icon svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
 }
 
-/* Estilos para Botón de Cerrar Panel (Restaurado) */
-.btn-cerrar-panel {
-  position: absolute;
-  top: 15px;
-  right: 15px;
+.settings-content {
+  flex-grow: 1;
+  padding: 25px 35px;
+  overflow-y: auto;
 }
-/* Para evitar que el modal de bienvenida se cierre accidentalmente */
-#modal-onboarding {
-  pointer-events: all; /* Asegura que el fondo oscuro no se pueda clickear */
+
+.settings-pane {
+  display: none;
+}
+.settings-pane.active {
+  display: block;
+} /* Use block by default */
+
+.settings-pane h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Specific pane styling using the more specific selector */
+.settings-pane.active[data-tab='usuario'] {
+  display: flex; /* Override 'block' only when active AND it's the user tab */
+  flex-direction: column;
+  gap: 20px; /* Adjusted gap */
+}
+/* General option group styling */
+.config-option {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.data-actions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Widget Toggle List */
+.widget-toggle-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+.widget-toggle-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: rgba(var(--text-base-rgb), 0.08);
+  padding: 12px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  /* ✨ ELIMINADO: Ya no necesitamos 'gap' si usamos posicionamiento absoluto */
+}
+.widget-toggle-item:hover {
+  background-color: rgba(var(--text-base-rgb), 0.12);
+}
+.widget-toggle-item input[type='checkbox'] {
+  display: none;
+}
+/* --- Estilos para la lista de toggles de widgets (v3 FINAL) --- */
+.widget-toggle-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.widget-toggle-item {
+  display: flex;
+  align-items: center;
+  /* ✨ CAMBIO: Quitamos justify-content aquí */
+  background-color: rgba(var(--text-base-rgb), 0.08);
+  padding: 12px 15px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative; /* Contexto para el switch absoluto */
+}
+
+.widget-toggle-item:hover {
+  background-color: rgba(var(--text-base-rgb), 0.12);
+}
+
+/* Ocultamos el checkbox real */
+.widget-toggle-item input[type='checkbox'] {
+  display: none;
+}
+
+/* Estilo para el texto (nombre del widget) */
+.widget-toggle-item label {
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  /* ✨ CAMBIO: Hacemos que ocupe el espacio disponible a la izquierda */
+  flex-grow: 1;
+  padding-right: 55px; /* Dejamos espacio para el switch absoluto */
+}
+
+/* --- ✨ Estilo del Interruptor (Toggle Switch) POSICIÓN CORREGIDA --- */
+.widget-toggle-item label::after {
+  /* El 'track' */
+  content: '';
+  width: 40px;
+  height: 20px;
+  background-color: var(--border-color);
+  border-radius: 10px;
+  transition: background-color 0.3s ease;
+
+  /* Posicionado absolutamente a la derecha del item */
+  position: absolute;
+  right: 15px; /* Alineado con el padding derecho */
+  top: 50%;
+  transform: translateY(-50%); /* Centrado vertical */
+}
+
+.widget-toggle-item label::before {
+  /* El 'thumb' (círculo) */
+  content: '';
+  width: 16px;
+  height: 16px;
+  background-color: white;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+  /* Posicionado absolutamente sobre el track */
+  position: absolute;
+  /* Posición inicial (apagado): right: 15px (padding) + 40px (track) - 16px (thumb) - 2px (margen interno der) = 37px */
+  right: 37px;
+  top: 50%;
+  transform: translateY(-50%); /* Centrado vertical */
+  z-index: 1;
+}
+
+/* --- Estado Activado (Checked) POSICIÓN CORREGIDA --- */
+.widget-toggle-item input[type='checkbox']:checked + label::after {
+  background-color: var(--accent-color);
+}
+
+.widget-toggle-item input[type='checkbox']:checked + label::before {
+  /* Mueve el círculo a la posición "encendido" */
+  /* right: 15px (padding) + 2px (margen interno izq) = 17px */
+  right: 17px;
+}
+
+#input-color-custom,
+#input-evento-color-custom {
+  /* Quitamos la apariencia nativa del navegador */
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  /* Lo hacemos invisible pero funcional */
+  opacity: 0;
+  cursor: pointer;
+
+  /* Quitamos cualquier estilo visual residual */
+  background: transparent;
+  border: none;
+  padding: 0;
+
+  /* Lo hacemos grande y lo posicionamos para cubrir el div */
+  position: absolute;
+  top: 50%; /* Centrado */
+  left: 50%;
+  transform: translate(-50%, -50%); /* Centrado exacto */
+  width: 150%; /* Más grande que el div para asegurar cobertura */
+  height: 150%;
+}
+
+/* --- ✨ SECCIÓN RESPONSIVE CORREGIDA (Modal Configuraciones) --- */
+@media (max-width: 768px) {
+  .modal-config {
+    width: 95%;
+    height: 80vh;
+  }
+  .settings-container {
+    flex-direction: column;
+    height: 100%;
+  }
+  .settings-nav {
+    flex-basis: auto;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 10px;
+  }
+  .settings-main-title {
+    display: none;
+  }
+  #settings-nav-list {
+    display: flex;
+    justify-content: space-around;
+  }
+  .settings-nav-item {
+    padding: 8px;
+  }
+  .settings-nav-item .nav-text {
+    display: none;
+  }
+
+  .settings-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 15px; /* ✨ CAMBIO: Menos padding lateral en el contenido */
+    min-height: 0;
+  }
+
+  /* --- Ajustes para la lista de widgets en móvil --- */
+  .widget-toggle-list {
+    grid-template-columns: 1fr; /* Una columna */
+    gap: 10px; /* ✨ CAMBIO: Menos espacio vertical entre items */
+  }
+
+  .widget-toggle-item {
+    padding: 10px 12px; /* ✨ CAMBIO: Menos padding interno */
+  }
+
+  .widget-toggle-item label {
+    font-size: 0.9rem;
+    padding-right: 50px; /* Mantenemos espacio para el switch */
+  }
 }

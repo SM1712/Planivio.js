@@ -5,6 +5,7 @@ import {
   mostrarAlerta,
   mostrarPrompt,
   cerrarModal,
+  mostrarModal, // Asegúrate de importar 'mostrarModal' si no lo tenías
   mostrarModalOnboarding,
 } from './ui.js';
 import {
@@ -17,6 +18,7 @@ import {
   exportarDatosJSON,
   importarDatosJSON,
 } from './utils.js';
+import { ICONS } from './icons.js'; // Importamos los íconos para usarlos aquí
 
 import { inicializarDashboard } from './pages/dashboard.js';
 import { inicializarTareas } from './pages/tareas.js';
@@ -47,13 +49,10 @@ export async function cambiarPagina(idPagina) {
       );
     }
     appContent.innerHTML = await response.text();
-
     const newPage = appContent.querySelector('.page');
     if (newPage) {
       newPage.classList.add('visible');
     }
-    // ===== LA CORRECCIÓN CLAVE ESTÁ AQUÍ =====
-    // Esperamos un instante para que el DOM se actualice antes de ejecutar los scripts de la página
     setTimeout(() => {
       if (pageInitializers[idPagina]) {
         pageInitializers[idPagina]();
@@ -63,8 +62,6 @@ export async function cambiarPagina(idPagina) {
         );
       }
     }, 0);
-    // ==========================================
-
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.classList.toggle('active', item.dataset.page === idPagina);
     });
@@ -105,23 +102,47 @@ function aplicarTema() {
   updateRgbVariables();
 }
 
+// Función para preparar el contenido del modal de configuraciones
+function inicializarModalConfiguraciones() {
+  // Cargar nombre de usuario
+  const inputNombre = document.getElementById('input-nombre-usuario');
+  if (inputNombre) {
+    inputNombre.value = state.config.userName || '';
+  }
+
+  // Cargar estado de los checkboxes de widgets
+  const widgetToggles = document.querySelectorAll(
+    '.widget-toggle-item input[type="checkbox"]',
+  );
+  if (state.config.widgetsVisibles) {
+    widgetToggles.forEach((checkbox) => {
+      const key = checkbox.dataset.widgetKey;
+      if (state.config.widgetsVisibles.hasOwnProperty(key)) {
+        checkbox.checked = state.config.widgetsVisibles[key];
+      }
+    });
+  }
+}
+
 function agregarEventListenersGlobales() {
+  // Listener para la navegación principal
   document.getElementById('main-nav').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && navItem.dataset.page) {
       const idPagina = navItem.dataset.page;
-      cambiarPagina(navItem.dataset.page);
+      if (idPagina === 'proyectos') state.proyectoSeleccionadoId = null;
+      if (idPagina === 'tareas') state.tareaSeleccionadaId = null;
+      if (idPagina === 'apuntes') state.apunteActivold = null;
+      guardarDatos();
+
+      cambiarPagina(idPagina);
       document
         .getElementById('app-container')
         .classList.remove('sidebar-visible');
-      if (idPagina === 'proyectos') {
-        state.proyectoSeleccionadoId = null;
-        // Opcional pero recomendado: guardar el estado reseteado inmediatamente
-        guardarDatos();
-      }
     }
   });
 
+  // Listeners para sidebar en móvil
   document
     .getElementById('btn-toggle-sidebar')
     ?.addEventListener('click', () => {
@@ -135,23 +156,80 @@ function agregarEventListenersGlobales() {
       .classList.remove('sidebar-visible');
   });
 
+  // --- LÓGICA DEL NUEVO MODAL DE CONFIGURACIONES ---
   const configBtn = document.getElementById('btn-config-dropdown');
-  const configDropdown = document.getElementById('config-dropdown');
-  configBtn?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    configDropdown.classList.toggle('visible');
-  });
-  window.addEventListener('click', (e) => {
-    if (
-      configDropdown &&
-      configBtn &&
-      !configBtn.contains(e.target) &&
-      !configDropdown.contains(e.target)
-    ) {
-      configDropdown.classList.remove('visible');
-    }
+  configBtn?.addEventListener('click', () => {
+    inicializarModalConfiguraciones();
+    mostrarModal('modal-configuraciones');
   });
 
+  // Manejar la navegación por pestañas dentro del modal (Versión Robusta)
+  document
+    .getElementById('settings-nav-list')
+    ?.addEventListener('click', (e) => {
+      const navItem = e.target.closest('.settings-nav-item');
+      if (!navItem) return;
+      const tabId = navItem.dataset.tab;
+
+      // Se buscan los elementos DENTRO del listener para asegurar que siempre estén actualizados
+      const settingsPanes = document.querySelectorAll('.settings-pane');
+      document
+        .querySelectorAll('.settings-nav-item')
+        .forEach((item) => item.classList.remove('active'));
+      settingsPanes.forEach((pane) => pane.classList.remove('active'));
+
+      navItem.classList.add('active');
+      document.getElementById(`settings-${tabId}`)?.classList.add('active');
+    });
+
+  // Listeners para los controles DENTRO del modal
+  document
+    .getElementById('input-nombre-usuario')
+    ?.addEventListener('change', (e) => {
+      state.config.userName = e.target.value.trim();
+      guardarDatos();
+    });
+
+  document
+    .querySelector('.widget-toggle-list')
+    ?.addEventListener('change', (e) => {
+      if (e.target.type === 'checkbox') {
+        const key = e.target.dataset.widgetKey;
+        if (
+          state.config.widgetsVisibles &&
+          state.config.widgetsVisibles.hasOwnProperty(key)
+        ) {
+          state.config.widgetsVisibles[key] = e.target.checked;
+          guardarDatos();
+          if (state.paginaActual === 'dashboard') {
+            cambiarPagina('dashboard');
+          }
+        }
+      }
+    });
+
+  // Inyectar iconos SVG en el modal
+  const settingsNavList = document.getElementById('settings-nav-list');
+  if (settingsNavList) {
+    settingsNavList.querySelector('[data-tab="usuario"] .nav-icon').innerHTML =
+      ICONS.settings;
+    settingsNavList.querySelector(
+      '[data-tab="personalizacion"] .nav-icon',
+    ).innerHTML = ICONS.edit;
+    settingsNavList.querySelector(
+      '[data-tab="dashboard"] .nav-icon',
+    ).innerHTML = ICONS.dashboard;
+  }
+
+  const btnCerrarModalConfig = document.querySelector(
+    '#modal-configuraciones .btn-cerrar-modal',
+  );
+  if (btnCerrarModalConfig) {
+    btnCerrarModalConfig.innerHTML = ICONS.close;
+  }
+  // --- FIN LÓGICA DEL NUEVO MODAL ---
+
+  // Listeners para controles que ahora están en el modal
   document
     .getElementById('btn-cambiar-tema')
     ?.addEventListener('click', cambiarTemaBase);
@@ -163,12 +241,10 @@ function agregarEventListenersGlobales() {
   document
     .getElementById('input-color-custom')
     ?.addEventListener('input', (e) => cambiarColorAcento(e.target.value));
-
   document
     .getElementById('btn-exportar-datos')
     ?.addEventListener('click', () => {
       exportarDatosJSON(mostrarPrompt);
-      configDropdown.classList.remove('visible');
     });
   document
     .getElementById('btn-importar-datos')
@@ -178,7 +254,6 @@ function agregarEventListenersGlobales() {
         '¿Estás seguro? Esta acción sobreescribirá todos tus datos actuales. Se recomienda exportar primero.',
         () => {
           document.getElementById('input-importar-datos').click();
-          configDropdown.classList.remove('visible');
         },
       );
     });
@@ -194,17 +269,27 @@ function agregarEventListenersGlobales() {
       });
     });
 
+  // Listener global para cerrar modales
   document.body.addEventListener('click', (e) => {
-    if (e.target.matches('[data-action="cerrar-modal"]')) {
-      cerrarModal(e.target.closest('.modal-overlay').id);
+    // Busca si el clic fue en un elemento con data-action="cerrar-modal"
+    const closeButton = e.target.closest('[data-action="cerrar-modal"]');
+    if (closeButton) {
+      // Encuentra el modal padre (el overlay)
+      const modalOverlay = closeButton.closest('.modal-overlay');
+      if (modalOverlay) {
+        cerrarModal(modalOverlay.id); // Llama a la función para cerrar
+      }
+      document
+        .getElementById('btn-prompt-cancelar')
+        ?.addEventListener('click', () => cerrarModal('modal-prompt'));
     }
   });
-
   document
     .getElementById('btn-confirm-cancelar')
     ?.addEventListener('click', () => cerrarModal('modal-confirmacion'));
 }
 
+// Punto de entrada de la aplicación
 document.addEventListener('DOMContentLoaded', async () => {
   cargarDatos();
   aplicarTema();
@@ -216,7 +301,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const nombre = await mostrarModalOnboarding();
     state.config.userName = nombre;
     guardarDatos();
-
     mostrarAlerta(
       `¡Hola, ${nombre}!`,
       'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
