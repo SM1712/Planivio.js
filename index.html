@@ -92,25 +92,42 @@
 
     <div id="modal-editar-tarea" class="modal-overlay">
       <form id="form-editar-tarea" class="modal-content">
+        <button
+          class="btn-icon btn-cerrar-modal"
+          data-action="cerrar-modal"
+          style="position: absolute; top: 10px; right: 10px"
+        ></button>
         <h2>Editar Tarea</h2>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1 1 100%">
+            <label for="edit-select-proyecto-tarea">Proyecto (Opcional):</label>
+            <select id="edit-select-proyecto-tarea"></select>
+          </div>
+        </div>
+
         <div class="form-group">
           <label for="edit-titulo-tarea">Título:</label>
           <input type="text" id="edit-titulo-tarea" required />
         </div>
+
         <div class="form-group">
           <label for="edit-desc-tarea">Descripción:</label>
-          <textarea id="edit-desc-tarea" rows="3"></textarea>
+          <textarea id="edit-desc-tarea" rows="4"></textarea>
         </div>
-        <div class="form-group">
-          <label for="edit-select-proyecto-tarea">Proyecto (Opcional):</label>
-          <select id="edit-select-proyecto-tarea"></select>
-        </div>
+
         <div class="form-row">
-          <div>
+          <div
+            class="form-group"
+            style="flex: 1 1 calc(50% - 8px); min-width: 150px"
+          >
             <label for="edit-fecha-tarea">Fecha:</label>
             <input type="date" id="edit-fecha-tarea" required />
           </div>
-          <div>
+          <div
+            class="form-group"
+            style="flex: 1 1 calc(50% - 8px); min-width: 150px"
+          >
             <label for="edit-prioridad-tarea">Prioridad:</label>
             <select id="edit-prioridad-tarea">
               <option value="Baja">Baja</option>
@@ -119,6 +136,7 @@
             </select>
           </div>
         </div>
+
         <div class="modal-actions">
           <button
             type="button"

@@ -12,9 +12,10 @@
       </div>
     </div>
     <div class="tabla-container">
-      <table class="tabla-tareas">
+      <table class="tabla-tareas tabla-tareas-visible">
         <thead>
           <tr>
+            <th></th>
             <th data-sort="curso">Curso</th>
             <th data-sort="prioridad" class="col-prioridad">Prioridad</th>
             <th data-sort="titulo">Título</th>
@@ -26,33 +27,51 @@
     </div>
   </main>
   <section id="panel-creacion" class="panel">
-    <form id="form-nueva-tarea" class="form-nueva-tarea">
+    <form id="form-nueva-tarea" class="form-panel-tarea">
       <h2 class="titulo-panel accent">Agregar Nueva Tarea</h2>
-      <div class="form-group">
-        <label for="select-curso-tarea">Curso:</label>
-        <select id="select-curso-tarea"></select>
-      </div>
-      <div class="form-group">
-        <label for="select-proyecto-tarea">Proyecto (Opcional):</label>
-        <select id="select-proyecto-tarea"></select>
-      </div>
-      <input
-        type="text"
-        id="input-titulo-tarea"
-        placeholder="Título de la tarea"
-        required
-      />
-      <textarea
-        id="input-desc-tarea"
-        placeholder="Descripción..."
-        rows="3"
-      ></textarea>
+
       <div class="form-row">
-        <div>
+        <div class="form-group" style="flex: 1 1 50%">
+          <label for="select-curso-tarea">Curso:</label>
+          <select id="select-curso-tarea"></select>
+        </div>
+        <div class="form-group" style="flex: 1 1 50%">
+          <label for="select-proyecto-tarea">Proyecto (Opcional):</label>
+          <select id="select-proyecto-tarea"></select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="input-titulo-tarea">Título:</label>
+        <input
+          type="text"
+          id="input-titulo-tarea"
+          placeholder="¿Qué necesitas hacer?"
+          required
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="input-desc-tarea">Descripción:</label>
+        <textarea
+          id="input-desc-tarea"
+          placeholder="Añade más detalles..."
+          rows="4"
+        ></textarea>
+      </div>
+
+      <div class="form-row">
+        <div
+          class="form-group"
+          style="flex: 1 1 calc(50% - 8px); min-width: 150px"
+        >
           <label for="input-fecha-tarea">Fecha:</label>
           <input type="date" id="input-fecha-tarea" required />
         </div>
-        <div>
+        <div
+          class="form-group"
+          style="flex: 1 1 calc(50% - 8px); min-width: 150px"
+        >
           <label for="select-prioridad-tarea">Prioridad:</label>
           <select id="select-prioridad-tarea">
             <option value="Baja">Baja</option>
@@ -61,28 +80,54 @@
           </select>
         </div>
       </div>
+
       <button type="submit" id="btn-guardar-tarea" class="btn-accent">
         Guardar Tarea
       </button>
     </form>
   </section>
-  <section id="panel-detalles" class="panel panel-derecho">
-    <button id="btn-cerrar-detalles" class="btn-cerrar-panel"></button>
-    <div id="detalles-contenido">
-      <h3 id="det-titulo">Selecciona una tarea</h3>
-      <button id="btn-completar-tarea" class="btn-full-width" disabled>
-        Marcar como Completada
-      </button>
-      <button id="btn-editar-tarea" class="btn-full-width" disabled>
-        Editar Tarea
-      </button>
+  <section
+    id="panel-detalles"
+    class="panel panel-derecho panel-detalles-optimizado"
+  >
+    <div class="detalle-header-fijo">
+      <div class="detalle-titulo-acciones">
+        <h3 id="det-titulo">Selecciona una tarea</h3>
+        <div class="detalle-acciones-principales">
+          <button id="btn-completar-tarea" class="btn-full-width" disabled>
+            Marcar como Completada
+          </button>
+          <button
+            id="btn-editar-tarea"
+            class="btn-icon"
+            title="Editar Tarea"
+            disabled
+          ></button>
+          <button
+            id="btn-eliminar-tarea"
+            class="btn-icon btn-eliminar-item"
+            title="Eliminar Tarea"
+            disabled
+          ></button>
+        </div>
+      </div>
+      <button
+        id="btn-cerrar-detalles"
+        class="btn-icon btn-cerrar-panel"
+      ></button>
+      <hr class="detalle-divisor" />
+    </div>
+
+    <div id="detalles-contenido-scrollable">
       <div id="det-proyecto-container" style="display: none">
         <h4>Proyecto:</h4>
         <p id="det-proyecto-nombre"></p>
       </div>
+
       <h4>Descripción:</h4>
-      <p id="det-descripcion"></p>
-      <div class="subtareas-container">
+      <p id="det-descripcion" class="detalle-descripcion-box"></p>
+
+      <div class="subtareas-container" style="display: none">
         <h4>Sub-tareas</h4>
         <ul id="lista-subtareas"></ul>
         <div class="form-agregar-subtarea">
@@ -96,4 +141,5 @@
       </div>
     </div>
   </section>
+  <button id="btn-abrir-creacion-movil" class="btn-flotante-agregar"></button>
 </div>

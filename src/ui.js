@@ -30,6 +30,14 @@ export function cargarIconos() {
   const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
   if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
 
+  const btnEditarTareaDetalles = document.getElementById('btn-editar-tarea');
+  if (btnEditarTareaDetalles) btnEditarTareaDetalles.innerHTML = ICONS.edit;
+
+  const btnEliminarTareaDetalles =
+    document.getElementById('btn-eliminar-tarea');
+  if (btnEliminarTareaDetalles)
+    btnEliminarTareaDetalles.innerHTML = ICONS.delete;
+
   const btnCerrarDetallesProyecto = document.getElementById(
     'btn-cerrar-detalles-proyecto',
   );
