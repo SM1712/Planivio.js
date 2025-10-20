@@ -35,6 +35,16 @@ export function cargarDatos() {
             ...estadoInicialCompleto.config.widgetsVisibles, // Defaults de widgetsVisibles
             ...(estadoGuardado.config?.widgetsVisibles || {}), // Lo guardado en widgetsVisibles (si existe)
           },
+          muescasColores: {
+            ...estadoInicialCompleto.config.muescasColores, // Defaults
+            ...(estadoGuardado.config?.muescasColores || {}),
+            vencidaFondoColor:
+              estadoGuardado.config?.muescasColores?.vencidaFondoColor ??
+              estadoInicialCompleto.config.muescasColores.vencidaFondoColor,
+            vencidaFondoOpacidad:
+              estadoGuardado.config?.muescasColores?.vencidaFondoOpacidad ??
+              estadoInicialCompleto.config.muescasColores.vencidaFondoOpacidad,
+          },
         },
         // Si tienes otros objetos anidados en 'state' que necesiten fusión, añádelos aquí de forma similar a 'config'.
       };
@@ -62,14 +72,41 @@ export function cargarDatos() {
   } else {
     // Si no hay datos guardados, el 'state' ya debería tener los valores iniciales importados.
     // Verificamos por si acaso, especialmente widgetsVisibles.
-    if (!state.config || typeof state.config.widgetsVisibles !== 'object') {
-      console.warn(
-        '[cargarDatos] No se encontraron datos guardados y el estado inicial parece incompleto. Re-inicializando config.widgetsVisibles.',
+    if (
+      !state.config ||
+      typeof state.config.widgetsVisibles !== 'object' ||
+      typeof state.config.muescasColores !== 'object'
+    ) {
+      // <-- Añade muescasColores aquí
+      console.error(
+        '[cargarDatos] Fallo CRÍTICO final: state.config incompleto.',
       );
-      // Asegura que al menos la configuración exista
       if (!state.config) state.config = {};
-      state.config.widgetsVisibles =
-        estadoInicialCompleto.config.widgetsVisibles;
+      // Asegura que ambos existan
+      if (typeof state.config.widgetsVisibles !== 'object') {
+        state.config.widgetsVisibles = JSON.parse(
+          JSON.stringify(defaultState.config.widgetsVisibles),
+        );
+      }
+      if (!state.config || typeof state.config.muescasColores !== 'object') {
+        // Forzar muescasColores si falta
+        if (!state.config) state.config = {};
+        state.config.muescasColores = JSON.parse(
+          JSON.stringify(defaultState.config.muescasColores),
+        );
+      } else {
+        // Si muescasColores existe, verifica las sub-propiedades de fondo
+        if (typeof state.config.muescasColores.vencidaFondoColor !== 'string') {
+          state.config.muescasColores.vencidaFondoColor =
+            defaultState.config.muescasColores.vencidaFondoColor;
+        }
+        if (
+          typeof state.config.muescasColores.vencidaFondoOpacidad !== 'number'
+        ) {
+          state.config.muescasColores.vencidaFondoOpacidad =
+            defaultState.config.muescasColores.vencidaFondoOpacidad;
+        }
+      }
     }
     console.log(
       '[cargarDatos] No se encontraron datos guardados, usando estado inicial.',
@@ -201,4 +238,80 @@ export function importarDatosJSON(event, callback) {
     }
   };
   reader.readAsText(file);
+}
+
+export function aplicarColorFondoVencida() {
+  const root = document.documentElement;
+  const configColores = state.config?.muescasColores;
+
+  if (configColores) {
+    const colorBase = configColores.vencidaFondoColor || '#e74c3c';
+    const opacidad = configColores.vencidaFondoOpacidad ?? 0.08; // Usa ?? para manejar 0
+
+    // Convertir color base a RGB
+    const rgbArray = hexToRgb(colorBase);
+    if (rgbArray) {
+      const rgbaColor = `rgba(${rgbArray.join(', ')}, ${opacidad})`;
+      root.style.setProperty('--color-fondo-vencida', rgbaColor);
+      console.log(
+        `[aplicarColorFondoVencida] Variable --color-fondo-vencida actualizada a: ${rgbaColor}`,
+      );
+    } else {
+      // Fallback si hexToRgb falla
+      root.style.setProperty(
+        '--color-fondo-vencida',
+        `rgba(231, 76, 60, ${opacidad})`,
+      );
+      console.warn(
+        `[aplicarColorFondoVencida] No se pudo convertir ${colorBase} a RGB. Usando fallback.`,
+      );
+    }
+  } else {
+    console.warn(
+      '[aplicarColorFondoVencida] No se encontraron colores en state.config.',
+    );
+    // Aplicar fallback directamente
+    root.style.setProperty('--color-fondo-vencida', 'rgba(231, 76, 60, 0.08)');
+  }
+}
+
+export function aplicarColoresMuescas() {
+  const root = document.documentElement;
+  // Accede de forma segura a los colores en el estado
+  const colores = state.config?.muescasColores;
+
+  if (colores) {
+    // Establece las variables CSS usando los colores del estado o valores por defecto si alguno falta
+    root.style.setProperty(
+      '--color-muesca-vencida',
+      colores.vencida || '#333333',
+    );
+    root.style.setProperty('--color-muesca-hoy', colores.hoy || '#e74c3c');
+    root.style.setProperty(
+      '--color-muesca-manana',
+      colores.manana || '#f39c12',
+    );
+    root.style.setProperty(
+      '--color-muesca-cercana',
+      colores.cercana || '#2ecc71',
+    );
+    // Para 'lejana', usa el color guardado o el RGBA por defecto
+    root.style.setProperty(
+      '--color-muesca-lejana',
+      colores.lejana || 'rgba(128, 128, 128, 0.3)',
+    );
+    console.log(
+      '[aplicarColoresMuescas] Variables CSS de muescas actualizadas.',
+    );
+  } else {
+    // Fallback si el objeto 'muescasColores' no existe en el estado
+    console.warn(
+      '[aplicarColoresMuescas] No se encontraron colores de muescas en state.config. Aplicando defaults.',
+    );
+    root.style.setProperty('--color-muesca-vencida', '#333333');
+    root.style.setProperty('--color-muesca-hoy', '#e74c3c');
+    root.style.setProperty('--color-muesca-manana', '#f39c12');
+    root.style.setProperty('--color-muesca-cercana', '#2ecc71');
+    root.style.setProperty('--color-muesca-lejana', 'rgba(128, 128, 128, 0.3)');
+  }
 }

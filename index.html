@@ -429,6 +429,10 @@
                 <span class="nav-icon"></span
                 ><span class="nav-text">Dashboard</span>
               </li>
+              <li class="settings-nav-item" data-tab="tareas">
+                <span class="nav-icon"></span
+                ><span class="nav-text">Tareas</span>
+              </li>
             </ul>
           </aside>
 
@@ -639,6 +643,224 @@
                   <label for="toggle-widget-tareasVencidas"
                     >Tareas Vencidas</label
                   >
+                </div>
+              </div>
+            </div>
+            <div id="settings-tareas" class="settings-pane" data-tab="tareas">
+              <h3>Personalización de Tareas</h3>
+              <p>
+                Elige los colores para las muescas de vencimiento en la lista de
+                tareas.
+              </p>
+
+              <div class="muesca-options-container">
+                <div class="config-option muesca-color-option">
+                  <label>Vencida:</label>
+                  <div class="color-choices" data-muesca-key="vencida">
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#555555"
+                      style="background-color: #555555"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#333333"
+                      style="background-color: #333333"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#000000"
+                      style="background-color: #000000"
+                    ></button>
+                    <div class="custom-color-swatch custom-muesca-swatch">
+                      <input
+                        type="color"
+                        id="color-muesca-vencida-custom"
+                        data-muesca-key="vencida"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="config-option muesca-color-option">
+                  <label>Hoy:</label>
+                  <div class="color-choices" data-muesca-key="hoy">
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#E57373"
+                      style="background-color: #e57373"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#e74c3c"
+                      style="background-color: #e74c3c"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#C62828"
+                      style="background-color: #c62828"
+                    ></button>
+                    <div class="custom-color-swatch custom-muesca-swatch">
+                      <input
+                        type="color"
+                        id="color-muesca-hoy-custom"
+                        data-muesca-key="hoy"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="config-option muesca-color-option">
+                  <label>Mañana:</label>
+                  <div class="color-choices" data-muesca-key="manana">
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#FFB74D"
+                      style="background-color: #ffb74d"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#f39c12"
+                      style="background-color: #f39c12"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#E65100"
+                      style="background-color: #e65100"
+                    ></button>
+                    <div class="custom-color-swatch custom-muesca-swatch">
+                      <input
+                        type="color"
+                        id="color-muesca-manana-custom"
+                        data-muesca-key="manana"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="config-option muesca-color-option">
+                  <label>Próxima (≤ 3 días):</label>
+                  <div class="color-choices" data-muesca-key="cercana">
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#81C784"
+                      style="background-color: #81c784"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#2ecc71"
+                      style="background-color: #2ecc71"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#1B5E20"
+                      style="background-color: #1b5e20"
+                    ></button>
+                    <div class="custom-color-swatch custom-muesca-swatch">
+                      <input
+                        type="color"
+                        id="color-muesca-cercana-custom"
+                        data-muesca-key="cercana"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="config-option muesca-color-option">
+                  <label>Lejana (> 3 días):</label>
+                  <div class="color-choices" data-muesca-key="lejana">
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#BDBDBD"
+                      style="background-color: #bdbdbd"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#9E9E9E"
+                      style="background-color: #9e9e9e"
+                    ></button>
+                    <button
+                      type="button"
+                      class="color-swatch"
+                      data-color="#616161"
+                      style="background-color: #616161"
+                    ></button>
+                    <div class="custom-color-swatch custom-muesca-swatch">
+                      <input
+                        type="color"
+                        id="color-muesca-lejana-custom"
+                        data-muesca-key="lejana"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <hr
+                style="
+                  border: none;
+                  border-top: 1px solid var(--border-color);
+                  margin: 20px 0;
+                "
+              />
+
+              <h4>Fondo Tareas Vencidas</h4>
+
+              <div class="config-option muesca-color-option">
+                <label>Color Base:</label>
+                <div class="color-choices" data-fondo-key="vencidaFondoColor">
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#FFCDD2"
+                    style="background-color: #ffcdd2"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#E57373"
+                    style="background-color: #e57373"
+                  ></button>
+                  <button
+                    type="button"
+                    class="color-swatch"
+                    data-color="#e74c3c"
+                    style="background-color: #e74c3c"
+                  ></button>
+                  <div class="custom-color-swatch custom-muesca-swatch">
+                    <input
+                      type="color"
+                      id="color-fondo-vencida-custom"
+                      data-fondo-key="vencidaFondoColor"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div class="config-option fondo-vencida-option">
+                <label for="opacidad-fondo-vencida">Opacidad:</label>
+                <div class="range-container">
+                  <input
+                    type="range"
+                    id="opacidad-fondo-vencida"
+                    data-fondo-key="vencidaFondoOpacidad"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                  />
+                  <span class="range-value">8%</span>
                 </div>
               </div>
             </div>

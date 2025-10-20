@@ -299,26 +299,26 @@ tr.tarea-completada .cell-content-wrapper {
   top: 15%;
   bottom: 15%;
   width: 5px;
-  background-color: rgba(128, 128, 128, 0.3);
+  background-color: var(--color-muesca-lejana);
   border-radius: 3px;
   transition: background-color 0.3s ease;
 }
 .tarea-vencida .muesca-vencimiento {
-  background-color: #333333;
+  background-color: var(--color-muesca-vencida);
   top: 10%;
   bottom: 10%;
 }
 .tarea-hoy .muesca-vencimiento {
-  background-color: #e74c3c;
+  background-color: var(--color-muesca-hoy);
 }
 .tarea-manana .muesca-vencimiento {
-  background-color: #f39c12;
+  background-color: var(--color-muesca-manana);
 }
 .tarea-cercana .muesca-vencimiento {
-  background-color: #2ecc71;
+  background-color: var(--color-muesca-cercana);
 }
 .tarea-lejana .muesca-vencimiento {
-  background-color: rgba(128, 128, 128, 0.3);
+  background-color: var(--color-muesca-lejana);
 }
 .tarea-sin-fecha .muesca-vencimiento {
   background-color: transparent;
@@ -326,7 +326,7 @@ tr.tarea-completada .cell-content-wrapper {
 
 /* Fondo Vencida (Aplicado a TR) */
 tr.tarea-vencida {
-  background-color: rgba(231, 76, 60, 0.08);
+  background-color: var(--color-fondo-vencida, rgba(231, 76, 60, 0.08));
 }
 tr.tarea-vencida:not(.selected-task):not(.hiding):hover {
   background-color: rgba(231, 76, 60, 0.15);
@@ -510,6 +510,11 @@ tr.tarea-vencida .cell-content-wrapper {
   line-height: 1.6;
   white-space: pre-wrap;
   border: none;
+  min-height: 120px; /* Aumenta la altura mínima (ajusta si quieres) */
+  max-height: 250px; /* Añade una altura máxima (ajusta si quieres) */
+  overflow-y: auto; /* Añade scroll vertical si excede max-height */
+  white-space: pre-wrap; /* Mantiene el salto de línea */
+  word-break: break-word;
 }
 
 /* --- Estilos Subtareas --- */

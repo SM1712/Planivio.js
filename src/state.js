@@ -22,6 +22,15 @@ export let state = {
       progresoProyectos: true,
       tareasVencidas: true,
     },
+    muescasColores: {
+      vencida: '#333333', // Era el color de fondo para .tarea-vencida .muesca-vencimiento
+      hoy: '#e74c3c', // Rojo
+      manana: '#f39c12', // Naranja
+      cercana: '#2ecc71', // Verde
+      lejana: 'rgba(128, 128, 128, 0.3)', // Gris translúcido (lo mantendremos así por defecto)
+      vencidaFondoColor: '#e74c3c', // Color base (rojo por defecto)
+      vencidaFondoOpacidad: 0.08, // Opacidad (8% por defecto)
+    },
   },
   paginaActual: 'dashboard',
   tareaSeleccionadald: null,

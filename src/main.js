@@ -17,6 +17,8 @@ import {
   darkenColor,
   exportarDatosJSON,
   importarDatosJSON,
+  aplicarColorFondoVencida,
+  aplicarColoresMuescas,
 } from './utils.js';
 import { ICONS } from './icons.js'; // Importamos los íconos para usarlos aquí
 
@@ -132,6 +134,105 @@ function inicializarModalConfiguraciones() {
       }
     });
   }
+
+  const coloresMuescas = state.config?.muescasColores;
+  if (coloresMuescas) {
+    // Itera sobre cada tipo de muesca (vencida, hoy, etc.)
+    Object.keys(coloresMuescas).forEach((key) => {
+      // Ignora las claves de fondo por ahora
+      if (key === 'vencidaFondoColor' || key === 'vencidaFondoOpacidad') return;
+
+      const savedColor = coloresMuescas[key];
+      // Encuentra el input custom correspondiente y ponle el valor guardado
+      const customInput = document.getElementById(`color-muesca-${key}-custom`);
+      if (customInput) customInput.value = savedColor;
+
+      // Encuentra todos los botones preset y el div custom para esta clave
+      const choicesContainer = document.querySelector(
+        `.color-choices[data-muesca-key="${key}"]`,
+      );
+      if (choicesContainer) {
+        const presetButtons =
+          choicesContainer.querySelectorAll('.color-swatch');
+        const customSwatchDiv = choicesContainer.querySelector(
+          '.custom-muesca-swatch',
+        );
+        let presetMatch = false; // Flag para saber si un preset coincidió
+
+        // Quita 'active' de todos primero
+        presetButtons.forEach((btn) => btn.classList.remove('active'));
+        if (customSwatchDiv) customSwatchDiv.classList.remove('active');
+
+        // Busca si el color guardado coincide con algún preset
+        presetButtons.forEach((btn) => {
+          if (btn.dataset.color === savedColor) {
+            btn.classList.add('active');
+            presetMatch = true;
+          }
+        });
+
+        // Si ningún preset coincidió, marca el custom swatch como activo
+        if (!presetMatch && customSwatchDiv) {
+          customSwatchDiv.classList.add('active');
+        }
+      }
+    });
+
+    // --- CARGAR COLOR Y OPACIDAD DE FONDO VENCIDA (Esto estaba bien) ---
+    const inputColorFondo = document.getElementById('color-fondo-vencida');
+    const inputOpacidad = document.getElementById('opacidad-fondo-vencida');
+    const opacidadLabel = inputOpacidad?.nextElementSibling;
+
+    // Lógica para marcar el color base activo
+    const savedFondoColor = coloresMuescas.vencidaFondoColor || '#e74c3c';
+    const fondoChoicesContainer = document.querySelector(
+      '.color-choices[data-fondo-key="vencidaFondoColor"]',
+    );
+    if (fondoChoicesContainer) {
+      const presetButtons =
+        fondoChoicesContainer.querySelectorAll('.color-swatch');
+      const customSwatchDiv = fondoChoicesContainer.querySelector(
+        '.custom-muesca-swatch',
+      );
+      let presetMatch = false;
+
+      presetButtons.forEach((btn) => btn.classList.remove('active'));
+      if (customSwatchDiv) customSwatchDiv.classList.remove('active');
+
+      presetButtons.forEach((btn) => {
+        if (btn.dataset.color === savedFondoColor) {
+          btn.classList.add('active');
+          presetMatch = true;
+        }
+      });
+
+      if (!presetMatch && customSwatchDiv) {
+        customSwatchDiv.classList.add('active');
+        const customInput = customSwatchDiv.querySelector(
+          'input[type="color"]',
+        );
+        if (customInput) customInput.value = savedFondoColor; // Asegura valor del input
+      } else if (presetMatch && customSwatchDiv) {
+        // Si un preset está activo, pon ese color en el input custom también
+        const customInput = customSwatchDiv.querySelector(
+          'input[type="color"]',
+        );
+        if (customInput) customInput.value = savedFondoColor;
+      }
+    }
+
+    // Lógica para opacidad (se mantiene igual)
+    if (inputOpacidad) {
+      const opacidadValue = coloresMuescas.vencidaFondoOpacidad ?? 0.08;
+      inputOpacidad.value = opacidadValue;
+      if (opacidadLabel)
+        opacidadLabel.textContent = `${Math.round(opacidadValue * 100)}%`;
+      inputOpacidad.style.setProperty(
+        '--range-percent',
+        `${opacidadValue * 100}%`,
+      );
+    }
+  }
 }
 
 function agregarEventListenersGlobales() {
@@ -229,6 +330,8 @@ function agregarEventListenersGlobales() {
     settingsNavList.querySelector(
       '[data-tab="dashboard"] .nav-icon',
     ).innerHTML = ICONS.dashboard;
+    settingsNavList.querySelector('[data-tab="tareas"] .nav-icon').innerHTML =
+      ICONS.tareas;
   }
 
   const btnCerrarModalConfig = document.querySelector(
@@ -297,12 +400,198 @@ function agregarEventListenersGlobales() {
   document
     .getElementById('btn-confirm-cancelar')
     ?.addEventListener('click', () => cerrarModal('modal-confirmacion'));
-}
+
+  const panelTareasSettings = document.getElementById('settings-tareas');
+  if (panelTareasSettings) {
+    // Función helper REVISADA para actualizar UI (marca botón/swatch activo)
+    const actualizarVisualizacionColor = (key, nuevoColor, isFondo = false) => {
+      const dataAttribute = isFondo ? 'data-fondo-key' : 'data-muesca-key';
+      // Log para verificar qué se busca
+      console.log(
+        `[actualizarVisualizacionColor] Buscando container: .color-choices[${dataAttribute}="${key}"]`,
+      );
+      const choicesContainer = panelTareasSettings.querySelector(
+        `.color-choices[${dataAttribute}="${key}"]`,
+      );
+
+      if (choicesContainer) {
+        const presetButtons =
+          choicesContainer.querySelectorAll('.color-swatch');
+        const customSwatchDiv = choicesContainer.querySelector(
+          '.custom-muesca-swatch',
+        ); // Mantenemos clase genérica
+        let presetMatch = false;
+
+        // Log antes de actualizar
+        console.log(
+          `[actualizarVisualizacionColor] Actualizando para key=${key}, color=${nuevoColor}, esFondo=${isFondo}`,
+        );
+
+        presetButtons.forEach((btn) => {
+          const isActive = btn.dataset.color === nuevoColor;
+          btn.classList.toggle('active', isActive);
+          if (isActive) presetMatch = true;
+        });
+
+        if (customSwatchDiv) {
+          customSwatchDiv.classList.toggle('active', !presetMatch);
+          const customInput = customSwatchDiv.querySelector(
+            'input[type="color"]',
+          );
+          // Siempre actualiza el valor del input custom para reflejar el color actual
+          if (customInput) customInput.value = nuevoColor;
+        }
+        console.log(
+          `[actualizarVisualizacionColor] UI actualizada. Preset activo: ${presetMatch}`,
+        );
+      } else {
+        console.error(
+          `[actualizarVisualizacionColor] No se encontró el container para key=${key}, esFondo=${isFondo}`,
+        );
+      }
+    };
+
+    // Listener para CLICS en botones preset (Muescas Y Fondo)
+    panelTareasSettings.addEventListener('click', (e) => {
+      if (e.target.matches('.color-choices .color-swatch[data-color]')) {
+        const button = e.target;
+        const container = button.closest('.color-choices');
+        // Extrae CUALQUIER key presente (muesca o fondo)
+        const key = container?.dataset.muescaKey || container?.dataset.fondoKey;
+        const nuevoColor = button.dataset.color;
+        const isFondo = container?.dataset.hasOwnProperty('fondoKey'); // Verifica si tiene el atributo fondoKey
+
+        // Log detallado al hacer clic
+        console.log(`--- Clic Preset Detectado ---`);
+        console.log(` Target:`, button);
+        console.log(` Container:`, container);
+        console.log(` Key extraída: ${key}`);
+        console.log(` Color: ${nuevoColor}`);
+        console.log(` Es Fondo?: ${isFondo}`);
+
+        if (key && nuevoColor && state.config.muescasColores) {
+          // Verifica si la key existe en el objeto state antes de asignar
+          if (state.config.muescasColores.hasOwnProperty(key)) {
+            state.config.muescasColores[key] = nuevoColor;
+            guardarDatos();
+
+            // Llama a la función de aplicación correcta
+            if (isFondo) {
+              console.log(' Llamando a aplicarColorFondoVencida()');
+              aplicarColorFondoVencida();
+            } else {
+              console.log(' Llamando a aplicarColoresMuescas()');
+              aplicarColoresMuescas();
+            }
+
+            // Actualiza UI del modal
+            actualizarVisualizacionColor(key, nuevoColor, isFondo);
+
+            console.log(` State actualizado: ${key} = ${nuevoColor}`);
+          } else {
+            console.error(
+              ` Error: La key '${key}' no existe en state.config.muescasColores.`,
+            );
+          }
+        } else {
+          console.error(
+            ' Error: Faltan datos (key, nuevoColor o state.config.muescasColores) para procesar clic preset.',
+          );
+        }
+      }
+    });
+
+    // Listener para CAMBIOS en input (Custom Muescas, Custom Fondo, Opacidad)
+    panelTareasSettings.addEventListener('input', (e) => {
+      const target = e.target;
+      let key = null;
+      let nuevoValor = null;
+      let isFondoColor = false;
+      let isFondoOpacidad = false;
+      let isMuescaColor = false;
+
+      // Identifica qué input cambió
+      if (
+        target.matches(
+          '.custom-muesca-swatch input[type="color"][data-muesca-key]',
+        )
+      ) {
+        key = target.dataset.muescaKey;
+        nuevoValor = target.value;
+        isMuescaColor = true;
+        console.log(
+          `--- Input Custom Muesca Detectado --- Key=${key}, Valor=${nuevoValor}`,
+        );
+      } else if (
+        target.matches(
+          '.custom-muesca-swatch input[type="color"][data-fondo-key="vencidaFondoColor"]',
+        )
+      ) {
+        key = target.dataset.fondoKey;
+        nuevoValor = target.value;
+        isFondoColor = true;
+        console.log(
+          `--- Input Custom Fondo Detectado --- Key=${key}, Valor=${nuevoValor}`,
+        );
+      } else if (
+        target.matches(
+          'input[type="range"][data-fondo-key="vencidaFondoOpacidad"]',
+        )
+      ) {
+        key = target.dataset.fondoKey;
+        nuevoValor = parseFloat(target.value);
+        isFondoOpacidad = true;
+        console.log(
+          `--- Input Opacidad Detectado --- Key=${key}, Valor=${nuevoValor}`,
+        );
+      }
+
+      // Procesa el cambio si se identificó un input válido
+      if (key && nuevoValor !== null && state.config.muescasColores) {
+        if (state.config.muescasColores.hasOwnProperty(key)) {
+          state.config.muescasColores[key] = nuevoValor;
+          guardarDatos();
+
+          if (isMuescaColor) {
+            console.log(' Llamando a aplicarColoresMuescas()');
+            aplicarColoresMuescas();
+            actualizarVisualizacionColor(key, nuevoValor, false);
+          } else if (isFondoColor) {
+            console.log(' Llamando a aplicarColorFondoVencida()');
+            aplicarColorFondoVencida();
+            actualizarVisualizacionColor(key, nuevoValor, true);
+          } else if (isFondoOpacidad) {
+            console.log(' Llamando a aplicarColorFondoVencida()');
+            aplicarColorFondoVencida();
+            // Actualiza UI del slider
+            const opacidadLabel = target.nextElementSibling;
+            if (opacidadLabel)
+              opacidadLabel.textContent = `${Math.round(nuevoValor * 100)}%`;
+            target.style.setProperty('--range-percent', `${nuevoValor * 100}%`);
+          }
+          console.log(` State actualizado: ${key} = ${nuevoValor}`);
+        } else {
+          console.error(
+            ` Error: La key '${key}' no existe en state.config.muescasColores.`,
+          );
+        }
+      } else if (key || nuevoValor) {
+        // Log si algo falló en la identificación o estado
+        console.error(
+          ' Error: Faltan datos (key, nuevoValor o state.config.muescasColores) para procesar input change.',
+        );
+      }
+    });
+  }
+  // --- FIN LISTENER COLORES MUESCAS (CORREGIDO) ---
+} // Cierre de agregarEventListenersGlobales
 
 // Punto de entrada de la aplicación
 document.addEventListener('DOMContentLoaded', async () => {
   cargarDatos();
   aplicarTema();
+  aplicarColoresMuescas();
+  aplicarColorFondoVencida();
   cargarIconos();
   updateRgbVariables();
   agregarEventListenersGlobales();
