@@ -5,10 +5,24 @@
         Tareas Pendientes
       </h2>
       <div class="filtros-container">
-        <label for="filtro-curso">Curso:</label>
-        <select id="filtro-curso" class="filtro-select"></select>
-        <button class="btn-filtro" data-sort="fecha">Fecha</button>
-        <button class="btn-filtro" data-sort="prioridad">Prioridad</button>
+        <button id="btn-filtros-dropdown" class="btn-filtro-dropdown">
+          <span id="btn-filtros-label">Ordenar: Fecha</span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            width="16"
+            height="16"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+              clip-rule="evenodd"
+            />
+          </svg>
+        </button>
+
+        <div id="menu-filtros-dropdown" class="filtro-dropdown-menu"></div>
       </div>
     </div>
     <div

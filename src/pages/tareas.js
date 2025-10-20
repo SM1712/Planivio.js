@@ -14,13 +14,16 @@ import {
   cargarIconos, // Importa cargarIconos
 } from '../ui.js';
 import { ICONS } from '../icons.js'; // Importa ICONS
-let activeDropdown = null; // <<< MOVIDO AQUÍ
-let activeDropdownButton = null; // <<< MOVIDO AQUÍ
+
+let activeDropdown = null;
+let activeDropdownButton = null;
+let activeFiltroDropdown = null;
+let tareasGlobalClickHandler = null;
 // ======================================================
 // ==        HELPER FUNCTIONS FOR THIS MODULE         ==
 // ======================================================
 
-// --- Render Main Table (Visible Only) ---
+// En tareas.js, REEMPLAZA esta función
 function renderizarTareas() {
   const tbody = document.getElementById('tabla-tareas-body');
   if (!tbody) {
@@ -28,21 +31,16 @@ function renderizarTareas() {
     return;
   }
 
-  // Detecta si la vista es móvil según el ancho de la ventana
   const isMobileView = window.innerWidth <= 900;
-  // console.log("isMobileView:", isMobileView); // Descomenta para depurar tamaño
 
   // --- Filtrado ---
-  let tareasAMostrar = state.tareas;
-  if (state.filtroCurso && state.filtroCurso !== 'todos') {
-    tareasAMostrar = state.tareas.filter((t) => t.curso === state.filtroCurso);
-  }
+  let tareasAMostrar = getTareasVisiblesFiltradas(); // Usamos la nueva función
 
   // --- Ordenamiento ---
   const col = state.ordenamiento?.col || 'fecha';
   const reverse = state.ordenamiento?.reverse || false;
   const tareasOrdenadas = [...tareasAMostrar].sort((a, b) => {
-    if (a.completada !== b.completada) return a.completada ? 1 : -1; // Pendientes primero
+    if (a.completada !== b.completada) return a.completada ? 1 : -1;
     let valA, valB;
     if (col === 'prioridad') {
       const orden = { Alta: 0, Media: 1, Baja: 2 };
@@ -91,13 +89,12 @@ function renderizarTareas() {
   };
 
   // --- Renderizado de Filas ---
-  tbody.innerHTML = ''; // Limpia tabla visible
+  tbody.innerHTML = '';
 
   tareasFinales.forEach((tarea) => {
     const tr = document.createElement('tr');
     tr.dataset.id = tarea.id;
 
-    // Aplica clases de estado (vencimiento, completada, seleccionada)
     let claseVencimiento = '';
     if (tarea.completada) {
       tr.classList.add('tarea-completada');
@@ -109,14 +106,12 @@ function renderizarTareas() {
       tr.classList.add('selected-task');
     }
 
-    // Formato de fecha
     const [year, month, day] =
       tarea.fecha && !isNaN(new Date(tarea.fecha + 'T00:00:00'))
         ? tarea.fecha.split('-')
         : ['--', '--', '--'];
     const fechaFormateada = `${day}/${month}/${year}`;
 
-    // --- Genera HTML Condicional (Móvil vs Escritorio) ---
     let rowHTML = '';
     const menuButtonHTML = `
         <div class="tarea-menu-container">
@@ -148,7 +143,7 @@ function renderizarTareas() {
         </td>
       `;
     } else {
-      // --- VISTA ESCRITORIO (con wrappers para swipe) ---
+      // --- VISTA ESCRITORIO ---
       rowHTML = `
         <td class="celda-muesca"><span class="muesca-vencimiento"></span></td>
         <td><div class="cell-content-wrapper">${tarea.curso || 'General'}</div></td>
@@ -166,8 +161,6 @@ function renderizarTareas() {
           </td>
       `;
     }
-
-    // Aplica HTML a la fila
     tr.innerHTML = rowHTML;
     tbody.appendChild(tr);
   });
@@ -179,19 +172,69 @@ function renderizarTareas() {
     tituloPendientes.textContent = `Tareas Pendientes (${countPendientes})`;
   }
 
-  // --- Actualizar Estado Botones de Filtro/Ordenamiento ---
-  document.querySelectorAll('.btn-filtro[data-sort]').forEach((btn) => {
-    const isActive = btn.dataset.sort === col;
-    btn.classList.toggle('active', isActive);
-    // Aquí puedes añadir lógica para mostrar flechas ▲/▼ si isActive
-  });
+  // --- ACTUALIZAR BOTÓN DE FILTROS ---
+  // (Esta es la única actualización de UI de filtros necesaria ahora)
+  actualizarBotonFiltros();
 
-  // --- Actualizar Select Filtro Curso ---
-  const filtroCursoSelect = document.getElementById('filtro-curso');
-  if (filtroCursoSelect) {
-    filtroCursoSelect.value = state.filtroCurso || 'todos';
-  }
+  // (La lógica anterior para .btn-filtro y #filtro-curso se elimina)
 } // === END of renderizarTareas ===
+
+/**
+ * Actualiza el texto del botón principal de filtros
+ * para reflejar el estado actual.
+ */
+function actualizarBotonFiltros() {
+  const btnLabel = document.getElementById('btn-filtros-label');
+  if (!btnLabel) return;
+
+  const filtroCurso = state.filtroCurso;
+  const filtroProyecto = state.filtroProyecto; // <-- NUEVO
+  const ordenCol = state.ordenamiento?.col || 'fecha';
+
+  let label = '';
+  let filtrosActivos = [];
+
+  // 1. Parte del Ordenamiento
+  switch (ordenCol) {
+    case 'fecha':
+      label = 'Ordenar: Fecha';
+      break;
+    case 'prioridad':
+      label = 'Ordenar: Prioridad';
+      break;
+    case 'titulo':
+      label = 'Ordenar: Título';
+      break;
+    case 'curso':
+      label = 'Ordenar: Curso';
+      break;
+    default:
+      label = 'Ordenar';
+  }
+
+  // 2. Parte del Filtro Curso
+  if (filtroCurso && filtroCurso !== 'todos') {
+    const cursoNombre =
+      state.cursos.find((c) => c === filtroCurso) || filtroCurso;
+    filtrosActivos.push(`Curso: ${cursoNombre}`);
+  }
+
+  // 3. Parte del Filtro Proyecto <-- NUEVO
+  if (filtroProyecto && filtroProyecto !== 'todos') {
+    const proyecto = state.proyectos.find(
+      (p) => p.id === parseInt(filtroProyecto),
+    );
+    const proyectoNombre = proyecto ? proyecto.nombre : 'Proyecto';
+    filtrosActivos.push(`Proy: ${proyectoNombre}`);
+  }
+
+  // Combina todo
+  if (filtrosActivos.length > 0) {
+    label += ` | ${filtrosActivos.join(', ')}`;
+  }
+
+  btnLabel.textContent = label;
+}
 
 // ======================================================
 // ==    NUEVAS FUNCIONES PARA ACCIONES EN LOTE         ==
@@ -203,10 +246,177 @@ function renderizarTareas() {
  */
 function getTareasVisiblesFiltradas() {
   let tareasAMostrar = state.tareas;
+
+  // Filtrar por Curso
   if (state.filtroCurso && state.filtroCurso !== 'todos') {
-    tareasAMostrar = state.tareas.filter((t) => t.curso === state.filtroCurso);
+    tareasAMostrar = tareasAMostrar.filter(
+      (t) => t.curso === state.filtroCurso,
+    );
   }
+
+  // Filtrar por Proyecto
+  if (state.filtroProyecto && state.filtroProyecto !== 'todos') {
+    // Compara el ID del proyecto (guardado como string) con el ID de la tarea
+    tareasAMostrar = tareasAMostrar.filter(
+      (t) => t.proyectold === parseInt(state.filtroProyecto),
+    );
+  }
+
   return tareasAMostrar;
+}
+/**
+ * RE-POPULA el contenido del menú de filtros.
+ * Se llama al abrir y después de cada clic para reflejar el estado.
+ * @param {HTMLElement} menuElement - El elemento del menú (el clon activo).
+ */
+function repopularMenuFiltros(menuElement) {
+  const menu = menuElement;
+  console.log('>>> repopularMenuFiltros llamada con elemento:', menu);
+
+  if (!menu) {
+    console.error(
+      'Error: repopularMenuFiltros fue llamado sin un elemento de menú válido.',
+    );
+    return;
+  }
+
+  // Obtiene el estado ACTUAL
+  const ordenCol = state.ordenamiento.col;
+  const ordenReverse = state.ordenamiento.reverse;
+  const filtroCurso = state.filtroCurso;
+  const filtroProyecto = state.filtroProyecto;
+
+  // Guarda el estado de los submenús (si estaban abiertos o cerrados)
+  // ANTES de borrar el HTML
+  const cursoSubmenuAbierto = menu.querySelector(
+    '#filtro-submenu-cursos:not(.hidden)',
+  );
+  const proyectoSubmenuAbierto = menu.querySelector(
+    '#filtro-submenu-proyectos:not(.hidden)',
+  );
+
+  // Iconos
+  // Asegúrate de que ICONS.check esté definido en icons.js, si no, usa '✓'
+  const checkIconHTML = `<span class="opcion-icon">${ICONS.check || '✓'}</span>`;
+  const sortAscIconHTML = `<span class="opcion-icon">▲</span>`; // Flecha arriba si reverse = true (Ascendente)
+  const sortDescIconHTML = `<span class="opcion-icon">▼</span>`; // Flecha abajo si reverse = false (Descendente)
+  const subMenuIconHTML = `<span class="opcion-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg></span>`;
+  const emptyIconHTML = `<span class="opcion-icon"></span>`; // Espaciador vacío
+
+  let htmlMenu = `<div class="filtro-seccion-titulo">Ordenar por</div>`;
+  console.log(
+    '>>> HTML generado para el menú:',
+    htmlMenu.substring(0, 200) + '...',
+  );
+
+  // --- Opciones de Ordenamiento ---
+  const sortOptions = [
+    { value: 'fecha', label: 'Fecha' },
+    { value: 'prioridad', label: 'Prioridad' },
+    { value: 'titulo', label: 'Título' },
+    { value: 'curso', label: 'Curso' },
+  ];
+
+  sortOptions.forEach((opt) => {
+    let icon = emptyIconHTML;
+    let activoClass = '';
+    if (ordenCol === opt.value) {
+      // CORRECCIÓN: La flecha indica la dirección actual.
+      // Si reverse es true (ascendente), flecha arriba. Si es false (descendente), flecha abajo.
+      icon = ordenReverse ? sortAscIconHTML : sortDescIconHTML;
+      activoClass = 'opcion-activa';
+    }
+    htmlMenu += `
+      <button data-action="sort" data-value="${opt.value}" class="opcion-btn ${activoClass}">
+        ${opt.label} ${icon}
+      </button>
+    `;
+  });
+
+  // --- Opciones de Filtro (Cursos) ---
+  const cursosUnicos = [
+    'todos',
+    ...new Set(
+      state.tareas
+        .map((t) => t.curso)
+        .filter(Boolean)
+        .sort(),
+    ),
+  ];
+  if (cursosUnicos.length > 1) {
+    htmlMenu += `<div class="filtro-seccion-titulo">Filtrar por Curso</div>`;
+    // Determina si el submenú debe estar abierto al repopular
+    const cursoSubmenuOpenClass = cursoSubmenuAbierto ? 'abierto' : '';
+    const cursoSubmenuHiddenClass = cursoSubmenuAbierto ? '' : 'hidden';
+
+    htmlMenu += `
+      <button data-action="toggle-submenu" data-submenu="cursos" class="opcion-btn filtro-submenu-container ${cursoSubmenuOpenClass}">
+        <span>${filtroCurso === 'todos' ? 'Todos los Cursos' : filtroCurso}</span>
+        ${subMenuIconHTML}
+      </button>
+    `;
+    htmlMenu += `<div id="filtro-submenu-cursos" class="filtro-submenu ${cursoSubmenuHiddenClass}">`; // Aplica clase hidden si estaba cerrado
+    cursosUnicos.forEach((curso) => {
+      const nombre = curso === 'todos' ? 'Todos los Cursos' : curso;
+      const activoClass = filtroCurso === curso ? 'opcion-activa' : ''; // CORRECCIÓN: Comparación estricta
+      const icon = filtroCurso === curso ? checkIconHTML : emptyIconHTML; // CORRECCIÓN: Comparación estricta
+      htmlMenu += `
+        <button data-action="filter-curso" data-value="${curso}" class="opcion-btn ${activoClass}">
+          ${nombre} ${icon}
+        </button>
+      `;
+    });
+    htmlMenu += `</div>`;
+  }
+
+  // --- Opciones de Filtro (Proyectos) ---
+  if (state.proyectos && state.proyectos.length > 0) {
+    htmlMenu += `<div class="filtro-seccion-titulo">Filtrar por Proyecto</div>`;
+    const proyectoActivo = state.proyectos.find(
+      (p) => p.id === parseInt(filtroProyecto),
+    );
+    const nombreProyectoActivo = proyectoActivo
+      ? proyectoActivo.nombre
+      : 'Todos los Proyectos';
+
+    // Determina si el submenú debe estar abierto
+    const proySubmenuOpenClass = proyectoSubmenuAbierto ? 'abierto' : '';
+    const proySubmenuHiddenClass = proyectoSubmenuAbierto ? '' : 'hidden';
+
+    htmlMenu += `
+      <button data-action="toggle-submenu" data-submenu="proyectos" class="opcion-btn filtro-submenu-container ${proySubmenuOpenClass}">
+        <span>${filtroProyecto === 'todos' ? 'Todos los Proyectos' : nombreProyectoActivo}</span>
+        ${subMenuIconHTML}
+      </button>
+    `;
+    htmlMenu += `<div id="filtro-submenu-proyectos" class="filtro-submenu ${proySubmenuHiddenClass}">`; // Aplica clase hidden si estaba cerrado
+    htmlMenu += `
+      <button data-action="filter-proyecto" data-value="todos" class="opcion-btn ${filtroProyecto === 'todos' ? 'opcion-activa' : ''}">
+        Todos los Proyectos ${filtroProyecto === 'todos' ? checkIconHTML : emptyIconHTML}
+      </button>
+    `;
+    state.proyectos.forEach((proyecto) => {
+      // CORRECCIÓN: Asegúrate de comparar el ID del proyecto (número) con filtroProyecto (string)
+      const activoClass =
+        parseInt(filtroProyecto) === proyecto.id ? 'opcion-activa' : '';
+      const icon =
+        parseInt(filtroProyecto) === proyecto.id
+          ? checkIconHTML
+          : emptyIconHTML;
+      htmlMenu += `
+        <button data-action="filter-proyecto" data-value="${proyecto.id}" class="opcion-btn ${activoClass}">
+          ${proyecto.nombre} ${icon}
+        </button>
+      `;
+    });
+    htmlMenu += `</div>`;
+  } else {
+    console.log('No hay proyectos en state para mostrar en el filtro.');
+  }
+
+  // Actualiza el HTML del menú
+  menu.innerHTML = htmlMenu;
+  console.log('>>> innerHTML del menú ACTUALIZADO.');
 }
 
 /**
@@ -731,11 +941,12 @@ function toggleSeleccionTarea(tareaId) {
 export function inicializarTareas(pageElement) {
   console.log('--- inicializarTareas ---');
 
-  // --- VARIABLES PARA SWIPE (Barra de Fondo) ---
+  // --- VARIABLES (Locales a la función) ---
+  // (Estas variables se reinician cada vez que entras a la página, lo cual está bien)
   let touchStartX = 0,
     touchStartY = 0,
-    touchEndX = 0, // <--- ARREGLO #1 (Se inicializan aquí)
-    touchEndY = 0; // <--- ARREGLO #1 (Se inicializan aquí)
+    touchEndX = 0,
+    touchEndY = 0;
   let swipedRow = null,
     swipeBackgroundBar = null;
   const swipeThreshold = 50,
@@ -744,21 +955,22 @@ export function inicializarTareas(pageElement) {
   let isSwiping = false,
     positioningParent = null;
   let longPressTimer = null;
-  let pressStartX = 0;
-  let pressStartY = 0;
+  let pressStartX = 0,
+    pressStartY = 0;
   const longPressDuration = 500;
 
   // --- Load Icons, Populate Selectors, Initial Render ---
   try {
-    cargarIconos(); // Carga iconos generales
+    // Carga iconos generales y específicos de esta página
+    cargarIconos();
+    // Popula selectores en el formulario de "Agregar Tarea"
     popularSelectorDeCursos(
       document.getElementById('select-curso-tarea'),
       true,
     );
-    popularFiltroDeCursos();
     popularSelectorDeProyectos();
 
-    // --- ARREGLO #3: Cargar iconos del header contextual ---
+    // Carga iconos en el header contextual (que está oculto al inicio)
     const btnCompletarSel = document.getElementById(
       'btn-completar-seleccionadas',
     );
@@ -766,39 +978,35 @@ export function inicializarTareas(pageElement) {
       'btn-eliminar-seleccionadas',
     );
     const btnCancelarSel = document.getElementById('btn-cancelar-seleccion');
-
-    // Usamos un ícono SVG de "check" como fallback si ICONS.check_all no existe
+    // Usamos un ícono SVG de "check" como fallback por si acaso
     const checkAllIcon =
       '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.77 4.93l-1.41-1.41-8.36 8.36-3.54-3.54-1.41 1.41 4.95 4.95zM4.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41zM11.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41z"/></svg>';
-
     if (btnCompletarSel)
       btnCompletarSel.innerHTML = ICONS.check_all || checkAllIcon;
     if (btnEliminarSel) btnEliminarSel.innerHTML = ICONS.delete;
     if (btnCancelarSel) btnCancelarSel.innerHTML = ICONS.close;
-    // --- FIN ARREGLO #3 ---
   } catch (error) {
-    console.error('Error durante initial setup (iconos/selectores):', error);
+    console.error('Error durante initial setup:', error);
   }
 
   try {
-    renderizarTareas(); // Dibuja la tabla
-    renderizarDetalles(); // Dibuja el panel de detalles
+    // Dibuja la tabla y el panel de detalles por primera vez
+    renderizarTareas();
+    renderizarDetalles();
   } catch (error) {
     console.error('Error durante el renderizado inicial:', error);
   }
 
-  // --- Show/Hide Details Panel ---
+  // Muestra u oculta el panel de detalles según si hay una tarea seleccionada
   const appContainer = document.querySelector('.app-container');
-  if (appContainer) {
+  if (appContainer)
     appContainer.classList.toggle(
       'detalle-visible',
       state.tareaSeleccionadald !== null,
     );
-  } else {
-    console.error("Contenedor principal '.app-container' no encontrado.");
-  }
+  else console.error("Contenedor principal '.app-container' no encontrado.");
 
-  // --- SETUP EVENT LISTENERS ---
+  // Referencia al elemento principal de la página (pasado desde main.js)
   const pageTareas = pageElement;
   if (!pageTareas) {
     console.error(
@@ -808,202 +1016,303 @@ export function inicializarTareas(pageElement) {
   }
 
   // =================================================================
-  // ==                LISTENER GLOBAL (Corregido)                ==
+  // ==                LISTENER GLOBAL (ÚNICA INSTANCIA)          ==
   // =================================================================
+  // PASO 1: "Despedir" al escuchador anterior si existía
+  if (tareasGlobalClickHandler) {
+    console.warn('Eliminando listener global de tareas ANTERIOR...'); // Log para saber que se quita
+    document.removeEventListener('click', tareasGlobalClickHandler);
+    tareasGlobalClickHandler = null; // Olvidar quién era
+  }
 
-  // (Esto ya estaba bien de la vez anterior, evita listeners duplicados)
-  if (document.body.dataset.tareasListenerAttached === 'true') {
-    console.log('Listener de TAREAS global ya adjunto a document.body.');
-  } else {
-    document.body.dataset.tareasListenerAttached = 'true';
-    console.log('Adjuntando listener de TAREAS global a document.body...');
+  // PASO 2 y 3: Definir la nueva función escuchadora y "recordarla"
+  tareasGlobalClickHandler = (e) => {
+    // Gatekeeper: Si no estamos en 'tareas' Y no hay menús abiertos, no hacer nada.
+    if (
+      !activeDropdown &&
+      !activeFiltroDropdown &&
+      state.paginaActual !== 'tareas'
+    )
+      return;
 
-    document.addEventListener('click', (e) => {
-      // Gatekeeper
-      if (!activeDropdown && state.paginaActual !== 'tareas') {
-        return;
+    // Referencias y comprobaciones (¿dónde ocurrió el clic?)
+    const currentPageTareas = document.getElementById('page-tareas'); // Busca la página actual por si acaso
+    const isClickInsidePage = currentPageTareas
+      ? currentPageTareas.contains(e.target)
+      : false;
+    const isClickInsideActiveDropdown = activeDropdown
+      ? activeDropdown.contains(e.target)
+      : false;
+    const isClickInsideFiltroDropdown = activeFiltroDropdown
+      ? activeFiltroDropdown.contains(e.target)
+      : false;
+
+    // Identificar qué elemento recibió el clic
+    const menuButton = e.target.closest('.btn-tarea-menu'); // Botón 3 puntos
+    const dropdownOptionButton = e.target.closest(
+      '.tarea-actions-dropdown-active button[data-action]',
+    ); // Opción menú 3 puntos
+    const filtroMenuButton = e.target.closest('#btn-filtros-dropdown'); // Botón Filtros
+    const filtroDropdownOption = e.target.closest(
+      '#menu-filtros-dropdown-active .opcion-btn',
+    ); // Opción menú Filtros (busca en el clon activo)
+
+    // --- Lógica Principal de Clics ---
+
+    // 1. Clic en Opción del Menú de 3 puntos
+    if (dropdownOptionButton && isClickInsideActiveDropdown) {
+      e.stopPropagation(); // Evita que otros listeners reaccionen
+      const action = dropdownOptionButton.dataset.action;
+      const taskId = activeDropdownButton
+        ? parseInt(activeDropdownButton.closest('tr[data-id]')?.dataset.id, 10)
+        : null;
+
+      // Cierra y olvida el menú ANTES de actuar
+      if (activeDropdown) activeDropdown.remove();
+      activeDropdown = null;
+      activeDropdownButton = null;
+
+      // Ejecuta la acción correspondiente
+      if (taskId !== null) {
+        switch (action) {
+          case 'editar-tarea-menu':
+            if (state.tareaSeleccionadald !== taskId)
+              state.tareaSeleccionadald = taskId; // Selecciona si no lo estaba
+            iniciarEdicionTarea();
+            break;
+          case 'seleccionar-tarea-menu':
+            iniciarModoSeleccion(taskId);
+            break;
+          case 'eliminar-tarea-menu':
+            const tarea = state.tareas.find((t) => t.id === taskId);
+            if (tarea)
+              mostrarConfirmacion(
+                `Eliminar Tarea`,
+                `¿Eliminar "${tarea.titulo}"?`,
+                () => eliminarTarea(taskId),
+              );
+            break;
+        }
       }
-      const currentPageTareas = document.getElementById('page-tareas');
-      const isClickInsidePage = currentPageTareas
-        ? currentPageTareas.contains(e.target)
-        : false;
+      return; // Termina el manejo del clic aquí
+    }
 
-      // Targets
-      const menuButton = e.target.closest('.btn-tarea-menu');
-      const dropdownOptionButton = e.target.closest(
-        '.tarea-actions-dropdown-active button[data-action]',
-      );
-      const isClickInsideActiveDropdown = activeDropdown
-        ? activeDropdown.contains(e.target)
-        : false;
+    // 2. Clic en Opción del Menú de Filtros
+    else if (filtroDropdownOption && isClickInsideFiltroDropdown) {
+      e.stopPropagation(); // Evita que el clic cierre el menú
+      const action = filtroDropdownOption.dataset.action;
+      const value = filtroDropdownOption.dataset.value;
+      console.log(`Clic opción filtro: ${action}, Valor: ${value}`);
 
-      // 1. Clic en OPCIÓN DEL MENÚ (Funcional)
-      if (dropdownOptionButton) {
-        e.stopPropagation();
-        const action = dropdownOptionButton.dataset.action;
-        const associatedTaskId = activeDropdownButton
-          ? parseInt(
-              activeDropdownButton.closest('tr[data-id]')?.dataset.id,
-              10,
-            )
-          : null;
+      // Actualiza el estado según la acción
+      if (action === 'sort') {
+        if (state.ordenamiento.col === value)
+          state.ordenamiento.reverse = !state.ordenamiento.reverse;
+        else {
+          state.ordenamiento.col = value;
+          state.ordenamiento.reverse = false;
+        }
+      } else if (action === 'filter-curso') {
+        state.filtroCurso = value;
+      } else if (action === 'filter-proyecto') {
+        state.filtroProyecto = value;
+      } else if (action === 'toggle-submenu') {
+        // Abre/cierra el submenú correspondiente
+        const submenuId = `filtro-submenu-${filtroDropdownOption.dataset.submenu}`;
+        const submenu = activeFiltroDropdown?.querySelector(`#${submenuId}`); // Busca dentro del menú activo
+        if (submenu) {
+          submenu.classList.toggle('hidden');
+          filtroDropdownOption.classList.toggle('abierto');
+        }
+        return; // No redibujar tabla ni repopular menú, solo abrir/cerrar
+      } else {
+        return; // Acción desconocida, no hacer nada
+      }
 
-        if (activeDropdown) activeDropdown.remove();
+      // Si fue sort o filter, redibuja la tabla y el menú
+      renderizarTareas();
+      if (activeFiltroDropdown) repopularMenuFiltros(activeFiltroDropdown); // Repopula el menú activo
+
+      return; // No cerrar el menú
+    }
+
+    // 3. Clic en el Botón de 3 Puntos para ABRIR menú
+    else if (menuButton && isClickInsidePage) {
+      e.stopPropagation(); // Evita que el clic seleccione la fila
+      // Cierra el menú de filtros si estaba abierto
+      if (activeFiltroDropdown) {
+        activeFiltroDropdown.remove();
+        activeFiltroDropdown = null;
+        document
+          .getElementById('btn-filtros-dropdown')
+          ?.classList.remove('active');
+      }
+      // Lógica para abrir/cerrar el menú de 3 puntos (clonación, posicionamiento, etc.)
+      // (Esta lógica estaba bien)
+      if (activeDropdown && activeDropdownButton !== menuButton) {
+        activeDropdown.remove();
         activeDropdown = null;
         activeDropdownButton = null;
-
-        if (associatedTaskId !== null) {
-          switch (action) {
-            case 'editar-tarea-menu':
-              if (state.tareaSeleccionadald !== associatedTaskId) {
-                state.tareaSeleccionadald = associatedTaskId;
-              }
-              iniciarEdicionTarea();
-              break;
-            case 'seleccionar-tarea-menu':
-              iniciarModoSeleccion(associatedTaskId);
-              break;
-            case 'eliminar-tarea-menu':
-              const tarea = state.tareas.find((t) => t.id === associatedTaskId);
-              if (tarea) {
-                mostrarConfirmacion(
-                  `Eliminar Tarea`,
-                  `¿Eliminar "${tarea.titulo}"?`,
-                  () => {
-                    eliminarTarea(associatedTaskId);
-                  },
-                );
-              }
-              break;
-          }
-        }
+      }
+      if (activeDropdown && activeDropdownButton === menuButton) {
+        activeDropdown.remove();
+        activeDropdown = null;
+        activeDropdownButton = null;
         return;
       }
+      const row = menuButton.closest('tr[data-id]');
+      const template = row?.querySelector('.tarea-actions-dropdown');
+      if (!template) return;
+      activeDropdown = template.cloneNode(true);
+      activeDropdown.classList.add('tarea-actions-dropdown-active');
+      activeDropdown.style.visibility = 'hidden';
+      document.body.appendChild(activeDropdown);
+      activeDropdownButton = menuButton;
+      // Calcular posición (fixed)
+      const btnRect = menuButton.getBoundingClientRect();
+      const menuRect = activeDropdown.getBoundingClientRect();
+      const margin = 10;
+      let left = btnRect.left - menuRect.width - 5;
+      if (left < margin) left = btnRect.right + 5;
+      let top = btnRect.top + btnRect.height / 2 - menuRect.height / 2;
+      if (top + menuRect.height > window.innerHeight - margin)
+        top = btnRect.bottom - menuRect.height;
+      if (top < margin) top = margin;
+      activeDropdown.style.left = `${left}px`;
+      activeDropdown.style.top = `${top}px`;
+      requestAnimationFrame(() => {
+        if (activeDropdown) activeDropdown.style.visibility = 'visible';
+      });
+      return;
+    }
 
-      // 2. Clic en BOTÓN MENÚ (3 puntos) (Funcional)
-      if (menuButton && isClickInsidePage) {
-        e.stopPropagation();
-        if (activeDropdown && activeDropdownButton !== menuButton) {
-          activeDropdown.remove();
-          activeDropdown = null;
-          activeDropdownButton = null;
-        }
-        if (activeDropdown && activeDropdownButton === menuButton) {
-          activeDropdown.remove();
-          activeDropdown = null;
-          activeDropdownButton = null;
-          return;
-        }
-        // (Lógica de crear y posicionar menú... esto estaba bien)
-        const row = menuButton.closest('tr[data-id]');
-        const dropdownTemplate = row?.querySelector('.tarea-actions-dropdown');
-        if (!dropdownTemplate) return;
-        activeDropdown = dropdownTemplate.cloneNode(true);
-        activeDropdown.classList.add('tarea-actions-dropdown-active');
-        activeDropdown.style.visibility = 'hidden';
-        document.body.appendChild(activeDropdown);
-        activeDropdownButton = menuButton;
-        const btnRect = menuButton.getBoundingClientRect();
-        const dropdownRect = activeDropdown.getBoundingClientRect();
-        const margin = 10;
-        let left = btnRect.left - dropdownRect.width - 5;
-        if (left < margin) left = btnRect.right + 5;
-        let top = btnRect.top + btnRect.height / 2 - dropdownRect.height / 2;
-        if (top + dropdownRect.height > window.innerHeight - margin) {
-          top = btnRect.bottom - dropdownRect.height;
-        }
-        if (top < margin) top = margin;
-        activeDropdown.style.top = `${top}px`;
-        activeDropdown.style.left = `${left}px`;
-        requestAnimationFrame(() => {
-          if (activeDropdown) activeDropdown.style.visibility = 'visible';
-        });
-        return;
-      }
-
-      // 3. Clic FUERA del menú activo (Funcional)
-      if (activeDropdown && !isClickInsideActiveDropdown) {
+    // 4. Clic en el Botón de Filtros para ABRIR/CERRAR menú
+    else if (filtroMenuButton && isClickInsidePage) {
+      e.stopPropagation(); // Evita otros clics
+      // Cierra el menú de 3 puntos si estaba abierto
+      if (activeDropdown) {
         activeDropdown.remove();
         activeDropdown = null;
         activeDropdownButton = null;
       }
 
-      // 4. Lógica de Clics DENTRO de la página
-      if (!isClickInsidePage) {
-        return;
-      }
-
-      const fila = e.target.closest('#tabla-tareas-body tr[data-id]');
-      const header = e.target.closest('th[data-sort]');
-      const filtroBtn = e.target.closest('.btn-filtro[data-sort]');
-      const cerrarDetallesBtn = e.target.closest('#btn-cerrar-detalles');
-      const contextualHeaderButton = e.target.closest(
-        '#tareas-header-contextual button[data-action]',
-      );
-
-      // Clic en Header Contextual
-      if (contextualHeaderButton) {
-        const action = contextualHeaderButton.dataset.action;
-        console.log('Clic en header contextual:', action);
-        switch (action) {
-          case 'cancelar-seleccion':
-            salirModoSeleccion();
-            break;
-          case 'completar-seleccion':
-            // ANTES: console.log('Acción Completar Selección (A implementar)');
-            completarTareasSeleccionadas(); // <-- REEMPLAZA AQUÍ
-            break;
-          case 'eliminar-seleccion':
-            // ANTES: console.log('Acción Eliminar Selección (A implementar)');
-            eliminarTareasSeleccionadas(); // <-- REEMPLAZA AQUÍ
-            break;
+      if (activeFiltroDropdown) {
+        // Si está abierto, ciérralo
+        activeFiltroDropdown.remove();
+        activeFiltroDropdown = null;
+        filtroMenuButton.classList.remove('active');
+      } else {
+        // Si está cerrado, ábrelo
+        const template = document.getElementById('menu-filtros-dropdown');
+        if (template) {
+          activeFiltroDropdown = template.cloneNode(true); // 1. Clona
+          activeFiltroDropdown.id = 'menu-filtros-dropdown-active'; // 2. Dale ID único
+          document.body.appendChild(activeFiltroDropdown); // 3. Añade al body (aún oculto)
+          // 4. Calcula Posición (fixed)
+          const btnRect = filtroMenuButton.getBoundingClientRect();
+          activeFiltroDropdown.style.visibility = 'hidden';
+          const menuRect = activeFiltroDropdown.getBoundingClientRect();
+          const margin = 10;
+          let left = btnRect.left;
+          if (btnRect.left + menuRect.width > window.innerWidth - margin)
+            left = btnRect.right - menuRect.width;
+          if (left < margin) left = margin;
+          let top = btnRect.bottom + 4;
+          if (top + menuRect.height > window.innerHeight - margin)
+            top = btnRect.top - menuRect.height - 4;
+          if (top < margin) top = margin;
+          activeFiltroDropdown.style.left = `${left}px`;
+          activeFiltroDropdown.style.top = `${top}px`;
+          // 5. Rellena el contenido
+          repopularMenuFiltros(activeFiltroDropdown);
+          // 6. Muéstralo
+          requestAnimationFrame(() => {
+            if (activeFiltroDropdown) {
+              activeFiltroDropdown.style.visibility = 'visible';
+              activeFiltroDropdown.classList.add('visible');
+              filtroMenuButton.classList.add('active');
+            }
+          });
         }
-        return;
       }
+      return;
+    }
 
-      // --- ARREGLO #2: Lógica de clic en Fila ---
-      if (fila && !isClickInsideActiveDropdown && !menuButton) {
-        const tareaId = parseInt(fila.dataset.id, 10);
+    // 5. Clic FUERA de los menús (para cerrarlos)
+    else {
+      let menuFueCerrado = false; // Flag para saber si se cerró algo
+      if (activeDropdown && !isClickInsideActiveDropdown) {
+        console.log('Cerrando menú 3 puntos (clic fuera)');
+        activeDropdown.remove();
+        activeDropdown = null;
+        activeDropdownButton = null;
+        menuFueCerrado = true;
+      }
+      if (activeFiltroDropdown && !isClickInsideFiltroDropdown) {
+        console.log('Cerrando menú filtros (clic fuera)');
+        activeFiltroDropdown.remove();
+        document
+          .getElementById('btn-filtros-dropdown')
+          ?.classList.remove('active');
+        activeFiltroDropdown = null;
+        menuFueCerrado = true;
+      }
+      // Si acabamos de cerrar un menú, no procesamos clics en la página
+      if (menuFueCerrado) return;
 
-        // Si estamos en modo selección, un clic alterna la selección
-        if (state.tareasEnModoSeleccion) {
-          console.log(`Modo Selección: Alternando tarea ${tareaId}`);
-          toggleSeleccionTarea(tareaId); // <-- ¡ESTO FALTABA!
-          return; // Y no abras el panel de detalles
+      // 6. Si no se cerró ningún menú Y el clic fue DENTRO de la página -> Procesar clics de página
+      if (isClickInsidePage) {
+        const fila = e.target.closest('#tabla-tareas-body tr[data-id]');
+        const cerrarDetallesBtn = e.target.closest('#btn-cerrar-detalles');
+        const contextualHeaderButton = e.target.closest(
+          '#tareas-header-contextual button[data-action]',
+        );
+
+        // Clic en Header Contextual (Modo Selección)
+        if (contextualHeaderButton) {
+          const action = contextualHeaderButton.dataset.action;
+          switch (action) {
+            case 'cancelar-seleccion':
+              salirModoSeleccion();
+              break;
+            case 'completar-seleccion':
+              completarTareasSeleccionadas();
+              break;
+            case 'eliminar-seleccion':
+              eliminarTareasSeleccionadas();
+              break;
+          }
+          return;
         }
-
-        // Si NO estamos en modo selección, abre los detalles
-        if (state.tareaSeleccionadald !== tareaId) {
-          console.log('Seleccionando fila ID:', tareaId);
-          state.tareaSeleccionadald = tareaId;
+        // Clic en Fila (Seleccionar/Alternar Selección)
+        else if (fila) {
+          const taskId = parseInt(fila.dataset.id, 10);
+          if (state.tareasEnModoSeleccion) toggleSeleccionTarea(taskId);
+          else if (state.tareaSeleccionadald !== taskId) {
+            state.tareaSeleccionadald = taskId;
+            guardarDatos();
+            renderizarTareas();
+            renderizarDetalles();
+            appContainer?.classList.add('detalle-visible');
+          }
+          return;
+        }
+        // Clic en Cerrar Detalles
+        else if (cerrarDetallesBtn) {
+          state.tareaSeleccionadald = null;
           guardarDatos();
+          appContainer?.classList.remove('detalle-visible');
           renderizarTareas();
           renderizarDetalles();
-          appContainer?.classList.add('detalle-visible');
+          return;
         }
-        return;
-      }
-      // --- FIN ARREGLO #2 ---
+      } // Fin if (isClickInsidePage)
+    } // Fin else (Clic Fuera / Página)
+  }; // --- Fin de la definición de tareasGlobalClickHandler ---
 
-      // Clics en Header, Filtro, Cerrar Detalles (Esto estaba bien)
-      if (header) {
-        ordenarPor(header.dataset.sort);
-        return;
-      }
-      if (filtroBtn) {
-        ordenarPor(filtroBtn.dataset.sort);
-        return;
-      }
-      if (cerrarDetallesBtn) {
-        state.tareaSeleccionadald = null;
-        guardarDatos();
-        appContainer?.classList.remove('detalle-visible');
-        renderizarTareas();
-        renderizarDetalles();
-        return;
-      }
-    });
-  } // --- Fin del IF para listener global ---
+  // PASO 4: "Ponerlo a Escuchar"
+  console.log('*** Adjuntando listener de TAREAS global AHORA ***');
+  document.addEventListener('click', tareasGlobalClickHandler);
 
   // =================================================================
   // ==        LISTENERS LOCALES (Long Press, Forms, etc.)          ==
@@ -1023,7 +1332,6 @@ export function inicializarTareas(pageElement) {
 
   if (tablaBody && !tablaBody.dataset.longPressListener) {
     tablaBody.dataset.longPressListener = 'true';
-
     tablaBody.addEventListener(
       'touchstart',
       (e) => {
@@ -1032,29 +1340,19 @@ export function inicializarTareas(pageElement) {
           longPressTimer = null;
           return;
         }
-
         const touch = e.touches[0];
         pressStartX = touch.clientX;
         pressStartY = touch.clientY;
-
-        // --- ARREGLO #1: Inicializa touchEnd aquí ---
         touchEndX = touch.clientX;
         touchEndY = touch.clientY;
-        // --- FIN ARREGLO #1 ---
-
         const fila = e.target.closest('tr[data-id]');
         if (!fila) return;
         const tareaId = parseInt(fila.dataset.id, 10);
-
         clearTimeout(longPressTimer);
         longPressTimer = setTimeout(() => {
-          // Ahora 'touchEndX/Y' tienen el valor inicial si no hubo 'touchmove'
           const currentDiffX = Math.abs(touchEndX - pressStartX);
           const currentDiffY = Math.abs(touchEndY - pressStartY);
-
           if (currentDiffX < 10 && currentDiffY < 10) {
-            // El chequeo ahora funciona
-            console.log('Long press confirmado en ID:', tareaId);
             iniciarModoSeleccion(tareaId);
           } else {
             console.log('Long press cancelado por movimiento excesivo.');
@@ -1064,11 +1362,9 @@ export function inicializarTareas(pageElement) {
       },
       { passive: true },
     );
-
     tablaBody.addEventListener(
       'touchmove',
       (e) => {
-        // Esto estaba bien, actualiza 'touchEnd' si hay movimiento
         const touch = e.touches[0];
         touchEndX = touch.clientX;
         touchEndY = touch.clientY;
@@ -1083,7 +1379,6 @@ export function inicializarTareas(pageElement) {
       },
       { passive: true },
     );
-
     const cancelLongPress = () => {
       clearTimeout(longPressTimer);
       longPressTimer = null;
@@ -1092,9 +1387,6 @@ export function inicializarTareas(pageElement) {
     tablaBody.addEventListener('touchcancel', cancelLongPress);
     console.log('Listeners Long Press añadidos a tablaBody');
   }
-
-  // (El resto de listeners: dblclick, panelDetalles, swipe, forms, etc.
-  // ... estaban bien y pueden quedarse como están)
 
   if (tablaBody && !tablaBody.dataset.dblClickListener) {
     tablaBody.dataset.dblClickListener = 'true';
@@ -1105,7 +1397,7 @@ export function inicializarTareas(pageElement) {
         window.getSelection().toString() ||
         state.tareasEnModoSeleccion
       )
-        return; // <-- Añadido chequeo de modo selección
+        return;
       const tareaId = parseInt(fila.dataset.id, 10);
       const tarea = state.tareas.find((t) => t.id === tareaId);
       if (tarea) {
@@ -1125,7 +1417,7 @@ export function inicializarTareas(pageElement) {
   if (panelDetalles && !panelDetalles.dataset.clickListener) {
     panelDetalles.dataset.clickListener = 'true';
     panelDetalles.addEventListener('click', (e) => {
-      // (Tu lógica de click en panel detalles estaba bien)
+      // (Lógica del panel de detalles sin cambios...)
       const completarBtn = e.target.closest('#btn-completar-tarea');
       const editarBtn = e.target.closest('#btn-editar-tarea');
       const eliminarBtn = e.target.closest('#btn-eliminar-tarea');
@@ -1198,8 +1490,7 @@ export function inicializarTareas(pageElement) {
     tablaBody.addEventListener(
       'touchstart',
       (e) => {
-        // (Tu lógica de touchstart para swipe estaba bien)
-        if (state.tareasEnModoSeleccion) return; // <-- Añadido chequeo
+        if (state.tareasEnModoSeleccion) return;
         const touch = e.touches[0];
         touchStartX = touch.clientX;
         touchStartY = touch.clientY;
@@ -1217,8 +1508,7 @@ export function inicializarTareas(pageElement) {
     tablaBody.addEventListener(
       'touchmove',
       (e) => {
-        // (Tu lógica de touchmove para swipe estaba bien)
-        if (state.tareasEnModoSeleccion || !swipedRow) return; // <-- Añadido chequeo
+        if (state.tareasEnModoSeleccion || !swipedRow) return;
         if (!swipedRow || !positioningParent) return;
         const touch = e.touches[0];
         touchEndX = touch.clientX;
@@ -1282,8 +1572,7 @@ export function inicializarTareas(pageElement) {
       { passive: true },
     );
     tablaBody.addEventListener('touchend', (e) => {
-      // (Tu lógica de touchend para swipe estaba bien)
-      if (state.tareasEnModoSeleccion || !swipedRow) return; // <-- Añadido chequeo
+      if (state.tareasEnModoSeleccion || !swipedRow) return;
       const rowToAnimate = swipedRow;
       const barToRemove = swipeBackgroundBar;
       if (!rowToAnimate || !isSwiping || !barToRemove) {
@@ -1376,16 +1665,6 @@ export function inicializarTareas(pageElement) {
     console.log('Listener Submit añadido a formEditarTarea');
   }
 
-  const filtroCursoSelect = document.getElementById('filtro-curso');
-  if (filtroCursoSelect && !filtroCursoSelect.dataset.changeListener) {
-    filtroCursoSelect.dataset.changeListener = 'true';
-    filtroCursoSelect.addEventListener('change', (e) => {
-      state.filtroCurso = e.target.value;
-      renderizarTareas();
-    });
-    console.log('Listener Change añadido a filtroCursoSelect');
-  }
-
   const btnAbrirCreacionMovil = document.getElementById(
     'btn-abrir-creacion-movil',
   );
@@ -1395,7 +1674,6 @@ export function inicializarTareas(pageElement) {
   ) {
     btnAbrirCreacionMovil.dataset.listenerAttached = 'true';
     btnAbrirCreacionMovil.addEventListener('click', () => {
-      // (Tu lógica de modal móvil estaba bien)
       const panelCreacion = document.getElementById('panel-creacion');
       const form = document.getElementById('form-nueva-tarea');
       const modalContenido = document.getElementById(

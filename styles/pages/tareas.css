@@ -1170,3 +1170,165 @@ tr.tarea-vencida .cell-content-wrapper {
   /* visibility: hidden; */
   display: none; /* Oculta completamente */
 }
+/* --- Estilos Menú Filtros Avanzado (Revisados) --- */
+
+/* Contenedor principal de los filtros */
+.filtros-container {
+  /* position: relative; */ /* Ya no es necesario con position:fixed */
+}
+
+/* Botón principal que abre el menú */
+.btn-filtro-dropdown {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  color: var(--text-base);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap; /* Evita que el texto del botón se parta */
+  overflow: hidden; /* Oculta desbordamiento si el texto es muy largo */
+  text-overflow: ellipsis; /* Añade '...' si el texto es muy largo */
+  max-width: 300px; /* Limita el ancho del botón */
+}
+.btn-filtro-dropdown:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--accent-color);
+}
+.btn-filtro-dropdown.active {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+.btn-filtro-dropdown svg {
+  transition: transform 0.2s ease;
+  flex-shrink: 0; /* Evita que el icono se encoja */
+}
+.btn-filtro-dropdown.active svg {
+  transform: rotate(180deg);
+}
+
+/* --- Menú Desplegable de Filtros --- */
+.filtro-dropdown-menu {
+  position: fixed;
+  /* ANTES: width: 300px; */
+  /* NUEVO: Ancho flexible */
+  min-width: 260px; /* Ancho mínimo */
+  max-width: calc(100vw - 20px); /* Ancho máximo (viewport menos márgenes) */
+  box-sizing: border-box; /* Incluye padding y border en el ancho/alto */
+
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  z-index: 1040;
+  padding: 10px; /* Padding general aumentado */
+  display: flex;
+  flex-direction: column;
+  gap: 5px; /* Espacio entre elementos principales */
+
+  max-height: 400px;
+  overflow-y: auto;
+
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease-out;
+}
+.filtro-dropdown-menu.visible {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Títulos de sección */
+.filtro-dropdown-menu .filtro-seccion-titulo {
+  font-size: 0.75rem; /* Más pequeño */
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 8px 3px 8px; /* Padding ajustado */
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 5px; /* Espacio después del título */
+}
+
+/* Botón de opción genérico */
+.filtro-dropdown-menu .opcion-btn {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 10px; /* Padding ajustado */
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden; /* Oculta texto largo */
+  text-overflow: ellipsis; /* Añade '...' */
+}
+.filtro-dropdown-menu .opcion-btn:hover {
+  background-color: var(--accent-color-hover);
+}
+.filtro-dropdown-menu .opcion-btn.opcion-activa {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+.filtro-dropdown-menu .opcion-btn .opcion-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: var(--accent-color);
+}
+
+/* --- Estilos de Submenú --- */
+.filtro-dropdown-menu .filtro-submenu-container {
+  /* Botón que abre/cierra */
+  padding-right: 10px; /* Padding ajustado */
+}
+.filtro-dropdown-menu .filtro-submenu-container .opcion-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.filtro-dropdown-menu .filtro-submenu-container.abierto .opcion-icon svg {
+  transform: rotate(180deg);
+}
+
+/* Contenedor del submenú */
+.filtro-submenu {
+  padding-left: 12px; /* Indentación ajustada */
+  max-height: 140px; /* Altura scroll ajustada */
+  overflow-y: auto;
+  display: block;
+  border-left: 2px solid var(--border-color);
+  margin-left: 10px; /* Margen ajustado */
+  padding-top: 5px; /* Espacio superior ajustado */
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+.filtro-submenu.hidden {
+  display: none;
+}
+/* Botones dentro del submenú */
+.filtro-submenu .opcion-btn {
+  padding-top: 7px; /* Padding ajustado */
+  padding-bottom: 7px;
+  font-size: 0.85rem;
+}
+.filtro-submenu .opcion-btn.opcion-activa {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+}
