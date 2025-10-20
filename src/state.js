@@ -28,6 +28,8 @@ export let state = {
   ordenamiento: { col: 'fecha', reverse: false },
   filtroCurso: 'todos',
   filtroCursoApuntes: 'todos',
+  tareasEnModoSeleccion: false, // Rastrea si el modo selección está activo
+  tareasSeleccionadasIds: [], // Array de IDs de tareas seleccionadas
   apuntesEnModoSeleccion: false,
   apuntesSeleccionadosIds: [],
 };

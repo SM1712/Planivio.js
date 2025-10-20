@@ -712,3 +712,461 @@ tr.tarea-vencida .cell-content-wrapper {
   height: 28px;
   fill: currentColor;
 }
+
+#btn-abrir-creacion-movil {
+  display: none;
+}
+
+/* ============================================= */
+/* ==       RESPONSIVE ADJUSTMENTS            == */
+/* ============================================= */
+
+/* --- Mobile / Tablet View (<= 900px) --- */
+@media (max-width: 900px) {
+  /* Hide the side creation panel */
+  #panel-creacion {
+    display: none;
+  }
+  #panel-detalles {
+    position: fixed; /* Fijo respecto al viewport */
+    top: 0; /* O ajusta si tienes un header fijo (ej: top: 60px;) */
+    left: 0;
+    width: 100%;
+    height: 100%; /* O calc(100% - alturaHeader) si aplica */
+    z-index: 1000; /* Encima de todo lo demás */
+    transform: translateX(100%); /* Oculto a la derecha por defecto */
+    transition: transform 0.3s ease-in-out; /* Animación deslizamiento */
+    display: flex; /* Mantiene flex display */
+    flex-direction: column; /* Asegura dirección */
+    flex-basis: auto; /* Anula el flex-basis de escritorio */
+    border-radius: 0; /* Sin bordes redondeados en pantalla completa */
+    border: none; /* Sin borde */
+    /* Mantiene overflow: hidden si lo tenía */
+  }
+  /* Show the floating action button */
+  #btn-abrir-creacion-movil {
+    display: flex;
+  }
+
+  /* Adjust page layout for single column */
+  #page-tareas {
+    flex-direction: column;
+  }
+  .panel-central {
+    flex-basis: auto; /* Allow panel to resize */
+    width: 100%;
+  }
+
+  /* Hide table headers */
+  .tabla-tareas thead {
+    display: none;
+  }
+  /* Allow table to shrink and adjust spacing */
+  .tabla-tareas {
+    min-width: 0; /* Let table width adjust to container */
+    border-spacing: 0 2px; /* Less vertical space */
+  }
+  /* Adjust container padding */
+  .tabla-container {
+    padding: 0 5px;
+  }
+
+  /* --- Mobile-specific table row styles --- */
+  /* (These styles define how .tarea-movil-celda looks) */
+
+  /* Single cell spanning the row */
+  .tarea-movil-celda {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+  .tarea-movil-contenido {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 15px;
+    gap: 4px;
+    /* Apply right radius if it's the last cell */
+    /* border-radius: 0 8px 8px 0; */ /* Managed by td:last-child potentially */
+  }
+  .tabla-tareas td:last-child.tarea-movil-celda .tarea-movil-contenido {
+    border-radius: 0 8px 8px 0;
+  }
+
+  /* Top line: Priority + Title */
+  .tarea-movil-info-principal {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tarea-movil-titulo {
+    font-weight: 600;
+    color: var(--text-base);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  /* Bottom line: Date + Course */
+  .tarea-movil-info-secundaria {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    padding-left: 20px; /* Indent */
+  }
+  .tarea-movil-fecha {
+    font-weight: 500;
+  }
+  .tarea-movil-curso {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 50%;
+    text-align: right;
+  }
+  .app-container.detalle-visible #panel-detalles {
+    transform: translateX(0); /* Lo desliza a la vista */
+    /* No necesitamos display: flex aquí porque ya está arriba */
+  }
+  #panel-detalles .detalle-header-fijo {
+    /* Mantiene estilos del header fijo */
+    flex-shrink: 0;
+  }
+  #panel-detalles #detalles-contenido-scrollable {
+    flex-grow: 1; /* Ocupa espacio restante */
+    overflow-y: auto; /* Permite scroll vertical */
+    padding-bottom: 70px; /* Espacio extra al final para evitar que FAB tape contenido */
+  }
+} /* End @media (max-width: 900px) */
+
+/* --- Desktop View (> 900px) --- */
+@media (min-width: 901px) {
+  /* Swipe styles that rely on wrappers (only apply on desktop) */
+  .cell-content-wrapper {
+    /* Define base wrapper styles if not already defined outside media query */
+    display: block;
+    padding: 12px 10px;
+    background-color: var(--bg-content);
+    text-align: inherit;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    height: 100%;
+    box-sizing: border-box;
+    transition: transform 0.05s linear;
+    will-change: transform;
+  }
+  /* Wrapper adjustments */
+  .tabla-tareas td:nth-child(2) .cell-content-wrapper {
+    max-width: 180px;
+    border-radius: 8px 0 0 8px;
+  }
+  .tabla-tareas td:nth-child(3) .cell-content-wrapper {
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: none;
+  }
+  .tabla-tareas td:nth-child(4) .cell-content-wrapper {
+    max-width: 230px;
+  }
+  .tabla-tareas td:nth-child(5) .cell-content-wrapper {
+    padding-right: 15px;
+    border-radius: 0 8px 8px 0;
+  }
+  .tabla-tareas td:first-child .cell-content-wrapper {
+    display: none;
+  }
+
+  /* Swipe background on wrappers (only desktop) */
+  .tabla-tareas tr.swiping-left .cell-content-wrapper {
+    background-color: rgba(46, 204, 113, 0.7) !important;
+  }
+  .tabla-tareas tr.swiping-right .cell-content-wrapper {
+    background-color: rgba(231, 76, 60, 0.7) !important;
+  }
+  .tabla-tareas tr.swiping .cell-content-wrapper {
+    color: var(--text-base) !important;
+    opacity: 0.9;
+  }
+  .tabla-tareas tr.swiping td:first-child .cell-content-wrapper {
+    background-color: transparent !important;
+  }
+  /* Wrapper transparency on hover/select (only desktop) */
+  .tabla-tareas
+    tr:not(.selected-task):not(.swiping):hover
+    .cell-content-wrapper,
+  .tabla-tareas tr.selected-task .cell-content-wrapper {
+    background-color: transparent !important;
+    color: inherit !important;
+    opacity: 1;
+  }
+  /* Wrapper background on completed (only desktop) */
+  tr.tarea-completada .cell-content-wrapper {
+    background-color: var(--bg-content);
+  }
+  /* Wrapper background on vencida (only desktop) */
+  tr.tarea-vencida .cell-content-wrapper {
+    background-color: transparent !important;
+  } /* Inherits TR background */
+}
+
+/* --- Estilos Menú Contextual Tareas --- */
+
+/* Columna de Acciones/Menú */
+.tabla-tareas th.col-acciones,
+.tabla-tareas td.col-acciones {
+  width: 50px; /* Ancho fijo y estrecho */
+  min-width: 50px;
+  padding: 0; /* Padding manejado por wrapper o botón */
+  text-align: center;
+  vertical-align: middle;
+  border-radius: 0 8px 8px 0; /* Redondeo derecho */
+  overflow: visible; /* Permite que dropdown se vea */
+  position: relative; /* Contexto para dropdown */
+}
+/* Ajuste para que redondeo derecho esté SOLO en esta última columna */
+.tabla-tareas td:nth-child(5) {
+  /* Celda Entrega */
+  border-radius: 0;
+}
+/* Ajuste wrapper celda acciones (si se usa en desktop) */
+.tabla-tareas td.col-acciones .cell-content-wrapper {
+  padding: 12px 5px 12px 5px; /* Padding ajustado */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: none; /* Sin fondo propio */
+  border-radius: 0 8px 8px 0; /* Redondeo */
+  overflow: visible;
+}
+
+/* Contenedor del botón y dropdown */
+.tarea-menu-container {
+  position: relative; /* Contexto para el dropdown */
+  display: flex; /* Centra el botón si es necesario */
+  justify-content: center;
+  align-items: center;
+  height: 100%; /* Ocupa altura de celda */
+}
+
+/* Botón del menú (tres puntos) */
+.btn-tarea-menu {
+  /* Hereda estilos de .btn-icon */
+  width: 36px;
+  height: 36px;
+  z-index: 2;
+  position: relative;
+  /* color: var(--text-muted); */ /* Color base */
+}
+/* .btn-tarea-menu:hover { background-color: var(--accent-color-hover); color: var(--accent-color); } */
+
+/* Menú desplegable */
+.tarea-actions-dropdown {
+  position: absolute; /* <<< AÑADIDO: Saca del flujo normal */
+  top: 0; /* Posición inicial relativa al container, no importa mucho */
+  right: 0;
+  /* --- Mantiene el resto --- */
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  width: 160px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  visibility: hidden; /* <<< MANTIENE oculto */
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1; /* <<< Ponerlo detrás por si acaso */
+}
+.tarea-actions-dropdown.visible {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+  transform: translateY(-50%) translateX(0); /* Efecto entrada */
+}
+
+/* Botones dentro del dropdown */
+.tarea-actions-dropdown button {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--text-base); /* Color texto normal */
+  white-space: nowrap;
+}
+.tarea-actions-dropdown button:hover {
+  background-color: var(--accent-color-hover);
+}
+.tarea-actions-dropdown button span {
+  /* Contenedor icono */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px; /* Espacio para icono */
+  flex-shrink: 0;
+}
+.tarea-actions-dropdown button span svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Botón eliminar específico */
+.tarea-actions-dropdown button.btn-eliminar-item {
+  color: #e74c3c; /* Rojo */
+}
+.tarea-actions-dropdown button.btn-eliminar-item:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+
+/* Ajuste Responsivo Menú (Opcional: abrir hacia arriba en móvil si está abajo) */
+@media (max-width: 900px) {
+  .tabla-tareas td.col-acciones,
+  .tabla-tareas th.col-acciones {
+    /* Oculta también el header si estuviera visible */
+    display: none;
+  }
+  .tabla-tareas td:nth-child(5) {
+    /* Celda Entrega */
+    border-radius: 0 8px 8px 0;
+  }
+}
+
+.tarea-actions-dropdown-active {
+  position: fixed; /* <<< Posición fija respecto al viewport */
+  z-index: 1050; /* <<< Z-INDEX MUY ALTO (encima de modales si es necesario) */
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto; /* Permite clics */
+  transition:
+    opacity 0.15s ease-out,
+    transform 0.15s ease-out; /* Transición suave */
+  /* JS establecerá top y left */
+}
+
+/* --- Estilos Modo Selección Tareas --- */
+
+/* Header contextual base (oculto por defecto) */
+.panel-header.contextual {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  /* Opcional: fondo diferente */
+  /* background-color: rgba(var(--accent-color-rgb), 0.1); */
+  padding: 10px 15px; /* Ajusta padding si es necesario */
+  border-bottom: 1px solid var(--border-color); /* Opcional: separador */
+}
+
+/* Contador de selección */
+#seleccion-contador {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--accent-color); /* O var(--text-muted) */
+}
+
+/* Grupo de acciones en header contextual */
+.panel-header.contextual .actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espacio entre botones */
+}
+
+/* Estilo para Checkbox "Seleccionar Todas" */
+/* (Asegúrate que .custom-checkbox-container ya esté definido globalmente o defínelo aquí) */
+.panel-header.contextual .custom-checkbox-container {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.panel-header.contextual .custom-checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.panel-header.contextual .custom-checkbox-container label {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.panel-header.contextual .custom-checkbox-container input:hover + label {
+  border-color: var(--accent-color);
+}
+.panel-header.contextual .custom-checkbox-container input:checked + label {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23fff' d='M6.564.75l-3.59 3.612-1.538-1.55L0 4.26 2.974 7.25 8 2.193z'/%3e%3c/svg%3e");
+  background-size: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.panel-header.contextual
+  .custom-checkbox-container
+  input:indeterminate
+  + label {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 4'%3e%3cpath stroke='%23fff' stroke-width='1' d='M0 2h4'/%3e%3c/svg%3e");
+  background-size: 10px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+/* Estilos para filas cuando modo selección está activo */
+#tabla-tareas-body.modo-seleccion-activo tr {
+  cursor: pointer; /* Indica que se puede hacer clic para seleccionar */
+  /* background-color: transparent !important; */ /* Podría anular hover/vencida, cuidado */
+  transition: background-color 0.15s ease-out; /* Suaviza cambio de fondo */
+}
+/* Quita hover normal si estamos en modo selección */
+#tabla-tareas-body.modo-seleccion-activo tr:not(.seleccionada-en-modo):hover {
+  background-color: rgba(
+    var(--text-base-rgb),
+    0.04
+  ) !important; /* Hover muy sutil */
+}
+
+/* Estilo visual para filas SELECCIONADAS DENTRO del modo selección */
+#tabla-tareas-body.modo-seleccion-activo tr.seleccionada-en-modo {
+  background-color: var(--accent-color-active) !important;
+  color: var(--accent-text-color) !important;
+  border-bottom-color: transparent;
+}
+#tabla-tareas-body.modo-seleccion-activo tr.seleccionada-en-modo td {
+  color: var(--accent-text-color) !important;
+}
+#tabla-tareas-body.modo-seleccion-activo
+  tr.seleccionada-en-modo
+  .cell-content-wrapper {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+#tabla-tareas-body.modo-seleccion-activo
+  tr.seleccionada-en-modo
+  .prioridad-indicador {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+
+/* Ocultar menú contextual (3 puntos) durante modo selección */
+#tabla-tareas-body.modo-seleccion-activo .tarea-menu-container {
+  /* visibility: hidden; */
+  display: none; /* Oculta completamente */
+}

@@ -49,19 +49,29 @@ export async function cambiarPagina(idPagina) {
       );
     }
     appContent.innerHTML = await response.text();
+
     const newPage = appContent.querySelector('.page');
+
     if (newPage) {
-      newPage.classList.add('visible');
+      // Usamos setTimeout(0) para darle al navegador un "respiro"
+      // y asegurar que el DOM esté 100% listo antes de inicializar.
+      // Esto arreglará el 'long press'.
+      setTimeout(() => {
+        newPage.classList.add('visible');
+        if (pageInitializers[idPagina]) {
+          pageInitializers[idPagina](newPage); // Le pasamos newPage
+        } else {
+          console.warn(
+            `No se encontró una función de inicialización para la página: ${idPagina}`,
+          );
+        }
+      }, 0); // <-- ESTE ES EL ARREGLO
+    } else {
+      console.error(
+        `La página ${idPagina} se cargó pero no se encontró el elemento .page`,
+      );
     }
-    setTimeout(() => {
-      if (pageInitializers[idPagina]) {
-        pageInitializers[idPagina]();
-      } else {
-        console.warn(
-          `No se encontró una función de inicialización para la página: ${idPagina}`,
-        );
-      }
-    }, 0);
+
     document.querySelectorAll('.nav-item').forEach((item) => {
       item.classList.toggle('active', item.dataset.page === idPagina);
     });

@@ -24,6 +24,8 @@ export function cargarIconos() {
   document.querySelector(
     '.nav-item[data-page="proyectos"] .nav-icon',
   ).innerHTML = ICONS.proyectos;
+  const btnFlotante = document.getElementById('btn-abrir-creacion-movil');
+  if (btnFlotante) btnFlotante.innerHTML = ICONS.add;
 
   // Los botones de cierre ahora se cargan con cada página, por lo que los buscamos de forma segura aquí.
   // Esto se ejecutará cada vez que se cargue una página que los contenga.

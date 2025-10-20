@@ -11,6 +11,47 @@
         <button class="btn-filtro" data-sort="prioridad">Prioridad</button>
       </div>
     </div>
+    <div
+      id="tareas-header-contextual"
+      class="panel-header contextual"
+      style="display: none"
+    >
+      <span id="seleccion-contador">0 seleccionada(s)</span>
+      <div class="actions-group">
+        <div
+          class="custom-checkbox-container"
+          title="Seleccionar Todas/Ninguna"
+        >
+          <input
+            type="checkbox"
+            id="seleccionar-todas-tareas"
+            data-action="seleccionar-todas"
+          />
+          <label for="seleccionar-todas-tareas"></label>
+        </div>
+
+        <button
+          id="btn-completar-seleccionadas"
+          class="btn-icon"
+          title="Marcar como Completadas"
+          data-action="completar-seleccion"
+        ></button>
+
+        <button
+          id="btn-eliminar-seleccionadas"
+          class="btn-icon btn-eliminar-item"
+          title="Eliminar Seleccionadas"
+          data-action="eliminar-seleccion"
+        ></button>
+
+        <button
+          id="btn-cancelar-seleccion"
+          class="btn-icon"
+          title="Cancelar Selección"
+          data-action="cancelar-seleccion"
+        ></button>
+      </div>
+    </div>
     <div class="tabla-container">
       <table class="tabla-tareas tabla-tareas-visible">
         <thead>
@@ -20,6 +61,7 @@
             <th data-sort="prioridad" class="col-prioridad">Prioridad</th>
             <th data-sort="titulo">Título</th>
             <th data-sort="fecha">Entrega</th>
+            <th class="col-acciones"></th>
           </tr>
         </thead>
         <tbody id="tabla-tareas-body"></tbody>
