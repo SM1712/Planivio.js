@@ -1,89 +1,165 @@
-/* --- ESTILOS PÁGINA CALENDARIO --- */
+/* ==========================================================================
+   ESTILOS PÁGINA CALENDARIO (Revisado Fase 5 - Pulido v5 FINAL)
+   ========================================================================== */
+
+/* --- Contenedor Principal --- */
 #page-calendario {
-  gap: 10px;
+  display: flex;
+  gap: 20px;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
 }
+
+/* --- Panel Izquierdo: Calendario --- */
 .panel-calendario {
-  flex: 2;
-  padding: 0;
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-content);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-medium);
+  border: 1px solid var(--border-color);
+  padding: 15px 20px;
+  overflow: hidden;
+  box-sizing: border-box;
 }
-.panel-resumen {
-  flex: 1;
-  overflow-y: auto;
-}
+
 .calendario-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 20px;
+  min-height: 0;
 }
+
+/* --- Cabecera del Calendario (Ajustada) --- */
 .calendario-header {
   display: flex;
   align-items: center;
-  margin-bottom: 15px;
+  margin-bottom: 10px;
   gap: 10px;
+  flex-shrink: 0;
+  /* CORRECCIÓN Header v2: Evitar wrap, usar flex-basis */
+  flex-wrap: nowrap;
+  justify-content: space-between; /* Espacio entre grupos */
 }
+
+/* Contenedor Nav+Título */
+.calendario-nav-titulo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* CORRECCIÓN Header v2: Darle base flexible pero permitir encoger */
+  flex: 1 1 auto;
+  min-width: 150px; /* Ancho mínimo para el título */
+  overflow: hidden; /* Ocultar si el título es muy largo */
+}
+
 #cal-mes-ano {
   color: var(--accent-color);
-  font-size: 1.5rem;
-  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 600;
   margin: 0;
-  flex-grow: 1;
+  order: 2;
+  /* CORRECCIÓN Header v2: Permitir que se encoja y use ellipsis */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center; /* Centrar dentro de su espacio */
+  flex-grow: 1; /* Ocupar espacio disponible en el contenedor */
 }
+
 .cal-nav-btn {
   background: none;
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  width: 35px;
-  height: 35px;
+  border: none;
+  padding: 5px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
   transition: all 0.2s ease;
+  color: var(--text-muted);
+  order: 1;
+  flex-shrink: 0; /* No encoger botones */
 }
+#cal-btn-next {
+  order: 3;
+}
+
 .cal-nav-btn:hover {
   background-color: var(--accent-color-hover);
   color: var(--accent-color);
 }
-#btn-nuevo-evento {
-  margin-left: auto;
+.cal-nav-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
 }
+
+#btn-nuevo-evento {
+  padding: 6px 14px;
+  /* CORRECCIÓN Header v2: Asegurar que no se encoja */
+  flex-shrink: 0;
+  /* Quitar order y margen auto, dejar que justify-content lo posicione */
+}
+
+/* --- Días de la Semana --- */
 .calendario-dias-semana {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+  flex-shrink: 0;
 }
 .calendario-dias-semana > div {
   text-align: center;
-  font-weight: bold;
-  padding-bottom: 10px;
+  font-weight: 600;
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
 }
+
+/* --- Contenedor de Cuadrículas (Wrapper) --- */
 .calendario-grid-wrapper {
   position: relative;
   flex-grow: 1;
+  overflow: hidden;
+  border-radius: var(--border-radius-medium);
+  min-height: 0;
 }
+
+/* --- Cuadrículas Base --- */
 .calendario-grid-base {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-auto-rows: 1fr;
-  border-radius: 8px;
-  overflow: hidden;
+  grid-auto-rows: minmax(65px, 1fr); /* Reducido para evitar overflow */
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100%;
   height: 100%;
+  box-sizing: border-box;
 }
+
+/* Cuadrícula Eventos */
 #calendario-eventos-grid {
   z-index: 10;
   pointer-events: none;
+  border: none;
 }
+#calendario-eventos-grid > div {
+  position: relative;
+  padding: 0 1px 1px 0;
+  box-sizing: border-box;
+}
+
+/* Cuadrícula Días */
 #calendario-grid {
   z-index: 5;
-  background-color: transparent;
+  background-color: var(--bg-surface);
   border-left: 1px solid var(--border-color);
   border-top: 1px solid var(--border-color);
 }
@@ -91,33 +167,37 @@
   border-right: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
   position: relative;
+  padding: 3px;
+  transition: background-color 0.2s ease;
+  box-sizing: border-box;
 }
-#calendario-eventos-grid > div {
-  position: relative;
-}
+
+/* --- Estilos Celdas (Sin cambios) --- */
 .dia-mes {
   cursor: pointer;
   height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 .dia-mes:hover {
   background-color: var(--accent-color-hover);
 }
 .dia-fantasma {
-  color: var(--text-muted);
-  background-color: #f8f9fa;
-}
-body.dark-theme .dia-fantasma {
-  background-color: #303134;
+  color: var(--text-muted-more);
+  background-color: var(--bg-surface-alt);
+  cursor: default;
 }
 .dia-numero {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  width: fit-content;
+  margin-left: auto;
+  margin-bottom: 2px;
 }
-.dia-hoy {
-  background-color: rgba(var(--accent-color-rgb), 0.15);
+.dia-fantasma .dia-numero {
+  opacity: 0.4;
 }
 .dia-hoy .dia-numero {
   font-weight: bold;
@@ -129,139 +209,633 @@ body.dark-theme .dia-fantasma {
   display: flex;
   align-items: center;
   justify-content: center;
-  top: 2px;
-  left: 2px;
+  padding: 0;
+  margin: 0 0 2px auto;
+  opacity: 1;
+}
+.dia-mes.dia-seleccionado {
+  background-color: var(--accent-color-selected);
 }
 .cal-puntos-container {
-  position: absolute;
-  top: 4px;
-  right: 4px;
   display: flex;
+  /* CORRECCIÓN: Apila las filas verticalmente */
   flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  gap: 2px; /* Pequeño espacio entre filas de prioridad */
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  /* Quitar width y justify-content que ya no aplican */
+  /* width: calc(100% - 6px); */
+  /* justify-content: flex-start; */
+  align-items: flex-start; /* Alinea las filas a la izquierda */
 }
 .cal-prioridad-fila {
-  display: flex;
-  gap: 2px;
+  display: flex; /* Organiza los puntos horizontalmente dentro de la fila */
+  gap: 3px; /* Espacio entre puntos en la misma fila */
 }
 .cal-evento-tarea {
-  width: 5px;
+  width: 5px; /* Ajusta el tamaño si es necesario */
   height: 5px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 .cal-evento-largo {
   position: absolute;
-  width: 100%;
-  height: 6px;
+  height: 8px;
+  margin: 0 1px;
+  opacity: 0.85;
+  transition: opacity 0.2s ease;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  width: calc(100% - 2px);
 }
 .cal-evento-largo.evento-inicio {
-  border-radius: 3px 0 0 3px;
+  border-radius: 4px 0 0 4px;
 }
 .cal-evento-largo.evento-fin {
-  border-radius: 0 3px 3px 0;
+  border-radius: 0 4px 4px 0;
 }
 .cal-evento-largo.evento-inicio.evento-fin {
-  border-radius: 3px;
+  border-radius: 4px;
 }
-.resumen-curso-titulo {
-  font-size: 1rem;
+
+/* --- Panel Resumen (Sin cambios) --- */
+.panel-resumen {
+  flex: 1.5;
+  background-color: var(--bg-content);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-medium);
+  border: 1px solid var(--border-color);
+  padding: 25px;
+  overflow-y: auto;
+  transition:
+    transform 0.3s ease-out,
+    opacity 0.3s ease-out,
+    visibility 0.3s;
+}
+/* ... (Resto de estilos resumen idénticos) ... */
+#resumen-titulo {
   color: var(--accent-color);
-  margin-top: 20px;
-  margin-bottom: 8px;
-  padding-bottom: 5px;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-right: 45px;
+  position: relative;
+}
+#resumen-contenido > p {
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  margin-top: 30px;
+}
+.resumen-curso-titulo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-base);
+  margin-top: 25px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color-light);
 }
 .resumen-curso-titulo:first-child {
   margin-top: 0;
 }
+.resumen-subtitulo {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
 .resumen-curso-lista {
   list-style: none;
   padding: 0;
-  margin: 0;
+  margin: 0 0 15px 0;
 }
 .resumen-curso-lista li {
-  padding: 4px 12px;
-  font-size: 0.9rem;
+  padding: 10px 12px; /* Ajustar padding */
+  font-size: 0.9rem; /* Un poco más pequeño */
   display: flex;
-  align-items: center;
-  gap: 8px;
+  /* CORRECCIÓN Tareas Layout: Quitar align-items para layout vertical */
+  /* align-items: center; */
+  gap: 12px;
   position: relative;
+  border-radius: var(--border-radius-medium);
+  transition: background-color 0.2s ease;
+  /* CORRECCIÓN Fondo Ligero: Añadir fondo sutil */
+  background-color: rgba(var(--text-base-rgb), 0.05); /* Fondo muy sutil */
+  margin-bottom: 6px; /* Espacio entre items */
 }
-.resumen-subtitulo {
-  font-size: 0.9rem;
-  font-weight: bold;
-  margin-top: 10px;
-  margin-bottom: 5px;
+.resumen-curso-lista li:hover {
+  /* CORRECCIÓN Fondo Ligero: Aclarar un poco más en hover */
+  background-color: rgba(var(--text-base-rgb), 0.08);
 }
-.resumen-item-texto {
-  display: flex;
-  flex-direction: column;
+#calendario-resumen:has(#resumen-titulo:not(:containing('Resumen de')))
+  .resumen-curso-lista
+  li.item-hoy::before {
+  display: none;
 }
-.resumen-fecha-evento {
-  color: var(--text-muted);
-  font-size: 0.8em;
+#resumen-titulo #btn-cerrar-resumen-dia {
+  position: absolute;
+  right: 0px; /* Pegado a la derecha (del padding) */
+  transform: translateY(-50%);
+  /* Quitar display: block si lo tenía en @media */
+  display: flex !important;
+}
+.resumen-curso-lista li.tarea-item-resumen:hover {
+  background-color: var(--accent-color-hover);
+  cursor: pointer;
 }
 .resumen-curso-lista li.item-hoy::before {
   content: '';
   position: absolute;
-  left: 0;
+  left: 0px;
   top: 50%;
   transform: translateY(-50%);
-  width: 4px;
-  height: 70%;
+  left: 3px;
+  /* --- INICIO CORRECCIÓN --- */
+  width: 4px; /* Más delgado */
+  height: 80%; /* Más corto y fijo */
   background-color: var(--accent-color);
+  /* Redondeo completo en los extremos */
   border-radius: 2px;
+  /* Quitar sombra si no te gusta */
+  box-shadow: 1px 0 3px rgba(0, 0, 0, 0.1);
+  /* --- FIN CORRECCIÓN --- */
 }
-#evento-detalles-header {
+.resumen-curso-lista li.tarea-item-resumen {
+  /* display: flex; ya lo tiene el li */
+  align-items: flex-start; /* Alinear al inicio verticalmente */
+}
+/* Contenedor para el punto y la info vertical */
+.resumen-tarea-info-wrapper {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column; /* Apilar título y meta */
+  flex-grow: 1;
+  overflow: hidden; /* Evitar desbordes */
 }
-#evento-detalles-header .prioridad-indicador {
-  width: 18px;
-  height: 18px;
+/* Estilo para el título de la tarea */
+.resumen-tarea-titulo {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px; /* Espacio bajo el título */
 }
-#evento-detalles-titulo {
-  margin: 0;
-  font-size: 1.5rem;
-}
-#evento-detalles-fechas {
-  margin: 0;
+/* Estilo para la fecha/meta */
+.resumen-tarea-meta {
   color: var(--text-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Asegurar que el punto de prioridad no se estire */
+.resumen-curso-lista li.tarea-item-resumen .prioridad-indicador {
+  flex-shrink: 0;
+  margin-top: 3px; /* Alinear verticalmente con el texto del título */
+}
+.resumen-item-texto {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: hidden;
+}
+.resumen-item-texto > span:first-child {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.resumen-fecha-evento,
+.resumen-item-descripcion,
+.resumen-item-proyecto {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
 }
 .btn-editar-resumen {
   background: none;
   border: none;
-  cursor: pointer;
   padding: 2px;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-left: auto;
+  flex-shrink: 0;
 }
 .btn-editar-resumen:hover {
   background-color: var(--accent-color-hover);
 }
 .btn-editar-resumen svg {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   fill: var(--text-muted);
 }
 .btn-editar-resumen:hover svg {
   fill: var(--accent-color);
 }
-.acciones-rapidas-container {
+.resumen-dia-acciones {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+#btn-agregar-rapido-dia {
+  background: none;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  padding: 4px 10px;
+  font-size: 0.9rem;
+  border-radius: var(--border-radius-medium);
+}
+#btn-agregar-rapido-dia:hover {
+  background-color: var(--accent-color-hover);
+}
+#btn-cerrar-resumen-dia {
+  /* Estilos base ya definidos */
+}
+.dia-mes.selection-range {
+  background-color: rgba(var(--accent-color-rgb), 0.3);
+  box-shadow: inset 0 0 0 1px var(--accent-color);
+}
+
+/* --- ESTILOS ADICIONALES PARA MODAL DE EVENTO --- */
+/* Contenedor para agrupar campos en fila */
+.form-group-row {
+  display: flex;
+  gap: 15px; /* Espacio entre campos */
+  align-items: flex-end; /* Alinear ABAJO por defecto (mejor para labels arriba) */
+  /* Si prefieres alinear arriba: align-items: flex-start; */
+  flex-wrap: wrap; /* Permitir envolver si no caben */
+  max-width: 550px;
+}
+
+/* Campo que puede ocupar más espacio */
+.form-group-row .form-group-expand {
+  flex: 1; /* Ocupa el espacio disponible */
+  min-width: 100px; /* Ancho mínimo para evitar que se aplaste */
+}
+
+/* Campo más compacto */
+.form-group-row .form-group-compact {
+  flex: 0 0 auto; /* No crece, tamaño basado en contenido */
+}
+
+/* Forzar que los .form-group dentro de una fila sean flex column */
+.form-group-row .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px; /* Espacio entre label e input */
+  flex: 1; /* Permitir que crezcan por defecto */
+}
+
+/* --- AJUSTES ESPECÍFICOS PARA MODAL DE EVENTO --- */
+
+/* Aplicar flexbox directamente al formulario si no lo tiene */
+#form-nuevo-evento {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.dia-mes.selection-range {
-  background-color: rgba(var(--accent-color-rgb), 0.3);
+
+/* Usaremos una sola fila flexible para fechas, color, recurrencia */
+.form-group-row-flexible {
+  display: flex;
+  flex-wrap: wrap; /* Permitir que los elementos se envuelvan */
+  gap: 10px; /* Espacio horizontal y vertical */
+  align-items: flex-end; /* Alinear abajo */
+}
+
+/* Cada grupo dentro de la fila flexible */
+.form-group-row-flexible > .form-group {
+  flex: 1 1 120px; /* Base de 150px, permite crecer y encoger */
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#form-nuevo-evento > .form-group {
+  gap: 3px; /* Era 5px */
+}
+
+/* Ajuste específico para la paleta de colores */
+.form-group:has(.color-palette) {
+  flex-basis: auto; /* Dejar que tome el ancho necesario */
+  min-width: 230px; /* Ancho mínimo para que quepan los swatches */
+  flex-grow: 0;
+  align-self: flex-end;
+}
+.color-palette {
+  justify-content: flex-start;
+}
+
+/* Ocultar input fecha fin recurrencia */
+.hidden {
+  display: none !important;
+}
+
+/* --- REDISEÑO MODAL CHOOSER --- */
+#modal-chooser-crear .modal-content {
+  max-width: 380px; /* Más estrecho */
+  padding: 25px;
+}
+
+#modal-chooser-crear .modal-header h3 {
+  font-size: 1.2rem; /* Título un poco más pequeño */
+  text-align: center;
+  width: 100%; /* Ocupar todo el ancho */
+  margin-bottom: 5px; /* Menos espacio debajo */
+}
+
+.chooser-body {
+  display: flex; /* O grid, si prefieres 2 columnas */
+  flex-direction: column; /* Apilar botones */
+  gap: 15px; /* Espacio entre botones */
+}
+
+.btn-chooser {
+  /* Hereda estilos de botón base si los tienes */
+  display: flex;
+  align-items: center; /* Alinear ícono y texto */
+  gap: 12px;
+  padding: 15px;
+  border-radius: var(--border-radius-medium);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-surface); /* Fondo sutil */
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%; /* Ocupar ancho */
+}
+.btn-chooser:hover {
+  background-color: var(--accent-color-hover);
+  border-color: var(--accent-color-soft);
+  box-shadow: var(--shadow-small);
+}
+
+/* Icono dentro del botón chooser */
+.btn-chooser .chooser-icon svg {
+  /* Asumiendo que añades un span con esta clase */
+  width: 24px;
+  height: 24px;
+  fill: var(--accent-color); /* Color de acento para el ícono */
+  flex-shrink: 0;
+}
+
+/* Contenedor para texto principal y secundario */
+.btn-chooser .chooser-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.btn-chooser span {
+  /* Texto principal */
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-chooser small {
+  /* Texto secundario */
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resumen-item-curso {
+  color: var(--text-muted);
+  font-size: 0.8em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   ADAPTACIÓN MÓVIL (Basado en el CSS que funcionaba)
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  #page-calendario {
+    flex-direction: column;
+    padding: 5px;
+    gap: 5px;
+    height: 100%;
+    box-sizing: border-box;
+  }
+
+  .panel-calendario {
+    flex: 1; /* Permitir crecer/encoger */
+    min-height: 0; /* Necesario para flex vertical */
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--border-radius-large);
+  }
+
+  .calendario-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    /* Recuperamos el min-height que funcionaba */
+    min-height: 0;
+  }
+
+  /* --- Resumen Oculto/Flotante (Sin cambios) --- */
+  .panel-resumen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    padding: 20px;
+    transform: translateX(100%);
+    opacity: 0;
+    transition:
+      transform 0.3s ease-out,
+      opacity 0.3s ease-out;
+    background-color: var(--bg-content);
+    overflow-y: auto;
+  }
+  body.resumen-movil-visible #page-calendario .panel-resumen {
+    display: flex;
+    flex-direction: column;
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  /* --- Ajustes Header Móvil (Simplificado) --- */
+  .calendario-header {
+    gap: 5px;
+    margin-bottom: 5px;
+    justify-content: space-between;
+    flex-wrap: nowrap; /* Evitar wrap */
+  }
+  .calendario-nav-titulo {
+    min-width: 0; /* Permitir encoger */
+    flex: 1 1 auto; /* Ocupar espacio */
+  }
+  #cal-mes-ano {
+    font-size: 1.1rem;
+    flex-grow: 1;
+    text-align: center;
+  } /* Permitir crecer y centrar */
+  #btn-nuevo-evento {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    margin-left: 5px; /* Pequeño margen por si acaso */
+  }
+  .cal-nav-btn {
+    width: 28px;
+    height: 28px;
+  }
+  .cal-nav-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+  .calendario-dias-semana {
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+  }
+  .calendario-dias-semana > div {
+    font-size: 0.6rem;
+  }
+
+  /* --- Wrapper y Grid Móvil (Recuperando el flex:1 en wrapper) --- */
+  .calendario-grid-wrapper {
+    flex: 1; /* Forzar a que ocupe el espacio vertical */
+    min-height: 0;
+    position: relative;
+    border-radius: var(--border-radius-medium);
+  }
+
+  .calendario-grid-base {
+    grid-auto-rows: minmax(45px, 1fr);
+  }
+  #calendario-grid > div {
+    padding: 2px;
+  }
+
+  /* --- Celdas y Eventos Móvil (Sin cambios) --- */
+  .dia-numero {
+    font-size: 0.65rem;
+    padding: 1px 3px;
+  }
+  .dia-hoy .dia-numero {
+    width: 16px;
+    height: 16px;
+  }
+  .cal-puntos-container {
+    top: 2px;
+    left: 2px;
+    gap: 2px;
+  }
+  .cal-evento-tarea {
+    width: 4px;
+    height: 4px;
+  }
+  .cal-evento-largo {
+    height: 6px;
+    border-radius: 3px;
+    margin: 0;
+    width: 100%;
+  }
+  .cal-evento-largo.evento-inicio {
+    border-radius: 3px 0 0 3px;
+  }
+  .cal-evento-largo.evento-fin {
+    border-radius: 0 3px 3px 0;
+  }
+  .cal-evento-largo.evento-inicio.evento-fin {
+    border-radius: 3px;
+  }
+  #modal-nuevo-evento .modal-content {
+    max-width: 750px; /* O el ancho que prefieras para escritorio */
+  }
+
+  /* --- Botón Cerrar (Sin cambios) --- */
+  #btn-cerrar-resumen-dia {
+    display: block !important;
+    position: absolute;
+    top: 15px;
+    right: 15px;
+  }
+}
+
+@media (min-width: 901px) {
+  #modal-nuevo-evento .modal-content {
+    max-width: 800px; /* Mantener ancho mayor */
+  }
+
+  /* --- INICIO NUEVO LAYOUT FLEX 2 COLUMNAS --- */
+  #form-nuevo-evento {
+    /* Usar Flexbox para el formulario */
+    display: flex;
+    flex-wrap: wrap; /* Permitir que los grupos se envuelvan */
+    justify-content: space-between; /* Espacio entre columnas */
+    gap: 15px 20px; /* Espacio vertical y horizontal */
+  }
+
+  /* Forzar que los elementos ocupen ~mitad del ancho */
+  #form-nuevo-evento > .form-group,
+  #form-nuevo-evento > .form-group-row-flexible {
+    /* Base del 50% menos la mitad del gap horizontal */
+    flex-basis: calc(50% - 10px);
+    /* Permitir crecer si hay espacio, no encoger */
+    flex-grow: 1;
+    flex-shrink: 0;
+    box-sizing: border-box; /* Incluir padding/border en el cálculo */
+  }
+
+  /* Elementos que ocupan ancho completo */
+  #form-nuevo-evento h2, /* Título */
+  #form-nuevo-evento .modal-actions, /* Botones */
+  /* Forzar que la descripción ocupe el ancho completo */
+  #form-nuevo-evento .form-group:has(#input-evento-descripcion) {
+    flex-basis: 100%;
+  }
+
+  /* Ajustes específicos si son necesarios */
+  /* Fila Fechas: asegurar que los inputs no se aplasten */
+  #form-nuevo-evento
+    .form-group-row-flexible:has(#input-evento-inicio)
+    .form-group {
+    min-width: 130px; /* Ancho mínimo para inputs de fecha */
+  }
+  /* Fila Selects: asegurar que los selects no se aplasten */
+  #form-nuevo-evento
+    .form-group-row-flexible:has(#select-evento-proyecto)
+    .form-group {
+    min-width: 130px;
+  }
+  /* Color: Alinear paleta */
+  #form-nuevo-evento .form-group:has(#evento-color-palette) {
+    display: flex;
+    flex-direction: column;
+    /* Alinear etiqueta arriba */
+    justify-content: flex-start;
+    align-self: flex-start; /* Alinear arriba en la columna */
+  }
+  /* --- FIN NUEVO LAYOUT FLEX 2 COLUMNAS --- */
 }

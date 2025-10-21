@@ -1337,3 +1337,11 @@ tr.tarea-vencida .cell-content-wrapper {
 .filtro-submenu .opcion-btn.opcion-activa {
   background-color: rgba(var(--accent-color-rgb), 0.1);
 }
+
+/* Para resaltar la tarea al navegar a ella */
+tr.resaltado-temporal {
+  background-color: var(
+    --color-accent-hover
+  ); /* Usa el color de acento hover */
+  transition: background-color 0.3s ease-out;
+}

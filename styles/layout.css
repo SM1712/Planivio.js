@@ -128,7 +128,6 @@
   }
   .app-container {
     flex-direction: column;
-    height: auto;
   }
   .page {
     flex-direction: column;

@@ -997,6 +997,35 @@ export function inicializarTareas(pageElement) {
     console.error('Error durante el renderizado inicial:', error);
   }
 
+  // --- INICIO DE CAMBIOS (FASE 3 - Scroll-to-Task) ---
+  // Esta lógica se ejecuta DESPUÉS de renderizar,
+  // para encontrar la tarea que se seleccionó en otra página.
+  if (state.tareaSeleccionadald) {
+    const tareaElemento = document.querySelector(
+      `tr[data-id="${state.tareaSeleccionadald}"]`,
+    );
+
+    if (tareaElemento) {
+      // 1. Hacer scroll
+      tareaElemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // 2. Resaltar
+      tareaElemento.classList.add('resaltado-temporal');
+      setTimeout(() => {
+        tareaElemento.classList.remove('resaltado-temporal');
+      }, 2500); // 2.5 segundos de resaltado
+    }
+
+    // 3. Limpiar el ID del state para que no vuelva a saltar
+    // (PERO MANTENERLO para que el panel de detalles se abra)
+    // state.tareaSeleccionadald = null;  <-- NO LO LIMPIAMOS AÚN
+    // guardarDatos();
+    //
+    // NOTA: El panel de detalles se abrirá gracias a la lógica
+    // de la línea 1066 que viene justo después de esto.
+    // Limpiaremos el ID al cerrar el panel de detalles.
+  }
+
   // Muestra u oculta el panel de detalles según si hay una tarea seleccionada
   const appContainer = document.querySelector('.app-container');
   if (appContainer)

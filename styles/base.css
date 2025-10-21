@@ -17,6 +17,9 @@
   --accent-color-hover: rgba(0, 120, 215, 0.15); /* Color para hover */
   --transition-speed: 0.3s;
   --transition-easing: ease-in-out;
+  --border-radius-small: 4px; /* Ejemplo */
+  --border-radius-medium: 8px; /* Ejemplo */
+  --border-radius-large: 12px;
 }
 body.dark-theme {
   --bg-start: #1c2a38;

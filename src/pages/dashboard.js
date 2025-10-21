@@ -639,7 +639,7 @@ function handleTareaVencidaClick(event) {
   const tareaLi = event.target.closest('li[data-id]');
   if (!tareaLi) return;
   const tareaId = parseInt(tareaLi.dataset.id, 10);
-  state.tareaSeleccionadaId = tareaId;
+  state.tareaSeleccionadald = tareaId;
   guardarDatos();
   cambiarPagina('tareas');
 }
@@ -649,7 +649,7 @@ function handleTareaVencidaClick(event) {
 // ==========================================================================
 
 /** Abre el modal para añadir una nueva tarea desde el dashboard */
-function abrirModalNuevaTarea() {
+export function abrirModalNuevaTarea(fechaPorDefecto = null) {
   console.log('[Dashboard] Entrando a abrirModalNuevaTarea...'); // Log
 
   const form = document.getElementById('form-dashboard-nueva-tarea');
@@ -669,8 +669,14 @@ function abrirModalNuevaTarea() {
       true,
     );
     popularSelectorDeProyectos('dashboard-select-proyecto-tarea');
-    document.getElementById('dashboard-input-fecha-tarea').valueAsDate =
-      new Date();
+    const inputFecha = document.getElementById('dashboard-input-fecha-tarea');
+    if (fechaPorDefecto) {
+      // Si pasamos una fecha (desde calendario.js)
+      inputFecha.value = fechaPorDefecto;
+    } else {
+      // Si no (desde el propio dashboard), ponemos la de hoy
+      inputFecha.valueAsDate = new Date();
+    }
     console.log('[Dashboard] Selectores populados y fecha establecida.');
   } catch (error) {
     console.error('[Dashboard] Error al popular selectores o fecha:', error);

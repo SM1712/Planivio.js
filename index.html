@@ -196,26 +196,71 @@
       <form id="form-nuevo-evento" class="modal-content modal-compacto">
         <h2 id="modal-evento-titulo">Agregar Nuevo Evento</h2>
         <input type="hidden" id="input-evento-id" />
+
         <div class="form-group">
           <label for="input-evento-titulo">Título del evento:</label>
           <input type="text" id="input-evento-titulo" required />
         </div>
-        <div class="form-row">
+
+        <div class="form-group-row-flexible">
           <div class="form-group">
             <label for="input-evento-inicio">Fecha de Inicio:</label>
             <input type="date" id="input-evento-inicio" required />
           </div>
-          <div>
+          <div class="form-group">
             <label for="input-evento-fin">Fecha de Fin:</label>
             <input type="date" id="input-evento-fin" required />
           </div>
         </div>
+
+        <div class="form-group">
+          <label for="input-evento-descripcion">Descripción</label>
+          <textarea id="input-evento-descripcion" rows="3"></textarea>
+        </div>
+
+        <div class="form-group-row-flexible">
+          <div class="form-group">
+            <label for="select-evento-proyecto"
+              >Asignar a Proyecto (Opcional)</label
+            >
+            <select id="select-evento-proyecto">
+              <option value="">Ninguno</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="select-evento-curso">Asignar a Curso (Opcional)</label>
+            <select id="select-evento-curso">
+              <option value="">Ninguno</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="evento-select-recurrencia">Repetir</label>
+            <select id="evento-select-recurrencia" name="recurrencia-tipo">
+              <option value="nunca" selected>Nunca</option>
+              <option value="diario">Diariamente</option>
+              <option value="semanal">Semanalmente</option>
+              <option value="quincenal">Cada 2 semanas</option>
+              <option value="mensual">Mensualmente</option>
+              <option value="anual">Anualmente</option>
+            </select>
+          </div>
+          <div class="form-group hidden" id="evento-fin-recurrencia-container">
+            <label for="evento-input-fin-recurrencia">Hasta</label>
+            <input
+              type="date"
+              id="evento-input-fin-recurrencia"
+              name="recurrencia-fin"
+              placeholder="dd/mm/aaaa"
+            />
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Color del evento:</label>
           <div id="evento-color-palette" class="color-palette">
             <button
               type="button"
-              class="color-swatch"
+              class="color-swatch active"
               data-color="#e74c3c"
               style="background-color: #e74c3c"
             ></button>
@@ -272,6 +317,64 @@
           </button>
         </div>
       </form>
+    </div>
+    <div id="modal-chooser-crear" class="modal-overlay">
+      <div class="modal-content modal-pequeno">
+        <div class="modal-header">
+          <h3 id="chooser-crear-titulo">¿Qué deseas agregar?</h3>
+          <button
+            class="btn-icon btn-cerrar-modal"
+            data-modal-id="modal-chooser-crear"
+            data-action="cerrar-modal"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+            >
+              <path
+                d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body chooser-body">
+          <button id="btn-chooser-evento" class="btn-chooser">
+            <span class="chooser-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M17 12H12V17H17V12ZM16 1V3H8V1H6V3H5C3.89 3 3.01 3.89 3.01 5L3 19C3 20.1 3.89 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.89 20.1 3 19 3H18V1H16ZM19 19H5V8H19V19Z"
+                />
+              </svg>
+            </span>
+            <div class="chooser-text">
+              <span>Nuevo Evento</span>
+              <small>Bloquear tiempo en el calendario</small>
+            </div>
+          </button>
+          <button id="btn-chooser-tarea" class="btn-chooser">
+            <span class="chooser-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.9 22 6 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20ZM11.2 15.6L9.8 17L7 14.2L8.4 12.8L9.8 14.2L12.6 11.4L14 12.8L11.2 15.6Z"
+                />
+              </svg>
+            </span>
+            <div class="chooser-text">
+              <span>Nueva Tarea</span>
+              <small>Añadir un pendiente con fecha</small>
+            </div>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="modal-evento-detalles" class="modal-overlay">
