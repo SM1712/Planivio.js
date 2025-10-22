@@ -475,7 +475,9 @@ function mostrarResumenMes(mes, ano) {
           inicioStr === finStr ? inicioStr : `${inicioStr} - ${finStr}`;
         // Obtener nombre del proyecto
         const proyecto = evento.proyectoId
-          ? state.proyectos.find((p) => p.id === evento.proyectoId)
+          ? state.proyectos.find(
+              (p) => String(p.id) === String(evento.proyectoId),
+            ) // <-- Convertir a String y usar ===
           : null;
         const proyectoNombre = proyecto ? proyecto.nombre : null;
         const inicio = new Date(evento.fechaInicio + 'T00:00:00');
@@ -490,7 +492,7 @@ function mostrarResumenMes(mes, ano) {
                  <span class="resumen-fecha-evento">${fechaStr}</span>
                  ${evento.curso ? `<span class="resumen-item-curso">Curso: ${evento.curso}</span>` : ''}
                  ${proyectoNombre ? `<span class="resumen-item-proyecto">Proyecto: ${proyectoNombre}</span>` : ''}
-               </div>
+                  </div>
                  <button class="btn-editar-resumen" data-event-id="${evento.originalId || evento.id}" title="Editar Evento">
                    ${ICONS.edit || 'Editar'}
                  </button>
@@ -633,17 +635,22 @@ function mostrarResumenDia(fecha) {
     html +=
       '<h4 class="resumen-curso-titulo">Eventos</h4><ul class="resumen-curso-lista">';
     eventosDelDia.forEach((evento) => {
+      console.log(
+        'Evento en ResumenDia:',
+        evento.id,
+        'proyectoId:',
+        evento.proyectoId,
+      );
+      console.log('State Proyectos:', JSON.stringify(state.proyectos)); // Mostrar todo el array
       const proyecto = evento.proyectoId
-        ? state.proyectos.find((p) => p.id === evento.proyectoId)
+        ? state.proyectos.find((p) => String(p.id) == String(evento.proyectoId)) // <-- Convertir a String y usar ===
         : null;
       const proyectoNombre = proyecto ? proyecto.nombre : null;
       const inicio = new Date(evento.fechaInicio + 'T00:00:00');
       const fin = new Date(evento.fechaFin + 'T00:00:00');
-      const esHoy = hoy >= inicio && hoy <= fin; // Usar hoy y las fechas del evento
-      const claseHoyString = esHoy ? 'item-hoy' : '';
       const idParaAccion = evento.originalId || evento.id;
 
-      html += `<li class="${claseHoyString}">
+      html += `<li>
                <span class="prioridad-indicador" style="background-color: ${evento.color};"></span>
                <div class="resumen-item-texto">
                  <span>${evento.titulo}</span>
@@ -685,11 +692,9 @@ function mostrarResumenDia(fecha) {
       tareasAgrupadas[curso].forEach((tarea) => {
         // No necesitamos la fecha aquí, ya sabemos que es del día
         //const fecha = new Date(tarea.fecha + 'T00:00:00');
-        const esHoy = true; // Siempre es "hoy" en la vista de detalle del día
-        const claseHoyString = esHoy ? 'item-hoy' : '';
 
         // Usar el layout vertical para tareas
-        html += `<li class="${claseHoyString} tarea-item-resumen" data-task-id="${tarea.id}">
+        html += `<li class=" tarea-item-resumen" data-task-id="${tarea.id}">
                       <span class="prioridad-indicador prioridad-${tarea.prioridad.toLowerCase()}"></span>
                       <div class="resumen-tarea-info-wrapper">
                          <span class="resumen-tarea-titulo">${tarea.titulo}</span>
@@ -1040,7 +1045,20 @@ export function inicializarCalendario() {
     gridFechas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       const celda = e.target.closest('.dia-mes');
-      if (celda) abrirMenuAccionRapida(celda);
+      if (celda) {
+        // --- INICIO CORRECCIÓN ---
+        // Obtener la fecha de la celda clickeada
+        const fechaStr = celda.dataset.fecha;
+        const modalChooser = document.getElementById('modal-chooser-crear');
+
+        if (modalChooser && fechaStr) {
+          // Guardar la fecha en el dataset del modal chooser
+          modalChooser.dataset.fechaSeleccionada = fechaStr;
+          // Mostrar el modal chooser (el mismo que usa el botón '+')
+          mostrarModal('modal-chooser-crear');
+        }
+        // --- FIN CORRECCIÓN ---
+      }
     });
   }
 

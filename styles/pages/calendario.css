@@ -336,11 +336,11 @@
   /* CORRECCIÓN Fondo Ligero: Aclarar un poco más en hover */
   background-color: rgba(var(--text-base-rgb), 0.08);
 }
-#calendario-resumen:has(#resumen-titulo:not(:containing('Resumen de')))
+/*#calendario-resumen:has(#resumen-titulo:not(:containing('Resumen de')))
   .resumen-curso-lista
   li.item-hoy::before {
   display: none;
-}
+}*/
 #resumen-titulo #btn-cerrar-resumen-dia {
   position: absolute;
   right: 0px; /* Pegado a la derecha (del padding) */
