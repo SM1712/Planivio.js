@@ -99,24 +99,20 @@
           style="position: absolute; top: 10px; right: 10px"
         ></button>
         <h2>Editar Tarea</h2>
-
         <div class="form-row">
           <div class="form-group" style="flex: 1 1 100%">
             <label for="edit-select-proyecto-tarea">Proyecto (Opcional):</label>
             <select id="edit-select-proyecto-tarea"></select>
           </div>
         </div>
-
         <div class="form-group">
           <label for="edit-titulo-tarea">Título:</label>
           <input type="text" id="edit-titulo-tarea" required />
         </div>
-
         <div class="form-group">
           <label for="edit-desc-tarea">Descripción:</label>
           <textarea id="edit-desc-tarea" rows="4"></textarea>
         </div>
-
         <div class="form-row">
           <div
             class="form-group"
@@ -137,7 +133,6 @@
             </select>
           </div>
         </div>
-
         <div class="modal-actions">
           <button
             type="button"
@@ -152,15 +147,27 @@
     </div>
 
     <div id="modal-nuevo-curso" class="modal-overlay">
-      <form id="form-nuevo-curso" class="modal-content">
+      <form id="form-nuevo-curso" class="modal-content modal-curso-edit">
         <h2>Agregar Nuevo Curso</h2>
-        <label for="input-nombre-curso">Nombre del curso:</label>
-        <input
-          type="text"
-          id="input-nombre-curso"
-          placeholder="Ej: Derecho Constitucional I"
-          required
-        />
+        <div class="curso-edit-layout">
+          <div class="curso-emoji-picker">
+            <button
+              type="button"
+              id="btn-emoji-curso"
+              class="btn-emoji-picker"
+            ></button>
+            <input type="hidden" id="input-emoji-curso-hidden" />
+          </div>
+          <div class="curso-nombre-input">
+            <label for="input-nombre-curso">Nombre del curso:</label>
+            <input
+              type="text"
+              id="input-nombre-curso"
+              placeholder="Ej: Derecho Constitucional I"
+              required
+            />
+          </div>
+        </div>
         <div class="modal-actions">
           <button
             type="button"
@@ -175,11 +182,23 @@
     </div>
 
     <div id="modal-renombrar-curso" class="modal-overlay">
-      <form id="form-renombrar-curso" class="modal-content">
+      <form id="form-renombrar-curso" class="modal-content modal-curso-edit">
         <h2>Renombrar Curso</h2>
-        <input type="hidden" id="input-curso-original-nombre" />
-        <label for="input-renombrar-curso-nombre">Nuevo nombre:</label>
-        <input type="text" id="input-renombrar-curso-nombre" required />
+        <input type="hidden" id="input-renombrar-curso-id" />
+        <div class="curso-edit-layout">
+          <div class="curso-emoji-picker">
+            <button
+              type="button"
+              id="btn-renombrar-emoji-curso"
+              class="btn-emoji-picker"
+            ></button>
+            <input type="hidden" id="input-renombrar-emoji-curso-hidden" />
+          </div>
+          <div class="curso-nombre-input">
+            <label for="input-renombrar-curso-nombre">Nuevo nombre:</label>
+            <input type="text" id="input-renombrar-curso-nombre" required />
+          </div>
+        </div>
         <div class="modal-actions">
           <button
             type="button"
@@ -197,12 +216,10 @@
       <form id="form-nuevo-evento" class="modal-content modal-compacto">
         <h2 id="modal-evento-titulo">Agregar Nuevo Evento</h2>
         <input type="hidden" id="input-evento-id" />
-
         <div class="form-group">
           <label for="input-evento-titulo">Título del evento:</label>
           <input type="text" id="input-evento-titulo" required />
         </div>
-
         <div class="form-group-row-flexible">
           <div class="form-group">
             <label for="input-evento-inicio">Fecha de Inicio:</label>
@@ -213,12 +230,10 @@
             <input type="date" id="input-evento-fin" required />
           </div>
         </div>
-
         <div class="form-group">
           <label for="input-evento-descripcion">Descripción</label>
           <textarea id="input-evento-descripcion" rows="3"></textarea>
         </div>
-
         <div class="form-group-row-flexible">
           <div class="form-group">
             <label for="select-evento-proyecto"
@@ -255,7 +270,6 @@
             />
           </div>
         </div>
-
         <div class="form-group">
           <label>Color del evento:</label>
           <div id="evento-color-palette" class="color-palette">
@@ -319,6 +333,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-chooser-crear" class="modal-overlay">
       <div class="modal-content modal-pequeno">
         <div class="modal-header">
@@ -353,8 +368,7 @@
               </svg>
             </span>
             <div class="chooser-text">
-              <span>Nuevo Evento</span>
-              <small>Bloquear tiempo en el calendario</small>
+              <span>Nuevo Evento</span><small>Resalta una fecha!</small>
             </div>
           </button>
           <button id="btn-chooser-tarea" class="btn-chooser">
@@ -370,8 +384,7 @@
               </svg>
             </span>
             <div class="chooser-text">
-              <span>Nueva Tarea</span>
-              <small>Añadir un pendiente con fecha</small>
+              <span>Nueva Tarea</span><small>Añadir pendiente</small>
             </div>
           </button>
         </div>
@@ -407,7 +420,7 @@
 
     <div id="modal-accion-rapida" class="modal-overlay">
       <div class="modal-content modal-compacto">
-        <h2 id="accion-rapida-titulo">11 de Octubre</h2>
+        <h2 id="accion-rapida-titulo">Fecha</h2>
         <input type="hidden" id="accion-rapida-fecha" />
         <div class="acciones-rapidas-container">
           <button id="btn-accion-nueva-tarea" class="btn-full-width">
@@ -437,13 +450,13 @@
         <input
           type="text"
           id="input-nombre-proyecto"
-          placeholder="Ej: Ensayo Final de Filosofía"
+          placeholder="Ej: Ensayo Final"
           required
         />
         <label for="input-desc-proyecto">Descripción (opcional):</label>
         <textarea
           id="input-desc-proyecto"
-          placeholder="Objetivo principal del proyecto..."
+          placeholder="Objetivo..."
           rows="3"
         ></textarea>
         <div class="form-group">
@@ -469,29 +482,34 @@
       <form id="form-quick-add-tarea" class="modal-content">
         <h2>Añadir Tarea al Proyecto</h2>
         <div class="form-group">
-          <label>Proyecto:</label>
-          <input type="text" id="quick-add-proyecto-nombre" readonly disabled />
+          <label>Proyecto:</label
+          ><input
+            type="text"
+            id="quick-add-proyecto-nombre"
+            readonly
+            disabled
+          />
         </div>
         <div class="form-group">
-          <label for="quick-add-curso-tarea">Curso:</label>
-          <select id="quick-add-curso-tarea"></select>
+          <label for="quick-add-curso-tarea">Curso:</label
+          ><select id="quick-add-curso-tarea"></select>
         </div>
         <div class="form-group">
-          <label for="quick-add-titulo-tarea">Título de la tarea:</label>
-          <input type="text" id="quick-add-titulo-tarea" required />
+          <label for="quick-add-titulo-tarea">Título:</label
+          ><input type="text" id="quick-add-titulo-tarea" required />
         </div>
         <div class="form-group">
-          <label for="quick-add-desc-tarea">Descripción (opcional):</label>
-          <textarea id="quick-add-desc-tarea" rows="3"></textarea>
+          <label for="quick-add-desc-tarea">Descripción:</label
+          ><textarea id="quick-add-desc-tarea" rows="3"></textarea>
         </div>
         <div class="form-row">
           <div>
-            <label for="quick-add-fecha-tarea">Fecha:</label>
-            <input type="date" id="quick-add-fecha-tarea" required />
+            <label for="quick-add-fecha-tarea">Fecha:</label
+            ><input type="date" id="quick-add-fecha-tarea" required />
           </div>
           <div>
-            <label for="quick-add-prioridad-tarea">Prioridad:</label>
-            <select id="quick-add-prioridad-tarea">
+            <label for="quick-add-prioridad-tarea">Prioridad:</label
+            ><select id="quick-add-prioridad-tarea">
               <option value="Baja">Baja</option>
               <option value="Media" selected>Media</option>
               <option value="Alta">Alta</option>
@@ -510,6 +528,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-configuraciones" class="modal-overlay">
       <div class="modal-content modal-config">
         <button
@@ -539,7 +558,6 @@
               </li>
             </ul>
           </aside>
-
           <main class="settings-content">
             <div
               id="settings-usuario"
@@ -548,8 +566,8 @@
             >
               <h3>Perfil de Usuario</h3>
               <div class="config-option">
-                <label for="input-nombre-usuario">Nombre de Usuario:</label>
-                <input
+                <label for="input-nombre-usuario">Nombre:</label
+                ><input
                   type="text"
                   id="input-nombre-usuario"
                   placeholder="Tu nombre..."
@@ -574,7 +592,6 @@
                 />
               </div>
             </div>
-
             <div
               id="settings-personalizacion"
               class="settings-pane"
@@ -582,7 +599,7 @@
             >
               <h3>Tema y Apariencia</h3>
               <div class="config-option">
-                <p>Cambia la apariencia general de la aplicación.</p>
+                <p>Cambia la apariencia general.</p>
                 <button id="btn-cambiar-tema" class="btn-full-width">
                   Tema Oscuro/Claro
                 </button>
@@ -630,121 +647,98 @@
                 </div>
               </div>
             </div>
-
             <div
               id="settings-dashboard"
               class="settings-pane"
               data-tab="dashboard"
             >
               <h3>Dashboard</h3>
-              <p>
-                Selecciona los widgets que quieres que se muestren en tu
-                dashboard.
-              </p>
+              <p>Selecciona los widgets que quieres que se muestren.</p>
               <div class="widget-toggle-list">
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-racha"
                     data-widget-key="racha"
-                  />
-                  <label for="toggle-widget-racha">Racha Diaria</label>
+                  /><label for="toggle-widget-racha">Racha Diaria</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-enfoque"
                     data-widget-key="enfoque"
-                  />
-                  <label for="toggle-widget-enfoque">Enfoque del Día</label>
+                  /><label for="toggle-widget-enfoque">Enfoque del Día</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-proximamente"
                     data-widget-key="proximamente"
-                  />
-                  <label for="toggle-widget-proximamente">Próximamente</label>
+                  /><label for="toggle-widget-proximamente">Próximamente</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-eventos"
                     data-widget-key="eventos"
-                  />
-                  <label for="toggle-widget-eventos">Eventos Próximos</label>
+                  /><label for="toggle-widget-eventos">Eventos Próximos</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-progresoSemanal"
                     data-widget-key="progresoSemanal"
-                  />
-                  <label for="toggle-widget-progresoSemanal"
+                  /><label for="toggle-widget-progresoSemanal"
                     >Progreso Semanal</label
                   >
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-accesos"
                     data-widget-key="accesos"
-                  />
-                  <label for="toggle-widget-accesos">Accesos Rápidos</label>
+                  /><label for="toggle-widget-accesos">Accesos Rápidos</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-cargaSemanal"
                     data-widget-key="cargaSemanal"
-                  />
-                  <label for="toggle-widget-cargaSemanal">Carga Semanal</label>
+                  /><label for="toggle-widget-cargaSemanal"
+                    >Carga Semanal</label
+                  >
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-pomodoro"
                     data-widget-key="pomodoro"
-                  />
-                  <label for="toggle-widget-pomodoro">Contador de Foco</label>
+                  /><label for="toggle-widget-pomodoro">Contador de Foco</label>
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-apuntesRecientes"
                     data-widget-key="apuntesRecientes"
-                  />
-                  <label for="toggle-widget-apuntesRecientes"
+                  /><label for="toggle-widget-apuntesRecientes"
                     >Apuntes Recientes</label
                   >
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-progresoProyectos"
                     data-widget-key="progresoProyectos"
-                  />
-                  <label for="toggle-widget-progresoProyectos"
+                  /><label for="toggle-widget-progresoProyectos"
                     >Progreso Proyectos</label
                   >
                 </div>
-
                 <div class="widget-toggle-item">
                   <input
                     type="checkbox"
                     id="toggle-widget-tareasVencidas"
                     data-widget-key="tareasVencidas"
-                  />
-                  <label for="toggle-widget-tareasVencidas"
+                  /><label for="toggle-widget-tareasVencidas"
                     >Tareas Vencidas</label
                   >
                 </div>
@@ -752,11 +746,7 @@
             </div>
             <div id="settings-tareas" class="settings-pane" data-tab="tareas">
               <h3>Personalización de Tareas</h3>
-              <p>
-                Elige los colores para las muescas de vencimiento en la lista de
-                tareas.
-              </p>
-
+              <p>Elige los colores para las muescas de vencimiento.</p>
               <div class="muesca-options-container">
                 <div class="config-option muesca-color-option">
                   <label>Vencida:</label>
@@ -766,14 +756,14 @@
                       class="color-swatch"
                       data-color="#555555"
                       style="background-color: #555555"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#333333"
                       style="background-color: #333333"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#000000"
@@ -788,7 +778,6 @@
                     </div>
                   </div>
                 </div>
-
                 <div class="config-option muesca-color-option">
                   <label>Hoy:</label>
                   <div class="color-choices" data-muesca-key="hoy">
@@ -797,14 +786,14 @@
                       class="color-swatch"
                       data-color="#E57373"
                       style="background-color: #e57373"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#e74c3c"
                       style="background-color: #e74c3c"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#C62828"
@@ -819,7 +808,6 @@
                     </div>
                   </div>
                 </div>
-
                 <div class="config-option muesca-color-option">
                   <label>Mañana:</label>
                   <div class="color-choices" data-muesca-key="manana">
@@ -828,14 +816,14 @@
                       class="color-swatch"
                       data-color="#FFB74D"
                       style="background-color: #ffb74d"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#f39c12"
                       style="background-color: #f39c12"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#E65100"
@@ -850,7 +838,6 @@
                     </div>
                   </div>
                 </div>
-
                 <div class="config-option muesca-color-option">
                   <label>Próxima (≤ 3 días):</label>
                   <div class="color-choices" data-muesca-key="cercana">
@@ -859,14 +846,14 @@
                       class="color-swatch"
                       data-color="#81C784"
                       style="background-color: #81c784"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#2ecc71"
                       style="background-color: #2ecc71"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#1B5E20"
@@ -881,7 +868,6 @@
                     </div>
                   </div>
                 </div>
-
                 <div class="config-option muesca-color-option">
                   <label>Lejana (> 3 días):</label>
                   <div class="color-choices" data-muesca-key="lejana">
@@ -890,14 +876,14 @@
                       class="color-swatch"
                       data-color="#BDBDBD"
                       style="background-color: #bdbdbd"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#9E9E9E"
                       style="background-color: #9e9e9e"
-                    ></button>
-                    <button
+                    ></button
+                    ><button
                       type="button"
                       class="color-swatch"
                       data-color="#616161"
@@ -920,9 +906,7 @@
                   margin: 20px 0;
                 "
               />
-
               <h4>Fondo Tareas Vencidas</h4>
-
               <div class="config-option muesca-color-option">
                 <label>Color Base:</label>
                 <div class="color-choices" data-fondo-key="vencidaFondoColor">
@@ -931,14 +915,14 @@
                     class="color-swatch"
                     data-color="#FFCDD2"
                     style="background-color: #ffcdd2"
-                  ></button>
-                  <button
+                  ></button
+                  ><button
                     type="button"
                     class="color-swatch"
                     data-color="#E57373"
                     style="background-color: #e57373"
-                  ></button>
-                  <button
+                  ></button
+                  ><button
                     type="button"
                     class="color-swatch"
                     data-color="#e74c3c"
@@ -963,8 +947,7 @@
                     min="0"
                     max="1"
                     step="0.01"
-                  />
-                  <span class="range-value">8%</span>
+                  /><span class="range-value">8%</span>
                 </div>
               </div>
             </div>
@@ -972,19 +955,18 @@
         </div>
       </div>
     </div>
+
     <div id="modal-onboarding" class="modal-overlay">
       <form id="form-onboarding" class="modal-content modal-compacto">
         <h2 class="titulo-panel accent" style="border: none; padding-bottom: 0">
           ¡Bienvenido/a a Planivio!
         </h2>
-        <p>
-          Parece que es tu primera vez por aquí. Para empezar, ¿cómo te llamas?
-        </p>
+        <p>Parece que es tu primera vez. ¿Cómo te llamas?</p>
         <div class="form-group">
           <input
             type="text"
             id="input-onboarding-nombre"
-            placeholder="Escribe tu nombre aquí..."
+            placeholder="Escribe tu nombre..."
             required
           />
         </div>
@@ -993,18 +975,18 @@
         </div>
       </form>
     </div>
+
     <div id="modal-dashboard-nueva-tarea" class="modal-overlay">
       <form id="form-dashboard-nueva-tarea" class="modal-content">
         <h2 class="titulo-panel accent">Agregar Nueva Tarea</h2>
         <div class="form-group">
-          <label for="dashboard-select-curso-tarea">Curso:</label>
-          <select id="dashboard-select-curso-tarea"></select>
+          <label for="dashboard-select-curso-tarea">Curso:</label
+          ><select id="dashboard-select-curso-tarea"></select>
         </div>
         <div class="form-group">
           <label for="dashboard-select-proyecto-tarea"
             >Proyecto (Opcional):</label
-          >
-          <select id="dashboard-select-proyecto-tarea"></select>
+          ><select id="dashboard-select-proyecto-tarea"></select>
         </div>
         <input
           type="text"
@@ -1019,12 +1001,12 @@
         ></textarea>
         <div class="form-row">
           <div>
-            <label for="dashboard-input-fecha-tarea">Fecha:</label>
-            <input type="date" id="dashboard-input-fecha-tarea" required />
+            <label for="dashboard-input-fecha-tarea">Fecha:</label
+            ><input type="date" id="dashboard-input-fecha-tarea" required />
           </div>
           <div>
-            <label for="dashboard-select-prioridad-tarea">Prioridad:</label>
-            <select id="dashboard-select-prioridad-tarea">
+            <label for="dashboard-select-prioridad-tarea">Prioridad:</label
+            ><select id="dashboard-select-prioridad-tarea">
               <option value="Baja">Baja</option>
               <option value="Media" selected>Media</option>
               <option value="Alta">Alta</option>
@@ -1043,6 +1025,7 @@
         </div>
       </form>
     </div>
+
     <div id="modal-form-movil" class="modal-overlay">
       <div class="modal-content">
         <button
@@ -1053,7 +1036,11 @@
         <div id="modal-form-movil-contenido"></div>
       </div>
     </div>
-
+    <emoji-picker class="light emoji-picker-popup"></emoji-picker>
+    <script
+      type="module"
+      src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"
+    ></script>
     <script type="module" src="./src/main.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

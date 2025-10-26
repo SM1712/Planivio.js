@@ -1,13 +1,383 @@
 /* --- ESTILOS PÁGINA DE CURSOS --- */
-#page-cursos .panel {
-  flex: 1;
-  overflow-y: auto;
+
+#page-cursos {
+  display: flex;
+  overflow: hidden; /* Evita scroll a nivel de página */
+  height: 100%; /* Ocupa toda la altura */
+  position: relative; /* Contexto para el panel móvil y overlay */
 }
+
+#cursos-main-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+#cursos-main-panel > .panel-header {
+  padding: 15px 20px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-color); /* Añadido borde para consistencia */
+}
+
+/* --- Barra de Herramientas --- */
+.cursos-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+  gap: 15px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background-color: var(--bg-content);
+}
+.input-buscar {
+  flex-grow: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-base);
+  font-size: 0.9rem;
+}
+.input-buscar:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-hover);
+}
+.filtro-archivados {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.filtro-archivados label {
+  cursor: pointer;
+}
+.toggle-switch {
+  appearance: none;
+  width: 44px;
+  height: 24px;
+  background-color: var(--border-color-light);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  outline: none;
+  flex-shrink: 0;
+}
+.toggle-switch::before {
+  content: '';
+  position: absolute;
+  width: 16px; /* 18px - 2px borde */
+  height: 16px; /* 18px - 2px borde */
+  border-radius: 50%;
+  background-color: white;
+  top: 2px; /* (24 - 16) / 2 = 4 -> 3px por borde */
+  left: 2px; /* (24 - 16) / 2 = 4 -> 3px por borde */
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1); /* Borde sutil */
+}
+.toggle-switch:checked {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+.toggle-switch:checked::before {
+  transform: translateX(
+    22px
+  ); /* Ancho(44) - MargenIzq(3) - AnchoCirc(16) - MargenDer(3) = 22px */
+}
+.toggle-switch:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent-color-hover);
+}
+
+/* --- Panel Lateral (Detalles) - ESTILOS BASE Y ESCRITORIO --- */
+#cursos-details-panel {
+  flex-basis: 0;
+  flex-shrink: 0;
+  width: 0;
+  border-left: none;
+  opacity: 0;
+  visibility: hidden;
+  background-color: var(--bg-content);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  transition:
+    width 0.3s ease-in-out,
+    opacity 0.3s ease-in-out,
+    visibility 0s linear 0.3s,
+    border-left 0.3s ease-in-out;
+}
+#page-cursos.detalle-visible #cursos-details-panel {
+  flex-basis: 340px;
+  width: 340px;
+  border-left: 1px solid var(--border-color);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    width 0.3s ease-in-out,
+    opacity 0.3s ease-in-out,
+    visibility 0s linear 0s,
+    border-left 0.3s ease-in-out;
+}
+
+/* Header, Contenido, Pestañas, Listas, Botones (Comunes) */
+.panel-lateral-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+  gap: 8px;
+  background-color: var(--bg-content);
+  z-index: 1;
+}
+.panel-lateral-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--accent-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-grow: 1;
+}
+.panel-lateral-header h3 .curso-emoji {
+  font-size: 1.3em;
+  line-height: 1;
+}
+.panel-lateral-header .btn-editar-curso-panel {
+  flex-shrink: 0;
+}
+#btn-cerrar-detalles-curso {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.panel-lateral-header .btn-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.panel-lateral-contenido {
+  flex-grow: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.tabs-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0;
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background-color: var(--bg-content);
+  z-index: 1;
+}
+.tabs-nav::-webkit-scrollbar {
+  height: 4px;
+}
+.tabs-nav::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 2px;
+}
+.tab-item {
+  flex-grow: 1;
+  flex-basis: 0;
+  padding: 12px 15px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+  white-space: nowrap;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+.tab-item .tab-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  vertical-align: middle;
+}
+.tab-item:hover {
+  color: var(--text-base);
+  background-color: var(--bg-hover);
+}
+.tab-item.active {
+  color: var(--accent-color);
+  background-color: var(--bg-hover);
+}
+.tab-item.active .tab-icon svg {
+  fill: var(--accent-color);
+}
+.tab-content {
+  overflow-y: auto;
+  flex: 1;
+}
+.tab-pane {
+  display: none;
+  padding: 20px;
+  flex-direction: column;
+  gap: 25px;
+}
+.tab-pane.active {
+  display: flex;
+}
+p.detalle-lista-vacia {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+.detalle-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+}
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.stat-numero {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: var(--text-base);
+}
+.stat-etiqueta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.stat-item:nth-child(1) .stat-numero {
+  color: var(--accent-color);
+}
+.stat-item:nth-child(2) .stat-numero {
+  color: var(--color-muesca-hoy);
+}
+.stat-item:nth-child(3) .stat-numero {
+  color: var(--color-muesca-cercana);
+}
+.detalle-listas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+h5.detalle-lista-titulo {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color-light);
+}
+ul.detalle-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+li.detalle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background-color: rgba(var(--text-base-rgb, 0, 0, 0), 0.04);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+li.detalle-item:hover {
+  background-color: rgba(var(--text-base-rgb, 0, 0, 0), 0.08);
+}
+.detalle-item-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.detalle-item-titulo {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detalle-item-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.detalle-item-proyecto {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+li.detalle-item.completada .detalle-item-titulo {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+li.detalle-item.completada .prioridad-indicador {
+  background-color: var(--color-muesca-cercana);
+}
+.panel-lateral-actions {
+  display: flex;
+  padding: 10px 15px;
+  border-top: 1px solid var(--border-color);
+  gap: 10px;
+  flex-shrink: 0;
+  background-color: var(--bg-content);
+  z-index: 1;
+}
+.panel-lateral-actions .btn-secondary {
+  flex-grow: 1;
+}
+.panel-lateral-actions .btn-accent {
+  flex-shrink: 0;
+}
+
+/* --- Tarjetas de Curso (Común) --- */
 #lista-cursos-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 20px;
-  margin-top: 20px;
+  padding: 20px;
+  flex-grow: 1; /* Ocupa espacio */
+  overflow-y: auto;
 }
 .curso-card {
   border: 1px solid var(--border-color);
@@ -18,6 +388,34 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+}
+.curso-card:hover {
+  box-shadow: 0 4px 10px var(--shadow-color-hover);
+  transform: translateY(-2px);
+}
+.curso-card.selected {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px var(--accent-color-hover);
+}
+.curso-card.archivado {
+  opacity: 0.7;
+  background-color: var(--bg-content-light);
+  box-shadow: none;
+}
+.curso-card.archivado:hover {
+  opacity: 0.9;
+  transform: none;
+  box-shadow: 0 2px 4px var(--shadow-color);
+}
+.curso-card.archivado .btn-editar-curso {
+  display: none;
 }
 .curso-card h4 {
   margin: 0;
@@ -26,6 +424,13 @@
   border-bottom: 1px solid var(--border-color);
   padding-bottom: 10px;
   word-break: break-word;
+  display: flex;
+  align-items: center;
+}
+.curso-emoji {
+  font-size: 1.3em;
+  margin-right: 8px;
+  line-height: 1;
 }
 .curso-stats {
   padding: 10px 0;
@@ -40,7 +445,7 @@
 .progreso-barra-container {
   width: 100%;
   height: 8px;
-  background-color: var(--border-color);
+  background-color: var(--border-color-light);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -72,6 +477,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 2;
 }
 .curso-card-actions button:hover {
   background-color: var(--accent-color-hover);
@@ -80,7 +486,286 @@
   width: 18px;
   height: 18px;
   fill: var(--text-muted);
+  transition: fill 0.2s ease;
 }
 .curso-card-actions button:hover svg {
   fill: var(--accent-color);
+}
+
+#cursos-details-panel .panel-lateral-contenido {
+  flex-grow: 1;
+  overflow: hidden; /* Contenedor NO scrollea */
+  display: flex;
+  flex-direction: column;
+}
+#cursos-details-panel .tab-content {
+  overflow-y: auto; /* ESTE SÍ MANTIENE EL SCROLL INTERNO DEL PANEL */
+  flex: 1;
+}
+
+/* --- Adaptación Móvil Específica --- */
+@media (max-width: 900px) {
+  /* Panel Lateral se vuelve Overlay Fijo */
+  #cursos-details-panel {
+    position: fixed;
+    /* === INICIO CORRECCIÓN POSICIÓN === */
+    top: 0;
+    right: 0; /* Asegura que esté anclado a la derecha */
+    bottom: 0;
+    /* left: 0; QUITAMOS ESTO */
+    width: 100%; /* Ocupa todo el ancho */
+    /* ================================= */
+    height: 100%;
+    max-width: 100%;
+    z-index: 1050;
+    background-color: var(--bg-content); /* Fondo opaco */
+    box-shadow: -4px 0 15px rgba(0, 0, 0, 0.2); /* Sombra a la izquierda */
+    border-left: none;
+    /* === INICIO CORRECCIÓN ANIMACIÓN === */
+    transform: translateX(100%); /* Estado inicial: Fuera, a la DERECHA */
+    /* ================================== */
+    border-radius: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.3s ease-in-out; /* Solo transicionamos transform */
+  }
+  #page-cursos.detalle-visible #cursos-details-panel {
+    transform: translateX(0);
+  }
+
+  /* === INICIO RESTAURACIÓN OVERLAY === */
+  /* Overlay para oscurecer fondo */
+  #page-cursos.detalle-visible::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4); /* Negro semi-transparente */
+    z-index: 1049; /* Justo debajo del panel */
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    pointer-events: none;
+  }
+  #page-cursos.detalle-visible::before {
+    opacity: 1;
+    pointer-events: auto; /* Permite clic fuera */
+  }
+  /* ==================================== */
+
+  /* Header, Actions con Safe Area, Contenido Scrollable (Sin cambios) */
+  #cursos-details-panel .panel-lateral-header {
+    padding-top: calc(15px + env(safe-area-inset-top, 0px));
+    flex-shrink: 0;
+    background-color: transparent;
+    z-index: 1;
+    border-bottom: 1px solid var(--border-color);
+  }
+  #cursos-details-panel .tabs-nav {
+    flex-shrink: 0;
+    background-color: transparent;
+    z-index: 1;
+    border-bottom: 1px solid var(--border-color);
+  }
+  #cursos-details-panel .panel-lateral-contenido {
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;
+  }
+  #cursos-details-panel .panel-lateral-actions {
+    padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+    background-color: transparent;
+    z-index: 1;
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Toolbar y Grid (Sin cambios) */
+  .cursos-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .input-buscar {
+    min-width: unset;
+  }
+  .filtro-archivados {
+    justify-content: flex-end;
+  }
+  #lista-cursos-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Emoji en Modales (Común) */
+.emoji-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+.emoji-picker-group {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.emoji-picker-group label {
+  margin-bottom: 5px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.emoji-picker-group input {
+  width: 48px;
+  height: 48px;
+  font-size: 1.8rem;
+  text-align: center;
+  padding: 5px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  line-height: 1;
+}
+.nombre-curso-group {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+.nombre-curso-group label {
+  margin-bottom: 5px;
+}
+.nombre-curso-group input {
+  width: 100%;
+}
+#modal-nuevo-curso > label[for='input-nombre-curso'],
+#modal-renombrar-curso > label[for='input-renombrar-curso-nombre'] {
+  display: none;
+}
+
+/* Ajustes finos para pantallas muy pequeñas (Común) */
+@media (max-width: 400px) {
+  .detalle-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding-bottom: 15px;
+  }
+  .stat-numero {
+    font-size: 1.5rem;
+  }
+  .tab-pane {
+    padding: 15px;
+  }
+  #lista-cursos-container {
+    padding: 15px;
+    gap: 15px;
+  }
+  .cursos-toolbar {
+    padding: 10px 15px;
+  }
+}
+
+.modal-curso-edit .curso-edit-layout {
+  display: flex;
+  align-items: flex-start; /* Alinea arriba */
+  gap: 20px; /* Espacio entre emoji y nombre */
+  margin-bottom: 25px; /* Espacio antes de botones de acción */
+}
+
+/* Contenedor del botón emoji */
+.modal-curso-edit .curso-emoji-picker {
+  flex-shrink: 0; /* No se encoge */
+  display: flex;
+  justify-content: center; /* Centra el botón */
+}
+
+/* Estilo del botón de emoji */
+.btn-emoji-picker {
+  width: 80px; /* Ancho del botón */
+  height: 80px; /* Alto del botón */
+  border-radius: 12px; /* Bordes redondeados */
+  border: 2px dashed var(--border-color); /* Borde punteado */
+  background-color: var(--bg-content-light); /* Fondo ligeramente distinto */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+  overflow: hidden; /* Para que el emoji no se salga */
+}
+.btn-emoji-picker:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--accent-color);
+}
+.btn-emoji-picker svg {
+  width: 40px; /* Tamaño del icono placeholder */
+  height: 40px;
+  fill: var(--text-muted); /* Color grisáceo para placeholder */
+  transition: transform 0.2s ease;
+}
+.btn-emoji-picker:hover svg {
+  transform: scale(1.1); /* Efecto zoom al pasar el mouse */
+}
+/* Estilo cuando hay un emoji seleccionado (lo aplicaremos con JS) */
+.btn-emoji-picker.has-emoji {
+  border-style: solid; /* Borde sólido */
+  border-color: transparent; /* Sin borde visible */
+  font-size: 36px; /* Tamaño grande para el emoji real */
+  line-height: 1;
+}
+.btn-emoji-picker.has-emoji svg {
+  display: none; /* Oculta el icono placeholder */
+}
+
+/* Contenedor del input de nombre */
+.modal-curso-edit .curso-nombre-input {
+  flex-grow: 1; /* Ocupa el espacio restante */
+  display: flex;
+  flex-direction: column; /* Label arriba */
+}
+.modal-curso-edit .curso-nombre-input label {
+  margin-bottom: 8px; /* Espacio label-input */
+  font-weight: 500;
+  color: var(--text-base);
+}
+.modal-curso-edit .curso-nombre-input input {
+  width: 100%; /* Ocupa todo el ancho */
+}
+
+/* Ocultar labels redundantes que estaban fuera */
+.modal-curso-edit > label[for='input-nombre-curso'],
+.modal-curso-edit > label[for='input-renombrar-curso-nombre'] {
+  display: none;
+}
+
+.emoji-picker-popup {
+  position: absolute; /* Posicionamiento absoluto */
+  z-index: 1100; /* Encima de los modales (que suelen ser 1000) */
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  /* Oculto por defecto */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px); /* Pequeña animación de entrada */
+  transition:
+    opacity 0.2s ease,
+    visibility 0s linear 0.2s,
+    transform 0.2s ease;
+}
+
+.emoji-picker-popup.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+  transition:
+    opacity 0.2s ease,
+    visibility 0s linear 0s,
+    transform 0.2s ease;
+}
+
+/* Ajustes para tema oscuro (si lo tienes) */
+body.dark-theme .emoji-picker-popup {
+  --background: var(--bg-modal);
 }

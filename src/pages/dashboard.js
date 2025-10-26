@@ -7,18 +7,13 @@ import { cambiarPagina } from '../main.js';
 import {
   mostrarModal,
   cerrarModal,
-  popularSelectorDeCursos,
+  popularSelectorDeCursos, // Usaremos la función arreglada
   popularSelectorDeProyectos,
   mostrarNotificacion,
 } from '../ui.js';
-// Asegúrate que la ruta a proyectos.js sea correcta y que la función esté exportada
 import { calcularEstadisticasProyecto } from './proyectos.js';
 
-// ==========================================================================
-// ==                         CONFIGURACIÓN INICIAL                        ==
-// ==========================================================================
-
-// Mapeo entre claves de config y selectores CSS. ¡Verifica que coincidan con tu HTML!
+// ... (El resto de las funciones: widgetSelectors, frasesDashboard, obtenerSaludoYFrase, Lógica Pomodoro, calcularRacha, renderizarWidgets, etc. NO CAMBIAN) ...
 const widgetSelectors = {
   racha: '.widget-racha',
   enfoque: '.widget-enfoque',
@@ -32,8 +27,6 @@ const widgetSelectors = {
   progresoProyectos: '.widget-proyectos-progreso',
   tareasVencidas: '.widget-tareas-vencidas',
 };
-
-// Frases para el saludo dinámico
 const frasesDashboard = [
   '¿Listo para organizar tu día?',
   'Un pequeño paso hoy...',
@@ -44,32 +37,6 @@ const frasesDashboard = [
   'Divide y vencerás... ¡tus tareas!',
   '¡A darle con todo!',
 ];
-
-// ==========================================================================
-// ==                      FUNCIONES AUXILIARES DEL DASHBOARD            ==
-// ==========================================================================
-
-/**
- * Genera saludo ("Buenos días/tardes/noches, [Nombre]") y frase motivacional.
- * @returns {{saludo: string, frase: string}} Objeto con saludo y frase.
- */
-function obtenerSaludoYFrase() {
-  const hora = new Date().getHours();
-  const nombre = state.config.userName || 'Usuario';
-  let saludoBase;
-
-  if (hora < 12) saludoBase = `¡Buenos días, ${nombre}!`;
-  else if (hora < 19) saludoBase = `Buenas tardes, ${nombre}.`;
-  else saludoBase = `Buenas noches, ${nombre}.`;
-
-  const fraseAleatoria =
-    frasesDashboard[Math.floor(Math.random() * frasesDashboard.length)];
-  return { saludo: saludoBase, frase: fraseAleatoria };
-}
-
-// ==========================================================================
-// ==                 LÓGICA DEL WIDGET POMODORO (v2)                  ==
-// ==========================================================================
 let pomodoroInterval;
 let pomodoroCiclosCompletados = 0;
 let tiempoRestante = 25 * 60;
@@ -82,6 +49,17 @@ const timerEl = () => document.getElementById('pomodoro-timer');
 const statusEl = () => document.getElementById('pomodoro-status');
 const startBtnEl = () => document.getElementById('btn-pomodoro-start');
 
+function obtenerSaludoYFrase() {
+  const hora = new Date().getHours();
+  const nombre = state.config.userName || 'Usuario';
+  let saludoBase;
+  if (hora < 12) saludoBase = `¡Buenos días, ${nombre}!`;
+  else if (hora < 19) saludoBase = `Buenas tardes, ${nombre}.`;
+  else saludoBase = `Buenas noches, ${nombre}.`;
+  const fraseAleatoria =
+    frasesDashboard[Math.floor(Math.random() * frasesDashboard.length)];
+  return { saludo: saludoBase, frase: fraseAleatoria };
+}
 function actualizarDisplayPomodoro() {
   const display = timerEl();
   if (!display) return;
@@ -90,7 +68,6 @@ function actualizarDisplayPomodoro() {
   display.textContent = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
 }
 function iniciarPomodoro() {
-  // Solo pide permiso si no ha sido concedido ni denegado antes
   if (Notification.permission === 'default') {
     Notification.requestPermission();
   }
@@ -122,19 +99,16 @@ function finalizarCicloPomodoro() {
   estaCorriendo = false;
   let titulo = '',
     cuerpo = '',
-    proximoModo = ''; // Inicializar variables
-
+    proximoModo = '';
   if (enModoFoco) {
     pomodoroCiclosCompletados++;
     if (pomodoroCiclosCompletados >= 4) {
-      // Toca descanso largo
       titulo = '¡Ciclos completados!';
       cuerpo = `¡Felicidades! Tómate un merecido descanso largo de ${DURACION_DESCANSO_LARGO / 60} minutos.`;
       tiempoRestante = DURACION_DESCANSO_LARGO;
       proximoModo = 'Descanso largo en curso...';
       pomodoroCiclosCompletados = 0;
     } else {
-      // Toca descanso corto
       titulo = '¡Tiempo de descansar!';
       cuerpo = `¡Excelente sesión de foco! Tómate ${DURACION_DESCANSO_CORTO / 60} minutos.`;
       tiempoRestante = DURACION_DESCANSO_CORTO;
@@ -142,7 +116,6 @@ function finalizarCicloPomodoro() {
     }
     enModoFoco = false;
   } else {
-    // Terminó un descanso
     titulo = '¡Hora de enfocarse!';
     cuerpo = `El descanso terminó. ¡A seguir con la próxima sesión de ${DURACION_FOCO / 60} minutos!`;
     tiempoRestante = DURACION_FOCO;
@@ -166,19 +139,12 @@ function inicializarPomodoroListeners() {
   resetBtn.addEventListener('click', reiniciarPomodoro);
   startBtn.dataset.initialized = 'true';
 }
-
-// ==========================================================================
-// ==          FUNCIONES DE RENDERIZADO PARA CADA WIDGET INDIVIDUAL        ==
-// ==========================================================================
-
-/** Renderiza el widget de Racha Diaria */
 function renderizarWidgetRacha() {
-  const racha = calcularRacha(); // Asume que esta función existe y es correcta
+  const racha = calcularRacha(); // calcularRacha ahora excluye archivados
   const contadorEl = document.getElementById('widget-racha-contador');
   const iconoEl = document.getElementById('widget-racha-icono');
   const textoEl = document.getElementById('widget-racha-texto');
   if (!contadorEl || !iconoEl || !textoEl) return;
-
   contadorEl.textContent = racha;
   if (racha > 0) {
     iconoEl.textContent = '🔥';
@@ -191,64 +157,56 @@ function renderizarWidgetRacha() {
     textoEl.textContent = '¡Completa una tarea hoy para iniciar tu racha!';
   }
 }
-
-/** Calcula la racha actual de días completando tareas */
-// En dashboard.js
 function calcularRacha() {
-  // ✨ CAMBIO: Filtra usando la nueva propiedad
-  const tareasRealmenteCompletadas = state.tareas.filter(
-    (t) => t.completada && t.fechaCompletado,
-  );
+  const tareasRealmenteCompletadas = state.tareas.filter((t) => {
+    // Condición original: completada y con fecha
+    if (!t.completada || !t.fechaCompletado) return false;
+    // NUEVA condición: el curso NO debe estar archivado
+    const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+    return !cursoAsociado?.isArchivado; // `?.` es opcional chaining (seguro si cursoAsociado es null/undefined)
+  });
 
   if (tareasRealmenteCompletadas.length === 0) return 0;
-
-  // ✨ CAMBIO: Crea el Set usando fechaCompletado
   const fechasDeCompletado = new Set(
     tareasRealmenteCompletadas.map((t) => t.fechaCompletado),
   );
-
   let racha = 0;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
-
   for (let i = 0; ; i++) {
     const fechaAComprobar = new Date(hoy);
     fechaAComprobar.setDate(hoy.getDate() - i);
-    // ✨ CAMBIO: Asegúrate de formatear correctamente (sin T00:00:00)
     const fechaFormateada = fechaAComprobar.toISOString().split('T')[0];
-
     if (fechasDeCompletado.has(fechaFormateada)) {
       racha++;
     } else {
-      // Si el día 'i=0' (hoy) no está, la racha es 0, incluso si ayer sí hubo.
-      // Si i > 0, la racha se rompe.
+      // Corrección lógica racha: si el día actual no cuenta, la racha es 0.
+      if (i === 0 && !fechasDeCompletado.has(hoy.toISOString().split('T')[0])) {
+        racha = 0; // Si hoy no se completó, la racha se rompe.
+      }
+      // Si un día anterior falta, se rompe la secuencia.
       if (i > 0) {
-        // Si falló un día anterior, la racha es la que llevamos
         break;
-      } else if (!fechasDeCompletado.has(hoy.toISOString().split('T')[0])) {
-        // Si hoy no se completó nada, la racha se interrumpe (es 0)
-        // Pero si ayer sí, la racha debería ser 1? No, la racha es CONSECUTIVA *hasta hoy*.
-        // Si hoy no hiciste, se rompe. Correcto es 0.
-        // PERO, si la comprobación es del día ANTERIOR (i=1) y falla, la racha es solo la de hoy (1 si hoy existe)
-        // El bucle actual funciona bien: cuenta hacia atrás hasta que falla.
-        break; // Rompe el bucle si falta un día.
       }
     }
     if (i > 366) break; // Límite de seguridad
   }
   return racha;
 }
-
-/** Renderiza el widget de Enfoque del Día */
 function renderizarWidgetEnfoque() {
   const lista = document.getElementById('widget-enfoque-lista');
   if (!lista) return;
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
+
   const tareasDeHoy = state.tareas.filter((t) => {
+    // Condiciones originales
     if (!t.fecha || t.completada) return false;
     const fechaTarea = new Date(t.fecha + 'T00:00:00');
-    return fechaTarea.getTime() === hoy.getTime();
+    if (fechaTarea.getTime() !== hoy.getTime()) return false;
+    // NUEVA condición: curso no archivado
+    const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+    return !cursoAsociado?.isArchivado;
   });
 
   if (tareasDeHoy.length === 0) {
@@ -268,8 +226,6 @@ function renderizarWidgetEnfoque() {
       .join('');
   }
 }
-
-/** Renderiza el widget de Próximamente (tareas en 3 días) */
 function renderizarWidgetProximamente() {
   const lista = document.getElementById('widget-proximamente-lista');
   if (!lista) return;
@@ -281,10 +237,13 @@ function renderizarWidgetProximamente() {
 
   const tareasProximas = state.tareas
     .filter((t) => {
+      // Condiciones originales
       if (!t.fecha || t.completada) return false;
       const fechaTarea = new Date(t.fecha + 'T00:00:00');
-      // Tareas que son DESPUÉS de hoy pero ANTES o IGUAL a tres días después
-      return fechaTarea > hoy && fechaTarea <= tresDiasDespues;
+      if (!(fechaTarea > hoy && fechaTarea <= tresDiasDespues)) return false;
+      // NUEVA condición: curso no archivado
+      const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+      return !cursoAsociado?.isArchivado;
     })
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
@@ -307,8 +266,6 @@ function renderizarWidgetProximamente() {
       .join('');
   }
 }
-
-/** Renderiza el widget de Eventos Próximos (eventos en 7 días) */
 function renderizarWidgetEventos() {
   const lista = document.getElementById('widget-eventos-lista');
   if (!lista) return;
@@ -316,24 +273,21 @@ function renderizarWidgetEventos() {
   hoy.setHours(0, 0, 0, 0);
   const unaSemanaDespues = new Date(hoy);
   unaSemanaDespues.setDate(hoy.getDate() + 7);
-
   const eventosProximos = state.eventos
     .filter((evento) => {
       if (!evento.fechaInicio || !evento.fechaFin) return false;
       const inicio = new Date(evento.fechaInicio + 'T00:00:00');
       const fin = new Date(evento.fechaFin + 'T00:00:00');
-      // Eventos que terminan hoy o después Y empiezan antes de la próxima semana
       return fin >= hoy && inicio < unaSemanaDespues;
     })
     .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio));
-
   if (eventosProximos.length === 0) {
     lista.innerHTML =
       '<li><p>No tienes eventos programados para esta semana.</p></li>';
   } else {
     const formatFecha = (fechaStr) => {
       const fecha = new Date(fechaStr + 'T00:00:00');
-      const options = { weekday: 'short', day: 'numeric', month: 'short' }; // Formato más corto
+      const options = { weekday: 'short', day: 'numeric', month: 'short' };
       const fechaFormateada = fecha.toLocaleDateString('es-ES', options);
       return fechaFormateada.charAt(0).toUpperCase() + fechaFormateada.slice(1);
     };
@@ -355,55 +309,48 @@ function renderizarWidgetEventos() {
       .join('');
   }
 }
-
-/** Actualiza el contador del widget de Progreso Semanal */
 function actualizarWidgetProgreso() {
   const contador = document.getElementById('widget-progreso-contador');
   if (!contador) return;
-  // Lógica simple: cuenta tareas completadas. Podría mejorarse para contar solo las de esta semana.
   const tareasCompletadas = state.tareas.filter((t) => t.completada).length;
   contador.textContent = tareasCompletadas;
 }
-
-/** Renderiza el widget de Carga Semanal (Bar Chart v5 FINAL) */
 function renderizarWidgetCargaSemanal() {
   const container = document.getElementById('workload-heatmap-container');
   if (!container) return;
   container.innerHTML = '';
-
   const pad = (num) => num.toString().padStart(2, '0');
   const hoy = new Date();
   const hoyStr = `${hoy.getFullYear()}-${pad(hoy.getMonth() + 1)}-${pad(hoy.getDate())}`;
-
   const diaDeLaSemana = hoy.getDay();
   const diferenciaLunes = diaDeLaSemana === 0 ? 6 : diaDeLaSemana - 1;
   const lunes = new Date(hoy);
   lunes.setDate(hoy.getDate() - diferenciaLunes);
   lunes.setHours(0, 0, 0, 0);
-
   const tareasPorDia = [];
   for (let i = 0; i < 7; i++) {
     const diaActualLoop = new Date(lunes);
     diaActualLoop.setDate(lunes.getDate() + i);
     const diaActualStr = `${diaActualLoop.getFullYear()}-${pad(diaActualLoop.getMonth() + 1)}-${pad(diaActualLoop.getDate())}`;
-    const tareasPendientes = state.tareas.filter(
-      (t) => !t.completada && t.fecha === diaActualStr,
-    ).length;
+
+    // Contar solo tareas pendientes de cursos no archivados
+    const tareasPendientes = state.tareas.filter((t) => {
+      if (t.completada || t.fecha !== diaActualStr) return false;
+      const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+      return !cursoAsociado?.isArchivado;
+    }).length;
+
     tareasPorDia.push(tareasPendientes);
   }
-
   const maxTareas = Math.max(...tareasPorDia, 1);
   const dias = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-
   for (let i = 0; i < 7; i++) {
     const diaActualLoop = new Date(lunes);
     diaActualLoop.setDate(lunes.getDate() + i);
     const diaActualStr = `${diaActualLoop.getFullYear()}-${pad(diaActualLoop.getMonth() + 1)}-${pad(diaActualLoop.getDate())}`;
-
     const cargaRelativa = tareasPorDia[i] / maxTareas;
     const alturaBarra = cargaRelativa * 100;
     const opacidadBarra = 0.15 + cargaRelativa * 0.65;
-
     const diaEl = document.createElement('div');
     diaEl.className = 'heatmap-day';
     const inicialEl = document.createElement('span');
@@ -413,19 +360,15 @@ function renderizarWidgetCargaSemanal() {
     barraEl.className = 'heatmap-bar';
     barraEl.style.height = `${alturaBarra}%`;
     barraEl.style.opacity = opacidadBarra;
-
     if (diaActualStr === hoyStr) {
       inicialEl.classList.add('current');
       diaEl.classList.add('current-day-box');
     }
-
     diaEl.appendChild(inicialEl);
     diaEl.appendChild(barraEl);
     container.appendChild(diaEl);
   }
 }
-
-/** Renderiza el widget de Apuntes Recientes */
 function renderizarWidgetApuntesRecientes() {
   const lista = document.getElementById('widget-apuntes-lista');
   if (!lista) return;
@@ -433,7 +376,6 @@ function renderizarWidgetApuntesRecientes() {
     return new Date(b.fechaModificacion) - new Date(a.fechaModificacion);
   });
   const apuntesRecientes = apuntesOrdenados.slice(0, 3);
-
   if (apuntesRecientes.length === 0) {
     lista.innerHTML = '<li><p>Aún no has creado ningún apunte.</p></li>';
     lista.removeEventListener('click', handleApunteRecienteClick);
@@ -455,13 +397,18 @@ function renderizarWidgetApuntesRecientes() {
     lista.addEventListener('click', handleApunteRecienteClick);
   }
 }
-
-/** Renderiza el widget de Progreso de Proyectos */
 function renderizarWidgetProgresoProyectos() {
   const lista = document.getElementById('widget-proyectos-lista');
   if (!lista) return;
-  const proyectosAMostrar = state.proyectos.slice(0, 5);
-
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
+  );
+  // Filtra los proyectos: solo muestra los que NO tienen curso O cuyo curso NO está archivado.
+  const proyectosFiltrados = state.proyectos.filter(
+    (proyecto) =>
+      !(proyecto.curso && cursosArchivadosNombres.has(proyecto.curso)),
+  );
+  const proyectosAMostrar = proyectosFiltrados.slice(0, 5);
   if (proyectosAMostrar.length === 0) {
     lista.innerHTML =
       '<li><p>Crea tu primer proyecto para ver su progreso aquí.</p></li>';
@@ -469,7 +416,7 @@ function renderizarWidgetProgresoProyectos() {
   } else {
     lista.innerHTML = proyectosAMostrar
       .map((proyecto) => {
-        const stats = calcularEstadisticasProyecto(proyecto.id); // Asegúrate que esta función use proyectoId
+        const stats = calcularEstadisticasProyecto(proyecto.id);
         return `
         <li data-id="${proyecto.id}">
           <div class="proyecto-progreso-item">
@@ -488,8 +435,6 @@ function renderizarWidgetProgresoProyectos() {
     lista.addEventListener('click', handleProyectoProgresoClick);
   }
 }
-
-/** Renderiza el widget de Tareas Vencidas */
 function renderizarWidgetTareasVencidas() {
   const lista = document.getElementById('widget-vencidas-lista');
   if (!lista) return;
@@ -498,9 +443,13 @@ function renderizarWidgetTareasVencidas() {
 
   const tareasVencidas = state.tareas
     .filter((t) => {
-      if (!t.fecha) return false;
+      // Condiciones originales
+      if (!t.fecha || t.completada) return false;
       const fechaTarea = new Date(t.fecha + 'T00:00:00');
-      return !t.completada && fechaTarea < hoy;
+      if (!(fechaTarea < hoy)) return false;
+      // NUEVA condición: curso no archivado
+      const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+      return !cursoAsociado?.isArchivado;
     })
     .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
@@ -525,39 +474,24 @@ function renderizarWidgetTareasVencidas() {
     lista.addEventListener('click', handleTareaVencidaClick);
   }
 }
-// ==========================================================================
-// ==          FUNCIÓN CENTRAL PARA RENDERIZAR Y GESTIONAR WIDGETS         ==
-// ==========================================================================
 function renderizarWidgets() {
-  console.log('--- [Dashboard] Iniciando renderizarWidgets ---');
   if (!state.config || typeof state.config.widgetsVisibles !== 'object') {
     console.error(
       'Error FATAL: state.config.widgetsVisibles no está definido.',
     );
     return;
   }
-  console.log(
-    '[Dashboard] Configuración:',
-    JSON.parse(JSON.stringify(state.config.widgetsVisibles)),
-  );
-  console.log(
-    `[Dashboard] Datos: Tareas=${state.tareas?.length}, Apuntes=${state.apuntes?.length}, Proyectos=${state.proyectos?.length}, Eventos=${state.eventos?.length}`,
-  );
-
   for (const key in widgetSelectors) {
     if (widgetSelectors.hasOwnProperty(key)) {
       const selector = widgetSelectors[key];
       const widgetElement = document.querySelector(selector);
       if (!widgetElement) {
-        // console.warn(`[Dashboard] Widget HTML "${selector}" (key: ${key}) NO encontrado.`); // Descomenta si sospechas del HTML
         continue;
       }
       const esVisible = state.config.widgetsVisibles[key] === true;
       if (esVisible) {
-        let displayStyle = 'flex'; // Asume flex, ajusta si es necesario
-        // if (key === 'cargaSemanal') displayStyle = 'grid';
+        let displayStyle = 'flex';
         widgetElement.style.display = displayStyle;
-        // console.log(`[Dashboard] Mostrando y llamando render para: ${key}`); // Descomenta para depuración detallada
         try {
           llamarFuncionRenderWidget(key);
         } catch (error) {
@@ -571,10 +505,7 @@ function renderizarWidgets() {
       }
     }
   }
-  console.log('--- [Dashboard] renderizarWidgets completado ---');
 }
-
-/** Función auxiliar para llamar a la función correcta */
 function llamarFuncionRenderWidget(widgetKey) {
   switch (widgetKey) {
     case 'racha':
@@ -615,15 +546,11 @@ function llamarFuncionRenderWidget(widgetKey) {
       );
   }
 }
-
-// ==========================================================================
-// ==                MANEJADORES DE EVENTOS PARA NAVEGACIÓN                ==
-// ==========================================================================
 function handleApunteRecienteClick(event) {
   const apunteLi = event.target.closest('li[data-id]');
   if (!apunteLi) return;
   const apunteId = parseInt(apunteLi.dataset.id, 10);
-  state.apunteActivoId = apunteId; // ✨ CORREGIDO: Usar apunteActivoId
+  state.apunteActivoId = apunteId;
   guardarDatos();
   cambiarPagina('apuntes');
 }
@@ -648,74 +575,90 @@ function handleTareaVencidaClick(event) {
 // ==       FUNCIONES PARA EL MODAL DE NUEVA TAREA (ACCESO RÁPIDO)         ==
 // ==========================================================================
 
-/** Abre el modal para añadir una nueva tarea desde el dashboard */
-export function abrirModalNuevaTarea(fechaPorDefecto = null) {
-  console.log('[Dashboard] Entrando a abrirModalNuevaTarea...'); // Log
-
+/**
+ * ACTUALIZADO: Abre el modal para añadir una nueva tarea desde el dashboard.
+ * @param {string | null} fechaPorDefecto - Fecha 'YYYY-MM-DD' a pre-rellenar.
+ * @param {string | null} cursoPreseleccionado - Nombre del curso a pre-seleccionar.
+ */
+export function abrirModalNuevaTarea(
+  fechaPorDefecto = null,
+  cursoPreseleccionado = null,
+) {
   const form = document.getElementById('form-dashboard-nueva-tarea');
-  console.log('[Dashboard] Formulario encontrado:', form);
   if (!form) {
     console.error(
       '[Dashboard] Error Crítico: No se encontró el formulario #form-dashboard-nueva-tarea.',
     );
     return;
   }
-
   form.reset();
-  console.log('[Dashboard] Intentando popular selectores...');
+
   try {
-    popularSelectorDeCursos(
-      document.getElementById('dashboard-select-curso-tarea'),
-      true,
+    // 1. Popular selector de cursos usando la función arreglada
+    const selectorCurso = document.getElementById(
+      'dashboard-select-curso-tarea',
     );
-    popularSelectorDeProyectos('dashboard-select-proyecto-tarea');
-    const inputFecha = document.getElementById('dashboard-input-fecha-tarea');
-    if (fechaPorDefecto) {
-      // Si pasamos una fecha (desde calendario.js)
-      inputFecha.value = fechaPorDefecto;
+    if (selectorCurso) {
+      popularSelectorDeCursos(selectorCurso, true); // true para omitir 'General'
+      // 2. Pre-seleccionar curso si viene del modal chooser
+      if (
+        cursoPreseleccionado &&
+        selectorCurso.querySelector(`option[value="${cursoPreseleccionado}"]`)
+      ) {
+        selectorCurso.value = cursoPreseleccionado;
+      }
     } else {
-      // Si no (desde el propio dashboard), ponemos la de hoy
-      inputFecha.valueAsDate = new Date();
+      console.warn(
+        '[Dashboard] Selector de curso #dashboard-select-curso-tarea no encontrado.',
+      );
     }
-    console.log('[Dashboard] Selectores populados y fecha establecida.');
+
+    // 3. Popular selector de proyectos (sin cambios)
+    popularSelectorDeProyectos('dashboard-select-proyecto-tarea');
+
+    // 4. Establecer fecha (sin cambios)
+    const inputFecha = document.getElementById('dashboard-input-fecha-tarea');
+    if (inputFecha) {
+      if (fechaPorDefecto) {
+        inputFecha.value = fechaPorDefecto;
+      } else {
+        inputFecha.valueAsDate = new Date();
+      }
+    } else {
+      console.warn(
+        '[Dashboard] Input de fecha #dashboard-input-fecha-tarea no encontrado.',
+      );
+    }
   } catch (error) {
     console.error('[Dashboard] Error al popular selectores o fecha:', error);
     return;
   }
 
-  console.log(
-    "[Dashboard] Intentando llamar a mostrarModal('modal-dashboard-nueva-tarea')...",
-  );
   const modalElement = document.getElementById('modal-dashboard-nueva-tarea');
-  console.log('[Dashboard] Elemento del modal encontrado:', modalElement);
   if (!modalElement) {
     console.error(
       '[Dashboard] Error Crítico: No se encontró el modal #modal-dashboard-nueva-tarea.',
     );
     return;
   }
-
   mostrarModal('modal-dashboard-nueva-tarea');
-  console.log('[Dashboard] Llamada a mostrarModal ejecutada.');
 }
 
 /** Procesa el formulario del modal y añade la nueva tarea */
 function agregarTareaDesdeDashboard(event) {
-  event.preventDefault(); // Evita que la página se recargue
-  console.log("[Dashboard] Formulario 'agregarTareaDesdeDashboard' enviado."); // Log
-
+  // ... (función sin cambios internos, solo verifica elementos)
+  event.preventDefault();
   const cursoSelect = document.getElementById('dashboard-select-curso-tarea');
   const proyectoSelect = document.getElementById(
     'dashboard-select-proyecto-tarea',
   );
   const tituloInput = document.getElementById('dashboard-input-titulo-tarea');
-  const descInput = document.getElementById('dashboard-input-desc-tarea');
+  const descInput = document.getElementById('dashboard-input-desc-tarea'); // Asegúrate que exista si lo usas
   const fechaInput = document.getElementById('dashboard-input-fecha-tarea');
   const prioridadSelect = document.getElementById(
     'dashboard-select-prioridad-tarea',
   );
 
-  // Verificación básica de que los elementos existen
   if (
     !cursoSelect ||
     !proyectoSelect ||
@@ -732,14 +675,14 @@ function agregarTareaDesdeDashboard(event) {
 
   const nuevaTarea = {
     id: Date.now(),
-    curso: cursoSelect.value,
-    proyectoId: parseInt(proyectoSelect.value) || null, // Asegura que sea número o null
+    curso: cursoSelect.value, // Ya se obtiene el nombre del curso seleccionado
+    proyectoId: parseInt(proyectoSelect.value) || null,
     titulo: tituloInput.value.trim(),
-    descripcion: descInput.value.trim(), // Asegúrate que descInput exista si lo usas
+    descripcion: descInput?.value.trim() || '', // Manejo seguro de descInput
     fecha: fechaInput.value,
     prioridad: prioridadSelect.value,
     completada: false,
-    fechaCompletado: null, // Incluye la nueva propiedad
+    fechaCompletado: null,
     subtareas: [],
   };
 
@@ -751,18 +694,19 @@ function agregarTareaDesdeDashboard(event) {
   try {
     state.tareas.push(nuevaTarea);
     guardarDatos();
-    console.log('[Dashboard] Nueva tarea añadida:', nuevaTarea);
     cerrarModal('modal-dashboard-nueva-tarea');
-    renderizarWidgets(); // Refresca los widgets por si la nueva tarea afecta alguno
+    renderizarWidgets();
   } catch (error) {
     console.error('[Dashboard] Error al guardar la nueva tarea:', error);
     alert('Hubo un error al guardar la tarea.');
   }
 }
+
 // ==========================================================================
 // ==                  FUNCIÓN PRINCIPAL DE INICIALIZACIÓN                 ==
 // ==========================================================================
 export function inicializarDashboard() {
+  // ... (función sin cambios internos, solo asegura que los listeners se añadan correctamente)
   console.log('--- [Dashboard] Iniciando inicializarDashboard ---');
   const pageDashboard = document.getElementById('page-dashboard');
   if (!pageDashboard) {
@@ -770,36 +714,23 @@ export function inicializarDashboard() {
     return;
   }
 
-  // --- Saludo Dinámico (CORREGIDO) ---
   try {
-    const saludoContainer = pageDashboard.querySelector('.panel-header'); // Este es el .panel-header
+    const saludoContainer = pageDashboard.querySelector('.panel-header');
     if (saludoContainer) {
-      // Limpia saludos/frases anteriores
       saludoContainer
         .querySelectorAll('.header-info-usuario')
-        .forEach((el) => el.remove()); // Borra el contenedor si existe
-
-      // ✨ PASO 1: Crea el DIV contenedor
+        .forEach((el) => el.remove());
       const infoUsuarioDiv = document.createElement('div');
-      infoUsuarioDiv.className = 'header-info-usuario'; // Le asigna la clase que necesita el CSS
-
-      // PASO 2: Obtiene saludo y frase
+      infoUsuarioDiv.className = 'header-info-usuario';
       const { saludo, frase } = obtenerSaludoYFrase();
-
-      // PASO 3: Crea los párrafos
       const saludoEl = document.createElement('p');
       saludoEl.className = 'saludo-dinamico';
       saludoEl.textContent = saludo;
-
       const fraseEl = document.createElement('p');
       fraseEl.className = 'frase-dinamica';
       fraseEl.textContent = frase;
-
-      // ✨ PASO 4: Añade los párrafos DENTRO del nuevo DIV
       infoUsuarioDiv.appendChild(saludoEl);
       infoUsuarioDiv.appendChild(fraseEl);
-
-      // ✨ PASO 5: Añade el nuevo DIV (con todo dentro) al header
       saludoContainer.appendChild(infoUsuarioDiv);
     } else {
       console.warn(
@@ -810,7 +741,6 @@ export function inicializarDashboard() {
     console.error('[Dashboard] Error al añadir saludo:', error);
   }
 
-  // --- Renderizado inicial de widgets ---
   try {
     renderizarWidgets();
   } catch (error) {
@@ -820,45 +750,34 @@ export function inicializarDashboard() {
     );
   }
 
-  // --- Inicialización Pomodoro (si es visible) ---
   try {
     const pomodoroWidget = document.querySelector(widgetSelectors.pomodoro);
     if (
       pomodoroWidget &&
       window.getComputedStyle(pomodoroWidget).display !== 'none'
     ) {
-      console.log('[Dashboard] Inicializando Pomodoro...');
       inicializarPomodoroListeners();
       actualizarDisplayPomodoro();
-    } else {
-      // console.log("[Dashboard] Pomodoro no encontrado u oculto."); // Descomenta si necesitas
     }
   } catch (error) {
     console.error('[Dashboard] Error inicializando Pomodoro:', error);
   }
 
-  // --- Añadir Listeners globales (solo una vez) ---
   if (!pageDashboard.dataset.initialized) {
-    console.log('[Dashboard] Añadiendo listeners globales.');
     pageDashboard.addEventListener('click', (e) => {
       const button = e.target.closest('button[data-action]');
       if (!button) return;
       const action = button.dataset.action;
-      console.log(`[Dashboard] Clic acción: ${action}`);
       if (action === 'ir-a-cursos') cambiarPagina('cursos');
-      else if (action === 'nueva-tarea-modal') abrirModalNuevaTarea();
+      else if (action === 'nueva-tarea-modal') abrirModalNuevaTarea(); // Llama sin argumentos aquí
     });
 
     const form = document.getElementById('form-dashboard-nueva-tarea');
     if (form) {
       form.removeEventListener('submit', agregarTareaDesdeDashboard);
       form.addEventListener('submit', agregarTareaDesdeDashboard);
-    } else {
-      // console.warn("[Dashboard] Form #form-dashboard-nueva-tarea no encontrado."); // Descomenta si necesitas
     }
     pageDashboard.dataset.initialized = 'true';
-  } else {
-    // console.log("[Dashboard] Listeners globales ya inicializados."); // Descomenta si necesitas
   }
   console.log('--- [Dashboard] inicializarDashboard completado ---');
 }

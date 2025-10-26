@@ -6,7 +6,7 @@ import { ICONS } from './icons.js';
 // ===============================================
 
 export function cargarIconos() {
-  // Configura iconos globales en el cascarón principal (index.html)
+  // ... (función sin cambios)
   document.getElementById('btn-toggle-sidebar').innerHTML = ICONS.menu;
   document.getElementById('btn-config-dropdown').innerHTML = ICONS.settings;
   document.querySelector(
@@ -26,20 +26,14 @@ export function cargarIconos() {
   ).innerHTML = ICONS.proyectos;
   const btnFlotante = document.getElementById('btn-abrir-creacion-movil');
   if (btnFlotante) btnFlotante.innerHTML = ICONS.add;
-
-  // Los botones de cierre ahora se cargan con cada página, por lo que los buscamos de forma segura aquí.
-  // Esto se ejecutará cada vez que se cargue una página que los contenga.
   const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
   if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
-
   const btnEditarTareaDetalles = document.getElementById('btn-editar-tarea');
   if (btnEditarTareaDetalles) btnEditarTareaDetalles.innerHTML = ICONS.edit;
-
   const btnEliminarTareaDetalles =
     document.getElementById('btn-eliminar-tarea');
   if (btnEliminarTareaDetalles)
     btnEliminarTareaDetalles.innerHTML = ICONS.delete;
-
   const btnCerrarDetallesProyecto = document.getElementById(
     'btn-cerrar-detalles-proyecto',
   );
@@ -47,7 +41,7 @@ export function cargarIconos() {
     btnCerrarDetallesProyecto.innerHTML = ICONS.close;
 }
 
-// --- Funciones para Modales (son globales) ---
+// --- Funciones para Modales (sin cambios) ---
 
 export function mostrarModal(idModal) {
   document.getElementById(idModal)?.classList.add('visible');
@@ -143,47 +137,78 @@ export function mostrarPrompt(titulo, msg, defaultValue = '') {
   });
 }
 
-// --- Funciones de Ayuda para Selectores (reutilizables) ---
+// --- Funciones de Ayuda para Selectores (ACTUALIZADAS) ---
 
+/**
+ * REFACTORIZADO: Popula un <select> con los cursos desde state.cursos (array de objetos).
+ * @param {HTMLElement} selectorElement - El elemento <select> a popular.
+ * @param {boolean} omitirGeneral - Si es true, no incluye "General" (si hay más cursos).
+ */
 export function popularSelectorDeCursos(
   selectorElement,
   omitirGeneral = false,
 ) {
-  const selector =
-    selectorElement || document.getElementById('select-curso-tarea');
+  const selector = selectorElement; // Asume que el elemento es pasado directamente
   if (!selector) return;
 
   const valorSeleccionado = selector.value;
   selector.innerHTML = '';
-  state.cursos.forEach((nombreCurso) => {
-    if (omitirGeneral && nombreCurso === 'General' && state.cursos.length > 1) {
-      return;
+
+  // Filtramos los cursos que se pueden mostrar
+  const cursosMostrables = state.cursos.filter((curso) => {
+    if (curso.isArchivado) return false; // Oculta archivados
+    if (
+      omitirGeneral &&
+      curso.nombre === 'General' &&
+      state.cursos.filter((c) => !c.isArchivado).length > 1
+    ) {
+      return false; // Oculta "General" si se pide
     }
+    return true;
+  });
+
+  // Iteramos sobre los objetos 'curso'
+  cursosMostrables.forEach((curso) => {
     const opcion = document.createElement('option');
-    opcion.value = nombreCurso;
-    opcion.textContent = nombreCurso;
+    opcion.value = curso.nombre; // El valor sigue siendo el nombre
+    opcion.textContent = `${curso.emoji ? curso.emoji + ' ' : ''}${
+      curso.nombre
+    }`; // El texto incluye emoji
     selector.appendChild(opcion);
   });
 
-  if (state.cursos.includes(valorSeleccionado)) {
+  // Re-seleccionar el valor si todavía existe en la nueva lista
+  if (cursosMostrables.find((c) => c.nombre === valorSeleccionado)) {
     selector.value = valorSeleccionado;
   }
 }
 
+/**
+ * REFACTORIZADO: Popula el <select> de filtro de cursos.
+ * (Esta función parece ser del sistema de filtros antiguo de Tareas)
+ */
 export function popularFiltroDeCursos() {
   const selector = document.getElementById('filtro-curso');
   if (!selector) return;
 
   selector.innerHTML = '<option value="todos">Todos los Cursos</option>';
-  const cursosUnicos = [...new Set(state.tareas.map((t) => t.curso))];
-  cursosUnicos.sort().forEach((nombreCurso) => {
+
+  // Filtramos cursos de state.cursos, no de state.tareas
+  const cursosFiltrables = state.cursos.filter((curso) => !curso.isArchivado);
+
+  cursosFiltrables.forEach((curso) => {
     const opcion = document.createElement('option');
-    opcion.value = nombreCurso;
-    opcion.textContent = nombreCurso;
+    opcion.value = curso.nombre;
+    opcion.textContent = `${curso.emoji ? curso.emoji + ' ' : ''}${
+      curso.nombre
+    }`;
     selector.appendChild(opcion);
   });
+
   selector.value = state.filtroCurso;
 }
+
+// --- (Funciones de Proyectos y Onboarding sin cambios) ---
 
 export function popularSelectorDeProyectos(
   selectorId = 'select-proyecto-tarea',

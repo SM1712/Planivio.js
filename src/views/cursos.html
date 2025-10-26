@@ -1,9 +1,46 @@
 <div id="page-cursos" class="page">
-  <div class="panel">
+  <div id="cursos-main-panel" class="panel">
     <div class="panel-header">
       <h2 class="titulo-panel accent">Mis Cursos</h2>
       <button id="btn-nuevo-curso" class="btn-accent">+ Nuevo Curso</button>
     </div>
+
+    <div class="cursos-toolbar">
+      <input
+        type="search"
+        id="input-buscar-cursos"
+        placeholder="Buscar cursos..."
+        class="input-buscar"
+      />
+      <div class="filtro-archivados">
+        <label for="toggle-mostrar-archivados">Mostrar archivados</label>
+        <input
+          type="checkbox"
+          id="toggle-mostrar-archivados"
+          class="toggle-switch"
+        />
+      </div>
+    </div>
     <div id="lista-cursos-container"></div>
+  </div>
+
+  <div id="cursos-details-panel" class="panel-lateral">
+    <div class="panel-lateral-header">
+      <h3 id="curso-detalle-titulo">Detalles</h3>
+      <button id="btn-cerrar-detalles-curso" class="btn-icon" title="Cerrar">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+        >
+          <path
+            d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"
+          />
+        </svg>
+      </button>
+    </div>
+    <div id="curso-detalle-contenido" class="panel-lateral-contenido">
+      <p>Cargando...</p>
+    </div>
   </div>
 </div>

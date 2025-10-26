@@ -1,4 +1,5 @@
 /* --- HEADER SUPERIOR --- */
+
 .app-header {
   display: flex;
   align-items: center;
@@ -8,7 +9,8 @@
   border-bottom: 1px solid var(--border-color);
   box-shadow: 0 2px 5px var(--shadow-color);
   z-index: 1000;
-  position: sticky;
+  position: fixed;
+  width: 100%;
   top: 0;
   transition: all var(--transition-speed) var(--transition-easing);
 }
@@ -25,9 +27,8 @@
   display: flex;
   gap: 10px;
   padding: 10px;
-  height: calc(100vh - 70px);
-  overflow-x: hidden;
   position: relative; /* Para el overlay */
+  min-height: calc(100vh - 70px); /* 70px es la altura del header */
 }
 
 .panel {
@@ -48,7 +49,8 @@
   display: flex;
   gap: 10px;
   min-width: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: calc(100vh - 80px);
 }
 
 .page {
@@ -56,6 +58,7 @@
   flex-grow: 1;
   display: none;
   gap: 10px;
+  height: 100%; /* <-- AÑADIDO: Asegura que la página llene el contenedor */
 }
 .page.visible {
   display: flex;
@@ -124,7 +127,7 @@
 /* --- RESPONSIVE --- */
 @media (max-width: 900px) {
   body {
-    overflow: auto;
+    /* overflow: auto; */ /* <-- QUITADO: Innecesario y rompe sticky en móvil */
   }
   .app-container {
     flex-direction: column;

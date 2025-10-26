@@ -15,9 +15,10 @@
 .panel-central {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
+  /* overflow: hidden; */ /* <<<<<<<<<<<<<<< QUITAMOS ESTO */
   display: flex;
   flex-direction: column;
+  height: 100%; /* Asegura que llene .page */
 }
 #panel-creacion {
   flex: 0 0 450px;
@@ -30,15 +31,16 @@
 
 /* --- Contenedor Tabla --- */
 .tabla-container {
-  flex-grow: 1;
-  overflow-y: auto; /* Scroll vertical */
-  overflow-x: hidden; /* <<< MANTIENE: Oculta desbordamiento horizontal */
+  flex-grow: 1; /* Ocupa espacio vertical restante */
+  /* overflow-y: auto; */ /* <<<<<<<<<<<<<<< QUITAMOS ESTO (Scroll lo maneja .main-content-area) */
+  overflow-x: hidden; /* Mantenemos por si tabla es ancha */
   padding: 0 10px;
   width: 100%;
   box-sizing: border-box;
-  position: relative; /* Para posibles elementos absolutos internos */
+  position: relative;
+  /* padding-top: var(--header-height); */ /* <<<<<<<<<<<<<<< QUITAMOS ESTO */
+  /* scroll-padding-top: var(--header-height); */ /* <<<<<<<<<<<<<<< QUITAMOS ESTO */
 }
-
 /* --- Tabla --- */
 .tabla-tareas {
   /* Aplica a la única tabla */
@@ -770,10 +772,6 @@ tr.tarea-vencida .cell-content-wrapper {
   .tabla-tareas {
     min-width: 0; /* Let table width adjust to container */
     border-spacing: 0 2px; /* Less vertical space */
-  }
-  /* Adjust container padding */
-  .tabla-container {
-    padding: 0 5px;
   }
 
   /* --- Mobile-specific table row styles --- */

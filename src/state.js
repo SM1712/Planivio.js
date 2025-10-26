@@ -1,10 +1,19 @@
 export let state = {
-  cursos: ['General'],
+  cursos: [
+    {
+      id: 1, // ID estable para el curso por defecto
+      nombre: 'General',
+      emoji: null,
+      isArchivado: false,
+    },
+  ],
   tareas: [],
   eventos: [],
   apuntes: [],
   proyectos: [],
+  cursoSeleccionadoId: null,
   proyectoSeleccionadoId: null,
+  apunteSeleccionadoId: null, // <-- AÑADIDO: Para navegación a apuntes
   config: {
     theme: 'light',
     accent_color: '#0078d7',
@@ -23,23 +32,23 @@ export let state = {
       tareasVencidas: true,
     },
     muescasColores: {
-      vencida: '#333333', // Era el color de fondo para .tarea-vencida .muesca-vencimiento
-      hoy: '#e74c3c', // Rojo
-      manana: '#f39c12', // Naranja
-      cercana: '#2ecc71', // Verde
-      lejana: 'rgba(128, 128, 128, 0.3)', // Gris translúcido (lo mantendremos así por defecto)
-      vencidaFondoColor: '#e74c3c', // Color base (rojo por defecto)
-      vencidaFondoOpacidad: 0.08, // Opacidad (8% por defecto)
+      vencida: '#333333',
+      hoy: '#e74c3c',
+      manana: '#f39c12',
+      cercana: '#2ecc71',
+      lejana: 'rgba(128, 128, 128, 0.3)',
+      vencidaFondoColor: '#e74c3c',
+      vencidaFondoOpacidad: 0.08,
     },
   },
   paginaActual: 'dashboard',
-  tareaSeleccionadald: null,
+  tareaSeleccionadald: null, // Nota: tienes un typo aquí ('ld' al final)
   ordenamiento: { col: 'fecha', reverse: false },
   filtroCurso: 'todos',
   filtroCursoApuntes: 'todos',
   filtroProyecto: 'todos',
-  tareasEnModoSeleccion: false, // Rastrea si el modo selección está activo
-  tareasSeleccionadasIds: [], // Array de IDs de tareas seleccionadas
+  tareasEnModoSeleccion: false,
+  tareasSeleccionadasIds: [],
   apuntesEnModoSeleccion: false,
   apuntesSeleccionadosIds: [],
 };

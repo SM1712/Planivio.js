@@ -5,15 +5,19 @@ import {
   cerrarModal,
   mostrarConfirmacion,
   mostrarAlerta,
-  popularSelectorDeCursos,
+  popularSelectorDeCursos, // ¡Importamos la función que arreglamos!
 } from '../ui.js';
 import { ICONS } from '../icons.js';
 
 let graficaDeProyecto = null;
 
+// ... (calcularEstadisticasProyecto, renderizarProyectos, renderizarGraficaProyecto, renderizarListasDeTareas, renderizarDetallesProyecto sin cambios) ...
 export function calcularEstadisticasProyecto(proyectoId) {
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
+  );
   const tareasDelProyecto = state.tareas.filter(
-    (t) => t.proyectoId === proyectoId,
+    (t) => t.proyectoId === proyectoId && !cursosArchivadosNombres.has(t.curso), // <-- AÑADIDO ESTO
   );
   const totalTareas = tareasDelProyecto.length;
   if (totalTareas === 0) {
@@ -47,13 +51,22 @@ function renderizarProyectos() {
   if (!container) return;
   container.innerHTML = '';
 
-  if (state.proyectos.length === 0) {
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
+  );
+  // Filtra proyectos: solo muestra si NO tiene curso O si el curso NO está archivado.
+  const proyectosMostrables = state.proyectos.filter(
+    (proyecto) =>
+      !(proyecto.curso && cursosArchivadosNombres.has(proyecto.curso)),
+  );
+
+  if (proyectosMostrables.length === 0) {
     container.innerHTML =
       '<p style="padding: 15px; color: var(--text-muted);">No tienes proyectos creados. ¡Añade el primero!</p>';
     return;
   }
 
-  state.proyectos.forEach((proyecto) => {
+  proyectosMostrables.forEach((proyecto) => {
     const stats = calcularEstadisticasProyecto(proyecto.id);
     const card = document.createElement('div');
     card.className = 'proyecto-card';
@@ -148,9 +161,18 @@ function renderizarListasDeTareas(proyectoId) {
   const container = document.getElementById('proyecto-det-tareas-container');
   if (!container) return;
 
-  const tareasPendientes = state.tareas.filter(
-    (t) => t.proyectoId === proyectoId && !t.completada,
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
+  const tareasPendientes = state.tareas.filter(
+    (t) =>
+      t.proyectoId === proyectoId &&
+      !t.completada &&
+      !cursosArchivadosNombres.has(t.curso), // <-- AÑADIDO ESTO
+  );
+  const totalTareasProyecto = state.tareas.filter(
+    (t) => t.proyectoId === proyectoId && !cursosArchivadosNombres.has(t.curso),
+  ).length; // Re-calcula total sin archivados
   let html = '<div class="tareas-por-prioridad">';
 
   if (tareasPendientes.length > 0) html += '<h4>Tareas Pendientes</h4>';
@@ -179,7 +201,6 @@ function renderizarListasDeTareas(proyectoId) {
 }
 
 function renderizarDetallesProyecto() {
-  // --- Obtener elementos del DOM ---
   const headerInfo = document.getElementById('proyecto-det-header-info');
   const descEl = document.getElementById('proyecto-det-descripcion');
   const statsContainer = document.getElementById(
@@ -189,28 +210,23 @@ function renderizarDetallesProyecto() {
     'proyecto-det-tareas-container',
   );
 
-  // --- 1. Limpieza inicial: Destruir gráfico anterior si existe ---
   if (graficaDeProyecto) {
     graficaDeProyecto.destroy();
     graficaDeProyecto = null;
   }
 
-  // --- Verificación temprana: Si faltan elementos cruciales, salimos ---
   if (!headerInfo || !descEl || !statsContainer || !tareasContainer) {
     console.error(
       'Error: Faltan elementos esenciales del DOM en el panel de detalles del proyecto.',
     );
-    return; // Detiene la ejecución si algo falta
+    return;
   }
 
-  // --- 2. Buscar el proyecto seleccionado en el estado ---
   const proyecto = state.proyectos.find(
     (p) => p.id === state.proyectoSeleccionadoId,
   );
 
-  // --- 3. Renderizar según si se encontró un proyecto o no ---
   if (proyecto) {
-    // --- Rellenar datos básicos del proyecto ---
     headerInfo.innerHTML = `<h3>${proyecto.nombre}</h3>${
       proyecto.curso && proyecto.curso !== 'General'
         ? `<h5 class="proyecto-curso-asignado">${proyecto.curso}</h5>`
@@ -219,44 +235,31 @@ function renderizarDetallesProyecto() {
     descEl.textContent =
       proyecto.descripcion || 'Este proyecto no tiene una descripción.';
 
-    // --- Calcular estadísticas ---
     const stats = calcularEstadisticasProyecto(proyecto.id);
 
-    // --- Mostrar/Ocultar secciones y renderizar contenido ---
     if (stats.total === 0) {
-      // Si no hay tareas, ocultar estadísticas y mostrar mensaje
       statsContainer.style.display = 'none';
       tareasContainer.innerHTML =
         '<h4>¡No hay tareas asignadas a este proyecto!</h4>';
-      // No se renderiza gráfico
     } else {
-      // Si hay tareas, mostrar estadísticas y renderizar listas/gráfico
-      statsContainer.style.display = 'grid'; // O 'block', según tu diseño
-
-      // Renderizar la lista de tareas inmediatamente
+      statsContainer.style.display = 'grid';
       renderizarListasDeTareas(proyecto.id);
-
-      // Retrasar LIGERAMENTE el renderizado del gráfico
       setTimeout(() => {
         const canvasEl = document.getElementById('proyecto-grafica-progreso');
-        // Doble chequeo: que el canvas exista y aún esté en el DOM
         if (canvasEl && document.contains(canvasEl)) {
           renderizarGraficaProyecto(stats);
         } else {
-          // Mensaje útil si algo sale mal con el canvas
           console.warn(
             "Canvas 'proyecto-grafica-progreso' no encontrado o listo al intentar renderizar gráfico. ¿Estás seguro de estar en la página de proyectos?",
           );
         }
-      }, 50); // 50ms de retraso suelen ser suficientes
+      }, 50);
     }
   } else {
-    // --- Limpiar el panel si no hay ningún proyecto seleccionado ---
     headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
     descEl.textContent = '';
     statsContainer.style.display = 'none';
     tareasContainer.innerHTML = '';
-    // El gráfico ya fue destruido al inicio si existía.
   }
 }
 
@@ -298,18 +301,30 @@ function iniciarEdicionProyecto(id) {
   const form = document.getElementById('form-nuevo-proyecto');
   if (form) form.reset();
 
+  // ======================================================
+  // ==           INICIO DE LA MODIFICACIÓN              ==
+  // ======================================================
+
+  // 1. Obtenemos el selector
   const selectorCurso = document.getElementById('select-curso-proyecto');
   if (selectorCurso) {
-    selectorCurso.innerHTML = '<option value="">Ninguno</option>';
-    state.cursos.forEach((c) => {
-      if (c === 'General') return;
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      selectorCurso.appendChild(opt);
-    });
+    // 2. Usamos la función reutilizable de ui.js
+    //    Le pasamos 'true' para omitir "General", que coincide con la lógica anterior.
+    popularSelectorDeCursos(selectorCurso, true);
+
+    // 3. Añadimos manualmente la opción "Ninguno" al principio
+    //    (popularSelectorDeCursos borra el contenido, por eso lo hacemos después)
+    const opcionNinguno = document.createElement('option');
+    opcionNinguno.value = ''; // Usamos "" como valor para "Ninguno"
+    opcionNinguno.textContent = 'Ninguno';
+    selectorCurso.prepend(opcionNinguno); // Añade al inicio de la lista
+
+    // 4. Asignamos el valor que tenía el proyecto
     selectorCurso.value = proyecto?.curso || '';
   }
+  // ======================================================
+  // ==             FIN DE LA MODIFICACIÓN               ==
+  // ======================================================
 
   document.getElementById('modal-proyecto-titulo').textContent = proyecto
     ? 'Editar Proyecto'
@@ -327,6 +342,7 @@ function iniciarEdicionProyecto(id) {
 }
 
 function eliminarProyecto(id) {
+  // ... (función sin cambios)
   const proyecto = state.proyectos.find((p) => p.id === id);
   if (!proyecto) return;
   mostrarConfirmacion(
@@ -351,6 +367,7 @@ function eliminarProyecto(id) {
 }
 
 function abrirModalQuickAdd() {
+  // ... (función sin cambios, ya usa popularSelectorDeCursos)
   const proyecto = state.proyectos.find(
     (p) => p.id === state.proyectoSeleccionadoId,
   );
@@ -366,8 +383,11 @@ function abrirModalQuickAdd() {
     if (proyecto.curso) {
       selectorCurso.value = proyecto.curso;
     } else {
-      const primerCurso = state.cursos.find((c) => c !== 'General');
-      if (primerCurso) selectorCurso.value = primerCurso;
+      // REFACTOR: Buscar el primer curso *objeto*
+      const primerCurso = state.cursos.find(
+        (c) => c.nombre !== 'General' && !c.isArchivado,
+      );
+      if (primerCurso) selectorCurso.value = primerCurso.nombre;
     }
   }
 
@@ -378,6 +398,7 @@ function abrirModalQuickAdd() {
 }
 
 function agregarTareaDesdeModal() {
+  // ... (función sin cambios)
   const nuevaTarea = {
     id: Date.now(),
     curso: document.getElementById('quick-add-curso-tarea').value,
@@ -403,7 +424,7 @@ function agregarTareaDesdeModal() {
 }
 
 export function inicializarProyectos() {
-  // ===== CORRECCIÓN: INYECTAR ÍCONOS ESPECÍFICOS DE LA PÁGINA AQUÍ =====
+  // ... (función sin cambios)
   const btnCerrarDetalles = document.getElementById(
     'btn-cerrar-detalles-proyecto',
   );
@@ -414,7 +435,6 @@ export function inicializarProyectos() {
   if (btnMenuProyecto) {
     btnMenuProyecto.innerHTML = ICONS.dots_vertical;
   }
-  // =================================================================
 
   renderizarProyectos();
   renderizarDetallesProyecto();

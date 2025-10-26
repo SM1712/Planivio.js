@@ -13,30 +13,54 @@ export function updateRgbVariables() {
 export function cargarDatos() {
   const datosGuardados = localStorage.getItem('planivioData');
 
-  // 1. Define el estado inicial completo CLONADO (incluyendo widgetsVisibles por defecto)
-  //    Usamos JSON.parse(JSON.stringify(...)) para crear una copia profunda y evitar modificar el original importado.
   const estadoInicialCompleto = JSON.parse(JSON.stringify(defaultState));
 
   if (datosGuardados) {
     try {
       const estadoGuardado = JSON.parse(datosGuardados);
 
-      // 2. Fusiona los datos guardados sobre el estado inicial completo.
-      //    Esto asegura que mantenemos la estructura base y añadimos/sobrescribimos con lo guardado.
+      // ======================================================
+      // ==           INICIO DE MIGRACIÓN DE DATOS           ==
+      // ======================================================
+      // Revisa si 'cursos' existe, es un array, y si su primer elemento es un string.
+      if (
+        estadoGuardado.cursos &&
+        Array.isArray(estadoGuardado.cursos) &&
+        typeof estadoGuardado.cursos[0] === 'string'
+      ) {
+        console.warn(
+          '[cargarDatos] Detectada estructura de Cursos antigua. Migrando...',
+        );
+        const cursosAntiguos = estadoGuardado.cursos;
+        // Convierte el array de strings a un array de objetos
+        estadoGuardado.cursos = cursosAntiguos.map((nombreCurso, index) => ({
+          id: nombreCurso === 'General' ? 1 : Date.now() + index, // Asigna ID '1' a General, y únicos a los demás
+          nombre: nombreCurso,
+          emoji: null,
+          isArchivado: false,
+        }));
+        console.log(
+          '[cargarDatos] Migración de Cursos completada:',
+          estadoGuardado.cursos,
+        );
+      }
+      // ======================================================
+      // ==             FIN DE MIGRACIÓN DE DATOS            ==
+      // ======================================================
+
+      // 2. Fusiona los datos guardados (ya migrados) sobre el estado inicial completo.
       const estadoFinal = {
-        ...estadoInicialCompleto, // Empieza con la estructura por defecto completa
-        ...estadoGuardado, // Sobrescribe claves existentes con lo guardado
+        ...estadoInicialCompleto,
+        ...estadoGuardado,
         config: {
-          // Fusiona 'config' explícitamente para asegurar sub-propiedades
-          ...estadoInicialCompleto.config, // Defaults de config
-          ...(estadoGuardado.config || {}), // Lo guardado en config (si existe)
-          // ✨ Asegura que widgetsVisibles exista y tenga defaults si falta en lo guardado
+          ...estadoInicialCompleto.config,
+          ...(estadoGuardado.config || {}),
           widgetsVisibles: {
-            ...estadoInicialCompleto.config.widgetsVisibles, // Defaults de widgetsVisibles
-            ...(estadoGuardado.config?.widgetsVisibles || {}), // Lo guardado en widgetsVisibles (si existe)
+            ...estadoInicialCompleto.config.widgetsVisibles,
+            ...(estadoGuardado.config?.widgetsVisibles || {}),
           },
           muescasColores: {
-            ...estadoInicialCompleto.config.muescasColores, // Defaults
+            ...estadoInicialCompleto.config.muescasColores,
             ...(estadoGuardado.config?.muescasColores || {}),
             vencidaFondoColor:
               estadoGuardado.config?.muescasColores?.vencidaFondoColor ??
@@ -46,56 +70,45 @@ export function cargarDatos() {
               estadoInicialCompleto.config.muescasColores.vencidaFondoOpacidad,
           },
         },
-        // Si tienes otros objetos anidados en 'state' que necesiten fusión, añádelos aquí de forma similar a 'config'.
       };
 
-      // 3. Limpia el estado global actual antes de aplicar el estado final.
-      //    Esto es importante si la estructura guardada es muy antigua y tiene claves obsoletas.
+      // 3. Limpia el estado global actual...
       Object.keys(state).forEach((key) => delete state[key]);
 
-      // 4. Aplica el estado final fusionado al 'state' global.
+      // 4. Aplica el estado final fusionado...
       Object.assign(state, estadoFinal);
 
       console.log(
         '[cargarDatos] Datos cargados y fusionados:',
         JSON.parse(JSON.stringify(state)),
-      ); // Loguea una copia para ver el resultado
+      );
     } catch (error) {
       console.error(
         '[cargarDatos] Error al parsear o fusionar datos de localStorage. Se usará el estado inicial.',
         error,
       );
-      // Si falla, asegura que 'state' tenga al menos la estructura inicial limpia.
       Object.keys(state).forEach((key) => delete state[key]);
-      Object.assign(state, estadoInicialCompleto); // Aplica estado inicial limpio
+      Object.assign(state, estadoInicialCompleto);
     }
   } else {
-    // Si no hay datos guardados, el 'state' ya debería tener los valores iniciales importados.
-    // Verificamos por si acaso, especialmente widgetsVisibles.
+    // ... (lógica de 'else' sin cambios) ...
     if (
       !state.config ||
       typeof state.config.widgetsVisibles !== 'object' ||
       typeof state.config.muescasColores !== 'object'
     ) {
-      // <-- Añade muescasColores aquí
-      console.error(
-        '[cargarDatos] Fallo CRÍTICO final: state.config incompleto.',
-      );
       if (!state.config) state.config = {};
-      // Asegura que ambos existan
       if (typeof state.config.widgetsVisibles !== 'object') {
         state.config.widgetsVisibles = JSON.parse(
           JSON.stringify(defaultState.config.widgetsVisibles),
         );
       }
       if (!state.config || typeof state.config.muescasColores !== 'object') {
-        // Forzar muescasColores si falta
         if (!state.config) state.config = {};
         state.config.muescasColores = JSON.parse(
           JSON.stringify(defaultState.config.muescasColores),
         );
       } else {
-        // Si muescasColores existe, verifica las sub-propiedades de fondo
         if (typeof state.config.muescasColores.vencidaFondoColor !== 'string') {
           state.config.muescasColores.vencidaFondoColor =
             defaultState.config.muescasColores.vencidaFondoColor;
@@ -113,13 +126,10 @@ export function cargarDatos() {
     );
   }
 
-  // --- Verificación Final ---
-  // Aseguramos que widgetsVisibles exista después de todo el proceso
   if (!state.config || typeof state.config.widgetsVisibles !== 'object') {
     console.error(
       '[cargarDatos] Fallo CRÍTICO final: state.config.widgetsVisibles sigue sin estar definido correctamente.',
     );
-    // Como último recurso, lo forzamos aquí
     if (!state.config) state.config = {};
     state.config.widgetsVisibles = JSON.parse(
       JSON.stringify(defaultState.config.widgetsVisibles),

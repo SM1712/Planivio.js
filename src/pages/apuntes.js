@@ -8,6 +8,7 @@ import {
 } from '../ui.js';
 import { ICONS } from '../icons.js';
 
+// ... (El resto de las funciones SIN CAMBIOS) ...
 let apunteActivoId = null;
 let saveTimeout;
 let notoEmojiFont = null;
@@ -21,7 +22,6 @@ async function cargarFuenteParaPDF() {
     );
     return false;
   }
-
   isFontLoading = true;
   try {
     const response = await fetch(
@@ -34,7 +34,6 @@ async function cargarFuenteParaPDF() {
       reader.onloadend = () => {
         const base64Font = reader.result.split(',')[1];
         notoEmojiFont = base64Font;
-        console.log('Fuente NotoEmoji cargada y lista para PDFs.');
         isFontLoading = false;
         resolve(true);
       };
@@ -49,7 +48,6 @@ async function cargarFuenteParaPDF() {
     return false;
   }
 }
-
 function addPageNumbers(doc) {
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -64,26 +62,21 @@ function addPageNumbers(doc) {
     );
   }
 }
-
 async function descargarApuntesSeleccionados(
   ids = state.apuntesSeleccionadosIds,
 ) {
   if (ids.length === 0) return;
-
   const fontLoaded = await cargarFuenteParaPDF();
   if (!fontLoaded) return;
-
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const apuntesADescargar = state.apuntes.filter((apunte) =>
     ids.includes(apunte.id),
   );
   const accentColor = state.config.accent_color;
-
   doc.addFileToVFS('NotoEmoji-Regular.ttf', notoEmojiFont);
   doc.addFont('NotoEmoji-Regular.ttf', 'NotoEmoji', 'normal');
   doc.addFont('NotoEmoji-Regular.ttf', 'NotoEmoji', 'bold');
-
   const body = [];
   apuntesADescargar.forEach((apunte) => {
     const fecha = new Date(apunte.fechaModificacion).toLocaleDateString(
@@ -91,11 +84,9 @@ async function descargarApuntesSeleccionados(
     );
     const titulo = apunte.titulo || 'Apunte sin título';
     const meta = `Curso: ${apunte.curso} | Última Modificación: ${fecha}`;
-
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = apunte.contenido.replace(/<div>/g, '\n');
     const contenidoTexto = tempDiv.innerText || '';
-
     body.push([
       {
         content: titulo,
@@ -130,7 +121,6 @@ async function descargarApuntesSeleccionados(
       },
     ]);
   });
-
   doc.autoTable({
     head: [
       [
@@ -164,7 +154,6 @@ async function descargarApuntesSeleccionados(
     },
     margin: { top: 30, left: 15, right: 15 },
   });
-
   let fileName;
   if (apuntesADescargar.length === 1) {
     fileName = (apuntesADescargar[0].titulo || 'Apunte')
@@ -176,71 +165,31 @@ async function descargarApuntesSeleccionados(
   }
   doc.save(`${fileName}.pdf`);
 }
-
 function imprimirApuntesSeleccionados(ids = state.apuntesSeleccionadosIds) {
   if (ids.length === 0) return;
   const apuntesAImprimir = state.apuntes.filter((apunte) =>
     ids.includes(apunte.id),
   );
   const accentColor = state.config.accent_color;
-
   let printHtml = `
         <style>
             @media print {
-                /* CORRECCIÓN: Se eliminan los márgenes para ocultar encabezados/pies de página del navegador */
-                @page { 
-                    margin: 0; 
-                    size: A4;
-                }
-                /* Se añade padding al body para compensar la falta de margen */
-                body { 
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-                    -webkit-print-color-adjust: exact;
-                    color-adjust: exact;
-                    padding: 2cm; /* Padding interno para el contenido */
-                }
-                h2 { 
-                    color: ${accentColor}; 
-                    font-size: 16pt; 
-                    margin-top: 0;
-                    margin-bottom: 5px; 
-                }
-                .apunte-impreso { 
-                    page-break-inside: avoid; 
-                    border-top: 1px solid #eee; 
-                    padding-top: 20px; 
-                    margin-top: 20px; 
-                }
-                .apunte-impreso:first-of-type { 
-                    border-top: none; 
-                    margin-top: 0; 
-                    padding-top: 0; 
-                }
-                .meta { 
-                    font-size: 9pt; 
-                    color: #555; 
-                    margin-top: 0; 
-                    margin-bottom: 15px; 
-                }
-                .contenido { 
-                    font-size: 11pt; 
-                    line-height: 1.6; 
-                    color: #333; 
-                    word-wrap: break-word; 
-                }
-                .contenido * {
-                    white-space: pre-wrap !important;
-                }
+                @page { margin: 0; size: A4; }
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-print-color-adjust: exact; color-adjust: exact; padding: 2cm; }
+                h2 { color: ${accentColor}; font-size: 16pt; margin-top: 0; margin-bottom: 5px; }
+                .apunte-impreso { page-break-inside: avoid; border-top: 1px solid #eee; padding-top: 20px; margin-top: 20px; }
+                .apunte-impreso:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+                .meta { font-size: 9pt; color: #555; margin-top: 0; margin-bottom: 15px; }
+                .contenido { font-size: 11pt; line-height: 1.6; color: #333; word-wrap: break-word; }
+                .contenido * { white-space: pre-wrap !important; }
             }
         </style>
-    `; // CORRECCIÓN: El <h1> ha sido eliminado de aquí.
-
+    `;
   apuntesAImprimir.forEach((apunte) => {
     const fecha = new Date(apunte.fechaModificacion).toLocaleDateString(
       'es-ES',
     );
     const contenidoHtml = apunte.contenido;
-
     printHtml += `
             <div class="apunte-impreso">
                 <h2>${apunte.titulo || 'Apunte sin título'}</h2>
@@ -249,28 +198,23 @@ function imprimirApuntesSeleccionados(ids = state.apuntesSeleccionadosIds) {
             </div>
         `;
   });
-
   const printContainer = document.createElement('div');
   printContainer.id = 'print-container';
   printContainer.innerHTML = printHtml;
   document.body.appendChild(printContainer);
-
   setTimeout(() => {
     window.print();
     document.body.removeChild(printContainer);
   }, 100);
 }
-
 function descargarApunteActual() {
   if (apunteActivoId === null) return;
   descargarApuntesSeleccionados([apunteActivoId]);
 }
-
 function imprimirApunteActual() {
   if (apunteActivoId === null) return;
   imprimirApuntesSeleccionados([apunteActivoId]);
 }
-
 function autoGrowTitulo() {
   const inputTituloEl = document.getElementById('input-titulo-apunte');
   if (inputTituloEl) {
@@ -278,42 +222,42 @@ function autoGrowTitulo() {
     inputTituloEl.style.height = `${inputTituloEl.scrollHeight}px`;
   }
 }
-
 function popularFiltroDeCursosApuntes() {
   const selector = document.getElementById('filtro-curso-apuntes');
   if (!selector) return;
-  const cursosConApuntes = [
-    ...new Set(state.apuntes.map((a) => a.curso)),
-  ].filter(Boolean);
+  const cursosConApuntesIds = [...new Set(state.apuntes.map((a) => a.curso))];
+  const cursosFiltrables = state.cursos.filter(
+    (curso) => !curso.isArchivado && cursosConApuntesIds.includes(curso.nombre),
+  );
   selector.innerHTML = '<option value="todos">Todos los Cursos</option>';
-  cursosConApuntes.sort().forEach((nombreCurso) => {
-    const opcion = document.createElement('option');
-    opcion.value = nombreCurso;
-    opcion.textContent = nombreCurso;
-    selector.appendChild(opcion);
-  });
+  cursosFiltrables
+    .sort((a, b) => a.nombre.localeCompare(b.nombre))
+    .forEach((curso) => {
+      const opcion = document.createElement('option');
+      opcion.value = curso.nombre;
+      opcion.textContent = `${curso.emoji ? curso.emoji + ' ' : ''}${
+        curso.nombre
+      }`;
+      selector.appendChild(opcion);
+    });
   selector.value = state.filtroCursoApuntes;
 }
-
 function renderizarListaApuntes() {
   const listaApuntesEl = document.getElementById('lista-apuntes');
   if (!listaApuntesEl || !listaApuntesEl.parentElement) return;
   const scrollPosition = listaApuntesEl.parentElement.scrollTop;
   listaApuntesEl.innerHTML = '';
-
   let apuntesAMostrar = state.apuntes;
   if (state.filtroCursoApuntes !== 'todos') {
     apuntesAMostrar = state.apuntes.filter(
       (apunte) => apunte.curso === state.filtroCursoApuntes,
     );
   }
-
   const apuntesOrdenados = [...apuntesAMostrar].sort((a, b) => {
     if (a.fijado && !b.fijado) return -1;
     if (!a.fijado && b.fijado) return 1;
     return new Date(b.fechaModificacion) - new Date(a.fechaModificacion);
   });
-
   if (apuntesOrdenados.length === 0) {
     listaApuntesEl.innerHTML =
       '<li class="apunte-item-empty"><p>Crea tu primer apunte.</p></li>';
@@ -332,11 +276,9 @@ function renderizarListaApuntes() {
       li.className = 'apunte-item';
       li.dataset.id = apunte.id;
       const isSelected = state.apuntesSeleccionadosIds.includes(apunte.id);
-
       if (apunte.id === apunteActivoId) li.classList.add('active');
       if (apunte.fijado) li.classList.add('fijado');
       if (isSelected) li.classList.add('seleccionado');
-
       li.innerHTML = `
                 <div class="apunte-selection-control">
                     <input type="checkbox" id="select-apunte-${apunte.id}" ${isSelected ? 'checked' : ''}>
@@ -365,14 +307,12 @@ function renderizarListaApuntes() {
     listaApuntesEl.parentElement.scrollTop = scrollPosition;
   }
 }
-
 function renderizarEditor() {
   const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
   const inputTituloEl = document.getElementById('input-titulo-apunte');
   const trixEditorEl = document.querySelector('trix-editor');
   const selectCursoEl = document.getElementById('select-curso-apunte');
   const btnEliminarApunteEl = document.getElementById('btn-eliminar-apunte');
-
   if (inputTituloEl && trixEditorEl && selectCursoEl && btnEliminarApunteEl) {
     if (apunte) {
       inputTituloEl.value = apunte.titulo;
@@ -382,13 +322,13 @@ function renderizarEditor() {
     } else {
       inputTituloEl.value = '';
       if (trixEditorEl.editor) trixEditorEl.editor.loadHTML('');
-      selectCursoEl.value = state.cursos[0] || 'General';
+      const primerCurso = state.cursos.find((c) => !c.isArchivado);
+      selectCursoEl.value = primerCurso ? primerCurso.nombre : 'General';
       btnEliminarApunteEl.style.display = 'none';
     }
   }
   setTimeout(autoGrowTitulo, 0);
 }
-
 function renderizarBarraAcciones() {
   const panelListaApuntes = document.getElementById('panel-lista-apuntes');
   if (!panelListaApuntes) return;
@@ -396,19 +336,15 @@ function renderizarBarraAcciones() {
     'modo-seleccion',
     state.apuntesEnModoSeleccion,
   );
-
   if (!state.apuntesEnModoSeleccion) return;
-
   const selectionInfo = document.getElementById('apuntes-selection-info');
   const selectAllCheckbox = document.getElementById('select-all-apuntes');
   if (!selectionInfo || !selectAllCheckbox) return;
-
   const totalSeleccionados = state.apuntesSeleccionadosIds.length;
   const totalApuntesVisibles = document.querySelectorAll(
     '#lista-apuntes li[data-id]',
   ).length;
   selectionInfo.textContent = `${totalSeleccionados} seleccionado(s)`;
-
   if (totalSeleccionados === totalApuntesVisibles && totalApuntesVisibles > 0) {
     selectAllCheckbox.checked = true;
     selectAllCheckbox.indeterminate = false;
@@ -420,13 +356,11 @@ function renderizarBarraAcciones() {
     selectAllCheckbox.indeterminate = false;
   }
 }
-
 function renderizarPaginaApuntes() {
   popularFiltroDeCursosApuntes();
   renderizarListaApuntes();
   renderizarBarraAcciones();
 }
-
 function handleInput() {
   if (apunteActivoId === null) {
     const titulo = document.getElementById('input-titulo-apunte')?.value.trim();
@@ -440,7 +374,6 @@ function handleInput() {
   }
   handleAutoSave();
 }
-
 function crearNuevoApunte() {
   const nuevoApunte = {
     id: Date.now(),
@@ -455,7 +388,6 @@ function crearNuevoApunte() {
   apunteActivoId = nuevoApunte.id;
   renderizarPaginaApuntes();
 }
-
 function handleAutoSave() {
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
@@ -475,7 +407,6 @@ function handleAutoSave() {
     }
   }, 500);
 }
-
 function seleccionarNuevoApunte() {
   if (state.apuntesEnModoSeleccion) {
     exitSelectionMode();
@@ -485,12 +416,10 @@ function seleccionarNuevoApunte() {
   renderizarEditor();
   document.getElementById('input-titulo-apunte')?.focus();
 }
-
 function eliminarApunte(id) {
   if (id === null) return;
   const apunte = state.apuntes.find((a) => a.id === id);
   if (!apunte) return;
-
   mostrarConfirmacion(
     'Eliminar Apunte',
     `¿Estás seguro de que quieres eliminar "${apunte.titulo || 'este apunte'}"?`,
@@ -506,13 +435,11 @@ function eliminarApunte(id) {
     },
   );
 }
-
 function exitSelectionMode() {
   state.apuntesEnModoSeleccion = false;
   state.apuntesSeleccionadosIds = [];
   renderizarPaginaApuntes();
 }
-
 function handleSelectAll(e) {
   const apuntesVisiblesIds = Array.from(
     document.querySelectorAll('#lista-apuntes li[data-id]'),
@@ -532,11 +459,9 @@ function handleSelectAll(e) {
     renderizarPaginaApuntes();
   }
 }
-
 function eliminarApuntesSeleccionados() {
   const count = state.apuntesSeleccionadosIds.length;
   if (count === 0) return;
-
   mostrarConfirmacion(
     'Eliminar Apuntes',
     `¿Estás seguro de que quieres eliminar ${count} apunte(s) seleccionado(s)?`,
@@ -553,14 +478,12 @@ function eliminarApuntesSeleccionados() {
     },
   );
 }
-
 function handleSeleccionarApunte(apunteLi) {
   if (state.apuntesEnModoSeleccion) return;
   apunteActivoId = parseInt(apunteLi.dataset.id, 10);
   renderizarPaginaApuntes();
   renderizarEditor();
 }
-
 function handleActionClick(action, apunteId) {
   if (action === 'toggle-menu') {
     const dropdown = document.querySelector(
@@ -587,7 +510,6 @@ function handleActionClick(action, apunteId) {
     renderizarPaginaApuntes();
   }
 }
-
 function handleCheckboxClick(apunteId) {
   const index = state.apuntesSeleccionadosIds.indexOf(apunteId);
   if (index > -1) {
@@ -595,14 +517,12 @@ function handleCheckboxClick(apunteId) {
   } else {
     state.apuntesSeleccionadosIds.push(apunteId);
   }
-
   if (state.apuntesSeleccionadosIds.length === 0) {
     exitSelectionMode();
   } else {
     renderizarPaginaApuntes();
   }
 }
-
 function toggleFijarApunte(id) {
   const apunte = state.apuntes.find((a) => a.id === id);
   if (apunte) {
@@ -613,14 +533,111 @@ function toggleFijarApunte(id) {
 }
 
 export function inicializarApuntes() {
-  apunteActivoId = state.apunteActivold;
+  // ======================================================
+  // ==           INICIO DE LA MODIFICACIÓN              ==
+  // ======================================================
+
+  // 1. Establecer el apunte activo (si viene de otra página)
+  //    (Ya añadimos `apunteSeleccionadoId` a `state.js`)
+  apunteActivoId = state.apunteSeleccionadoId || null;
+  state.apunteSeleccionadoId = null; // Limpiar para que no salte al recargar
+  guardarDatos(); // Guardamos el estado limpio
+
+  // 2. Obtener el selector de curso del editor
   const selectCursoApunte = document.getElementById('select-curso-apunte');
   if (selectCursoApunte) {
-    popularSelectorDeCursos(selectCursoApunte);
-  }
-  renderizarPaginaApuntes();
-  renderizarEditor();
+    // 3. Usar la función reutilizable de ui.js
+    popularSelectorDeCursos(selectCursoApunte, false);
 
+    // 3.1 (NUEVO) Si NO venimos de un apunte específico Y SÍ venimos de un curso específico (botón "Nuevo Apunte"), pre-seleccionarlo
+    if (!apunteActivoId && state.cursoSeleccionadoId) {
+      const curso = state.cursos.find(
+        (c) => c.id === state.cursoSeleccionadoId,
+      );
+      if (
+        curso &&
+        selectCursoApunte.querySelector(`option[value="${curso.nombre}"]`)
+      ) {
+        selectCursoApunte.value = curso.nombre;
+      }
+      state.cursoSeleccionadoId = null; // Limpiar para que no afecte la próxima vez
+      guardarDatos();
+    }
+  }
+
+  // ======================================================
+  // ==             FIN DE LA MODIFICACIÓN               ==
+  // ======================================================
+
+  // Renderizado inicial
+  renderizarPaginaApuntes();
+  renderizarEditor(); // Renderiza según apunteActivoId (ahora se establece arriba)
+
+  // --- Lógica de Scroll (si se seleccionó desde Cursos) ---
+  if (apunteActivoId) {
+    // Esperar un breve instante para asegurar que el DOM esté listo
+    setTimeout(() => {
+      const apunteElemento = document.querySelector(
+        `li[data-id="${apunteActivoId}"]`,
+      );
+      if (apunteElemento) {
+        // ===========================================
+        // ==          INICIO DE LA CORRECCIÓN      ==
+        // ===========================================
+
+        // 1. Identificamos el contenedor que SÍ debe hacer scroll
+        //    (En `renderizarListaApuntes` se usa .parentElement)
+        const scrollContainer =
+          document.getElementById('lista-apuntes')?.parentElement;
+
+        if (scrollContainer) {
+          // 2. Calculamos las posiciones relativas
+          const containerRect = scrollContainer.getBoundingClientRect();
+          const noteRect = apunteElemento.getBoundingClientRect();
+
+          // 3. Posición del 'top' del apunte RELATIVO al 'top' del contenedor
+          const noteTopRelativeToContainer = noteRect.top - containerRect.top;
+
+          // 4. Calculamos un offset para centrarla (imitando 'block: 'center'')
+          const containerHeight = scrollContainer.clientHeight;
+          const noteHeight = apunteElemento.offsetHeight;
+          const offset = containerHeight / 2 - noteHeight / 2;
+
+          // 5. El nuevo scrollTop es:
+          //    (scroll actual) + (posición relativa del apunte) - (offset para centrar)
+          const newScrollTop =
+            scrollContainer.scrollTop + noteTopRelativeToContainer - offset;
+
+          // 6. Usamos scrollTo() en el contenedor correcto
+          scrollContainer.scrollTo({
+            top: newScrollTop,
+            behavior: 'smooth',
+          });
+        } else {
+          // Fallback por si no encuentra el contenedor
+          console.warn(
+            "No se encontró el 'parentElement' de #lista-apuntes, usando scrollIntoView() de emergencia.",
+          );
+          apunteElemento.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+        }
+        // ===========================================
+        // ==           FIN DE LA CORRECCIÓN        ==
+        // ===========================================
+
+        // Resaltado temporal (sin cambios)
+        apunteElemento.classList.add('resaltado-temporal');
+        setTimeout(
+          () => apunteElemento.classList.remove('resaltado-temporal'),
+          2500,
+        );
+      }
+    }, 100); // 100ms suelen ser suficientes
+  }
+
+  // --- Listeners (sin cambios) ---
   const btnNuevoApunteEl = document.getElementById('btn-nuevo-apunte');
   if (btnNuevoApunteEl && !btnNuevoApunteEl.dataset.initialized) {
     btnNuevoApunteEl.addEventListener('click', seleccionarNuevoApunte);
