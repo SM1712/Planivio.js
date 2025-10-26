@@ -28,7 +28,7 @@
   gap: 10px;
   padding: 10px;
   position: relative; /* Para el overlay */
-  min-height: calc(100vh - 70px); /* 70px es la altura del header */
+  min-height: calc(100vh - 80px); /* 70px es la altura del header */
 }
 
 .panel {
@@ -127,7 +127,7 @@
 /* --- RESPONSIVE --- */
 @media (max-width: 900px) {
   body {
-    /* overflow: auto; */ /* <-- QUITADO: Innecesario y rompe sticky en móvil */
+    /*overflow: auto;*/
   }
   .app-container {
     flex-direction: column;

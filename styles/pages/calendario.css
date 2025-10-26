@@ -129,6 +129,7 @@
   overflow: hidden;
   border-radius: var(--border-radius-medium);
   min-height: 0;
+  height: 100%;
 }
 
 /* --- Cuadrículas Base --- */
@@ -638,7 +639,7 @@
     flex-direction: column;
     padding: 5px;
     gap: 5px;
-    height: 100%;
+    height: auto;
     box-sizing: border-box;
   }
 
@@ -727,6 +728,7 @@
     min-height: 0;
     position: relative;
     border-radius: var(--border-radius-medium);
+    flex-basis: 1;
   }
 
   .calendario-grid-base {
