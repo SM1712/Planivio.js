@@ -5,49 +5,53 @@ import {
   cerrarModal,
   mostrarModal,
   popularSelectorDeCursos,
+  popularSelectorDeProyectos,
 } from '../ui.js';
 import { ICONS } from '../icons.js';
 
-// ... (El resto de las funciones SIN CAMBIOS) ...
 let apunteActivoId = null;
 let saveTimeout;
-let notoEmojiFont = null;
-let isFontLoading = false;
 
-async function cargarFuenteParaPDF() {
-  if (notoEmojiFont) return true;
-  if (isFontLoading) {
-    alert(
-      'La fuente para PDF se está descargando. Por favor, inténtalo de nuevo en un momento.',
-    );
-    return false;
-  }
-  isFontLoading = true;
-  try {
-    const response = await fetch(
-      'https://cdn.jsdelivr.net/npm/noto-emoji@latest/fonts/NotoEmoji-Regular.ttf',
-    );
-    if (!response.ok) throw new Error('Network response was not ok');
-    const fontBlob = await response.blob();
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64Font = reader.result.split(',')[1];
-        notoEmojiFont = base64Font;
-        isFontLoading = false;
-        resolve(true);
-      };
-      reader.readAsDataURL(fontBlob);
-    });
-  } catch (error) {
-    console.error('No se pudo cargar la fuente de emojis para el PDF:', error);
-    alert(
-      'Error crítico: No se pudo cargar la fuente para generar el PDF. Revisa la conexión a internet.',
-    );
-    isFontLoading = false;
-    return false;
+let filtroCurso = 'todos';
+let filtroProyecto = 'todos';
+let filtroTag = 'todos';
+let mostrarSoloFavoritos = false;
+let ordenFechaAsc = false;
+let searchTermApuntes = '';
+let filtrosDropdownClickHandler = null;
+
+function abrirEditorMovil() {
+  const editorPanel = document.getElementById('panel-editor-apuntes');
+  if (editorPanel) {
+    editorPanel.classList.add('visible-movil');
+    // Forzar renderizado del editor si TinyMCE ya está inicializado
+    const editor = tinymce.get('editor-tinymce');
+    if (editor) {
+      // Un pequeño truco para forzar el redibujado a veces necesario
+      editor.execCommand('mceRepaint');
+      // Enfocar el título (o el editor si no hay título)
+      setTimeout(() => {
+        const tituloInput = document.getElementById('input-titulo-apunte');
+        if (tituloInput && tituloInput.value === '') {
+          tituloInput.focus();
+        } else if (editor) {
+          editor.focus();
+        }
+      }, 350); // Esperar que termine la animación
+    }
   }
 }
+
+function cerrarEditorMovil() {
+  const editorPanel = document.getElementById('panel-editor-apuntes');
+  if (editorPanel) {
+    editorPanel.classList.remove('visible-movil');
+    // Opcional: Deseleccionar apunte activo para claridad al volver a la lista
+    // apunteActivoId = null;
+    // renderizarListaApuntes(); // Actualiza la lista para quitar el 'active'
+  }
+}
+
 function addPageNumbers(doc) {
   const pageCount = doc.internal.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
@@ -66,32 +70,71 @@ async function descargarApuntesSeleccionados(
   ids = state.apuntesSeleccionadosIds,
 ) {
   if (ids.length === 0) return;
-  const fontLoaded = await cargarFuenteParaPDF();
-  if (!fontLoaded) return;
+
+  // Verifica que jsPDF esté cargado antes de usarlo
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    console.error('Error: La biblioteca jsPDF no está cargada.');
+    // Assuming mostrarAlerta is globally available or imported
+    if (typeof mostrarAlerta === 'function') {
+      mostrarAlerta(
+        'Error',
+        'No se pudo generar el PDF. La biblioteca jsPDF no está disponible.',
+      );
+    } else {
+      alert('Error: La biblioteca jsPDF no está disponible.'); // Fallback alert
+    }
+    return;
+  }
+  // Verifica que jsPDF-AutoTable esté cargado
+  if (typeof window.jspdf.jsPDF.API?.autoTable !== 'function') {
+    // Use optional chaining for safety
+    console.error('Error: El plugin jsPDF-AutoTable no está cargado.');
+    if (typeof mostrarAlerta === 'function') {
+      mostrarAlerta(
+        'Error',
+        'No se pudo generar la tabla del PDF. El plugin jsPDF-AutoTable no está disponible.',
+      );
+    } else {
+      alert('Error: El plugin jsPDF-AutoTable no está disponible.'); // Fallback alert
+    }
+    return;
+  }
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const apuntesADescargar = state.apuntes.filter((apunte) =>
     ids.includes(apunte.id),
   );
   const accentColor = state.config.accent_color;
-  doc.addFileToVFS('NotoEmoji-Regular.ttf', notoEmojiFont);
-  doc.addFont('NotoEmoji-Regular.ttf', 'NotoEmoji', 'normal');
-  doc.addFont('NotoEmoji-Regular.ttf', 'NotoEmoji', 'bold');
+
   const body = [];
   apuntesADescargar.forEach((apunte) => {
     const fecha = new Date(apunte.fechaModificacion).toLocaleDateString(
       'es-ES',
     );
     const titulo = apunte.titulo || 'Apunte sin título';
-    const meta = `Curso: ${apunte.curso} | Última Modificación: ${fecha}`;
+    const proyecto = apunte.proyectoId
+      ? state.proyectos.find((p) => p.id === apunte.proyectoId)?.nombre
+      : null;
+
+    let meta = `Curso: ${apunte.curso}`;
+    if (proyecto) {
+      meta += ` | Proyecto: ${proyecto}`;
+    }
+    if (apunte.tags && apunte.tags.length > 0) {
+      meta += ` | Etiquetas: ${apunte.tags.join(', ')}`;
+    }
+    meta += ` | Última Modificación: ${fecha}`;
+
+    // Usar DIV temporal para extraer texto
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = apunte.contenido.replace(/<div>/g, '\n');
-    const contenidoTexto = tempDiv.innerText || '';
+    tempDiv.innerHTML = apunte.contenido;
+    const contenidoTexto = tempDiv.textContent || tempDiv.innerText || '';
+
     body.push([
       {
         content: titulo,
         styles: {
-          font: 'NotoEmoji',
           fontStyle: 'bold',
           fontSize: 14,
           textColor: accentColor,
@@ -102,7 +145,6 @@ async function descargarApuntesSeleccionados(
       {
         content: meta,
         styles: {
-          font: 'NotoEmoji',
           fontSize: 9,
           textColor: [100, 100, 100],
           cellPadding: { bottom: 4 },
@@ -113,58 +155,74 @@ async function descargarApuntesSeleccionados(
       {
         content: contenidoTexto,
         styles: {
-          font: 'NotoEmoji',
           fontSize: 11,
           textColor: [50, 50, 50],
           cellPadding: { bottom: 10 },
         },
       },
     ]);
-  });
-  doc.autoTable({
-    head: [
-      [
-        {
-          content: 'Planivio - Apuntes Exportados',
-          styles: {
-            fillColor: false,
-            textColor: accentColor,
-            fontSize: 18,
-            font: 'NotoEmoji',
-            fontStyle: 'bold',
+  }); // Fin forEach
+
+  try {
+    doc.autoTable({
+      head: [
+        [
+          {
+            content: 'Planivio - Apuntes Exportados',
+            styles: {
+              fillColor: false,
+              textColor: accentColor,
+              fontSize: 18,
+              fontStyle: 'bold',
+            },
           },
-        },
+        ],
       ],
-    ],
-    body: body,
-    theme: 'plain',
-    startY: 25,
-    styles: { cellPadding: { top: 2, right: 0, bottom: 0, left: 0 } },
-    columnStyles: { 0: { cellWidth: 'auto' } },
-    didDrawPage: (data) => {
-      doc.setLineWidth(0.5);
-      doc.setDrawColor(accentColor);
-      doc.line(
-        data.settings.margin.left,
-        20,
-        doc.internal.pageSize.width - data.settings.margin.right,
-        20,
+      body: body,
+      theme: 'plain',
+      startY: 25,
+      styles: { cellPadding: { top: 2, right: 0, bottom: 0, left: 0 } },
+      columnStyles: { 0: { cellWidth: 'auto' } },
+      didDrawPage: (data) => {
+        doc.setLineWidth(0.5);
+        doc.setDrawColor(accentColor);
+        doc.line(
+          data.settings.margin.left,
+          20,
+          doc.internal.pageSize.width - data.settings.margin.right,
+          20,
+        );
+        addPageNumbers(doc); // Assuming addPageNumbers is defined elsewhere
+      },
+      margin: { top: 30, left: 15, right: 15 },
+    });
+
+    let fileName;
+    if (apuntesADescargar.length === 1) {
+      fileName = (apuntesADescargar[0].titulo || 'Apunte')
+        .replace(/[^a-z0-9\s-]/gi, '_')
+        .substring(0, 50)
+        .trim();
+    } else {
+      fileName = `Planivio-Apuntes-${Date.now()}`;
+    }
+    doc.save(`${fileName}.pdf`);
+  } catch (error) {
+    console.error('Error al generar la tabla PDF con jsPDF-AutoTable:', error);
+    // Assuming mostrarAlerta is globally available or imported
+    if (typeof mostrarAlerta === 'function') {
+      mostrarAlerta(
+        'Error PDF',
+        'Ocurrió un error al generar la tabla del documento PDF.',
       );
-      addPageNumbers(doc);
-    },
-    margin: { top: 30, left: 15, right: 15 },
-  });
-  let fileName;
-  if (apuntesADescargar.length === 1) {
-    fileName = (apuntesADescargar[0].titulo || 'Apunte')
-      .replace(/[^a-z0-9\s-]/gi, '_')
-      .substring(0, 50)
-      .trim();
-  } else {
-    fileName = `Planivio-Apuntes-${Date.now()}`;
+    } else {
+      alert(
+        'Error PDF: Ocurrió un error al generar la tabla del documento PDF.',
+      ); // Fallback alert
+    }
   }
-  doc.save(`${fileName}.pdf`);
 }
+
 function imprimirApuntesSeleccionados(ids = state.apuntesSeleccionadosIds) {
   if (ids.length === 0) return;
   const apuntesAImprimir = state.apuntes.filter((apunte) =>
@@ -189,11 +247,24 @@ function imprimirApuntesSeleccionados(ids = state.apuntesSeleccionadosIds) {
     const fecha = new Date(apunte.fechaModificacion).toLocaleDateString(
       'es-ES',
     );
+    const proyecto = apunte.proyectoId
+      ? state.proyectos.find((p) => p.id === apunte.proyectoId)?.nombre
+      : null;
+
+    let meta = `Curso: ${apunte.curso}`;
+    if (proyecto) {
+      meta += ` | Proyecto: ${proyecto}`;
+    }
+    if (apunte.tags && apunte.tags.length > 0) {
+      meta += ` | Etiquetas: ${apunte.tags.join(', ')}`;
+    }
+    meta += ` | Última Modificación: ${fecha}`;
+
     const contenidoHtml = apunte.contenido;
     printHtml += `
             <div class="apunte-impreso">
                 <h2>${apunte.titulo || 'Apunte sin título'}</h2>
-                <p class="meta">Curso: ${apunte.curso} | Última Modificación: ${fecha}</p>
+                <p class="meta">${meta}</p>
                 <div class="contenido">${contenidoHtml}</div>
             </div>
         `;
@@ -222,52 +293,95 @@ function autoGrowTitulo() {
     inputTituloEl.style.height = `${inputTituloEl.scrollHeight}px`;
   }
 }
-function popularFiltroDeCursosApuntes() {
-  const selector = document.getElementById('filtro-curso-apuntes');
-  if (!selector) return;
-  const cursosConApuntesIds = [...new Set(state.apuntes.map((a) => a.curso))];
-  const cursosFiltrables = state.cursos.filter(
-    (curso) => !curso.isArchivado && cursosConApuntesIds.includes(curso.nombre),
-  );
-  selector.innerHTML = '<option value="todos">Todos los Cursos</option>';
-  cursosFiltrables
-    .sort((a, b) => a.nombre.localeCompare(b.nombre))
-    .forEach((curso) => {
-      const opcion = document.createElement('option');
-      opcion.value = curso.nombre;
-      opcion.textContent = `${curso.emoji ? curso.emoji + ' ' : ''}${
-        curso.nombre
-      }`;
-      selector.appendChild(opcion);
-    });
-  selector.value = state.filtroCursoApuntes;
-}
+
 function renderizarListaApuntes() {
   const listaApuntesEl = document.getElementById('lista-apuntes');
   if (!listaApuntesEl || !listaApuntesEl.parentElement) return;
   const scrollPosition = listaApuntesEl.parentElement.scrollTop;
   listaApuntesEl.innerHTML = '';
-  let apuntesAMostrar = state.apuntes;
-  if (state.filtroCursoApuntes !== 'todos') {
-    apuntesAMostrar = state.apuntes.filter(
-      (apunte) => apunte.curso === state.filtroCursoApuntes,
-    );
-  }
-  const apuntesOrdenados = [...apuntesAMostrar].sort((a, b) => {
+
+  // --- Lógica de Filtrado ---
+  const terminoBusqueda = searchTermApuntes.toLowerCase(); // Usar la nueva variable
+
+  let apuntesFiltrados = state.apuntes.filter((apunte) => {
+    // 0. Búsqueda por Título (¡NUEVO!)
+    if (
+      terminoBusqueda &&
+      !apunte.titulo.toLowerCase().includes(terminoBusqueda)
+    ) {
+      return false;
+    }
+    // 1. Filtro Curso
+    if (filtroCurso !== 'todos' && apunte.curso !== filtroCurso) {
+      return false;
+    }
+    // 2. Filtro Proyecto
+    if (
+      filtroProyecto !== 'todos' &&
+      String(apunte.proyectoId) !== filtroProyecto
+    ) {
+      // Convertimos a string para comparar, ya que el value del select es string
+      return false;
+    }
+    // 3. Filtro Favoritos
+    if (mostrarSoloFavoritos && !apunte.isFavorito) {
+      return false;
+    }
+    // 4. Filtro Tag
+    if (
+      filtroTag !== 'todos' &&
+      (!apunte.tags || !apunte.tags.includes(filtroTag))
+    ) {
+      return false;
+    }
+    // Si pasa todos los filtros, se muestra
+    return true;
+  });
+  // -------------------------
+
+  // --- Lógica de Ordenamiento ---
+  const apuntesOrdenados = [...apuntesFiltrados].sort((a, b) => {
+    // 1. Favoritos (sin cambios)
+    if (a.isFavorito && !b.isFavorito) return -1;
+    if (!a.isFavorito && b.isFavorito) return 1;
+    // 2. Fijados (sin cambios)
     if (a.fijado && !b.fijado) return -1;
     if (!a.fijado && b.fijado) return 1;
-    return new Date(b.fechaModificacion) - new Date(a.fechaModificacion);
+    // 3. Orden por Fecha (modificado)
+    const fechaA = new Date(a.fechaModificacion);
+    const fechaB = new Date(b.fechaModificacion);
+    return ordenFechaAsc ? fechaA - fechaB : fechaB - fechaA; // Ascendente o Descendente
   });
+  // ----------------------------
+
   if (apuntesOrdenados.length === 0) {
-    listaApuntesEl.innerHTML =
-      '<li class="apunte-item-empty"><p>Crea tu primer apunte.</p></li>';
+    // Mensaje dinámico si no hay resultados por búsqueda o filtro
+    listaApuntesEl.innerHTML = terminoBusqueda
+      ? '<li class="apunte-item-empty"><p>No se encontraron apuntes para "' +
+        searchTermApuntes +
+        '".</p></li>'
+      : '<li class="apunte-item-empty"><p>No se encontraron apuntes con los filtros actuales.</p></li>';
   } else {
     apuntesOrdenados.forEach((apunte) => {
+      // ... (resto del renderizado del <li> sin cambios) ...
       const fecha = new Date(apunte.fechaCreacion).toLocaleDateString('es-ES', {
         day: '2-digit',
         month: 'short',
       });
       const curso = apunte.curso || 'General';
+      const proyecto = apunte.proyectoId
+        ? state.proyectos.find((p) => p.id === apunte.proyectoId)?.nombre
+        : null;
+
+      let tagsHtml = '';
+      if (apunte.tags && apunte.tags.length > 0) {
+        tagsHtml = '<div class="apunte-item-tags">';
+        apunte.tags.forEach((tag) => {
+          tagsHtml += `<span class="apunte-tag">#${tag}</span>`;
+        });
+        tagsHtml += '</div>';
+      }
+
       const preview = apunte.contenido
         .replace(/<[^>]*>?/gm, ' ')
         .replace(/\s+/g, ' ')
@@ -279,6 +393,18 @@ function renderizarListaApuntes() {
       if (apunte.id === apunteActivoId) li.classList.add('active');
       if (apunte.fijado) li.classList.add('fijado');
       if (isSelected) li.classList.add('seleccionado');
+      if (apunte.isFavorito) li.classList.add('favorito');
+
+      let metaInfo = curso;
+      if (proyecto) {
+        metaInfo += ` / ${proyecto}`;
+      }
+      metaInfo += ` - ${fecha}`;
+
+      const pinBtnHtml = `<button class="btn-icon btn-apunte-fijar ${apunte.fijado ? 'active' : ''}" data-action="fijar" title="Fijar apunte">${ICONS.pin}</button>`;
+      const favoritoBtnHtml = `<button class="btn-icon btn-apunte-favorito ${apunte.isFavorito ? 'active' : ''}" data-action="favorito" title="Marcar como favorito">${apunte.isFavorito ? ICONS.star_filled : ICONS.star_outline}</button>`;
+      const menuBtnHtml = `<div class="apunte-menu-container"><button class="btn-icon btn-apunte-menu" data-action="toggle-menu">${ICONS.dots_vertical}</button><div class="apunte-actions-dropdown"><button data-action="seleccionar">Seleccionar</button><button data-action="eliminar" class="btn-eliminar-apunte-item"><span>Eliminar</span></button></div></div>`;
+
       li.innerHTML = `
                 <div class="apunte-selection-control">
                     <input type="checkbox" id="select-apunte-${apunte.id}" ${isSelected ? 'checked' : ''}>
@@ -286,18 +412,14 @@ function renderizarListaApuntes() {
                 </div>
                 <div class="apunte-item-content">
                     <h4 class="apunte-item-titulo">${apunte.titulo || 'Apunte sin título'}</h4>
-                    <p class="apunte-item-meta">${curso} - ${fecha}</p>
+                    <p class="apunte-item-meta">${metaInfo}</p>
                     <p class="apunte-item-preview">${preview || 'Sin contenido...'}</p>
+                    ${tagsHtml} 
                 </div>
                 <div class="apunte-item-actions">
-                    <div class="apunte-menu-container">
-                        <button class="btn-icon btn-apunte-menu" data-action="toggle-menu">${ICONS.dots_vertical}</button>
-                        <div class="apunte-actions-dropdown">
-                            <button data-action="seleccionar">Seleccionar</button>
-                            <button data-action="eliminar" class="btn-eliminar-apunte-item"><span>Eliminar</span></button>
-                        </div>
-                    </div>
-                    <button class="btn-icon btn-apunte-fijar ${apunte.fijado ? 'active' : ''}" data-action="fijar" title="Fijar apunte">${ICONS.pin}</button>
+                    ${menuBtnHtml}     
+                    ${pinBtnHtml}      
+                    ${favoritoBtnHtml} 
                 </div>
             `;
       listaApuntesEl.appendChild(li);
@@ -307,28 +429,77 @@ function renderizarListaApuntes() {
     listaApuntesEl.parentElement.scrollTop = scrollPosition;
   }
 }
+
+// ===== INICIO DE CAMBIOS (renderizarEditor) =====
 function renderizarEditor() {
   const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
   const inputTituloEl = document.getElementById('input-titulo-apunte');
-  const trixEditorEl = document.querySelector('trix-editor');
   const selectCursoEl = document.getElementById('select-curso-apunte');
-  const btnEliminarApunteEl = document.getElementById('btn-eliminar-apunte');
-  if (inputTituloEl && trixEditorEl && selectCursoEl && btnEliminarApunteEl) {
+  // Se elimina btnEliminarApunteEl del footer
+  const btnFavoritoEl = document.getElementById('btn-editor-favorito');
+  const selectProyectoEl = document.getElementById('select-proyecto-apunte');
+  const inputTagsEl = document.getElementById('input-tags-apunte');
+  // --- NUEVO ELEMENTO ---
+  const btnEliminarEditorEl = document.getElementById('btn-editor-eliminar');
+  // --------------------
+
+  const editor = tinymce.get('editor-tinymce');
+
+  // Añadimos btnEliminarEditorEl a la condición
+  if (
+    inputTituloEl &&
+    selectCursoEl &&
+    btnFavoritoEl &&
+    selectProyectoEl &&
+    inputTagsEl &&
+    btnEliminarEditorEl
+  ) {
+    popularSelectorDeProyectos('select-proyecto-apunte');
+
     if (apunte) {
       inputTituloEl.value = apunte.titulo;
-      if (trixEditorEl.editor) trixEditorEl.editor.loadHTML(apunte.contenido);
+
+      if (editor) {
+        editor.setContent(apunte.contenido);
+      }
+
       selectCursoEl.value = apunte.curso || 'General';
-      btnEliminarApunteEl.style.display = 'block';
+      // --- VISIBILIDAD BOTÓN ELIMINAR ---
+      btnEliminarEditorEl.style.display = 'inline-flex'; // Mostrar como icono flex
+      // ---------------------------------
+
+      selectProyectoEl.value = apunte.proyectoId || '';
+      btnFavoritoEl.innerHTML = apunte.isFavorito
+        ? ICONS.star_filled
+        : ICONS.star_outline;
+      btnFavoritoEl.classList.toggle('active', apunte.isFavorito);
+
+      inputTagsEl.value = apunte.tags ? apunte.tags.join(', ') : '';
     } else {
+      // Si es un apunte nuevo
       inputTituloEl.value = '';
-      if (trixEditorEl.editor) trixEditorEl.editor.loadHTML('');
+
+      if (editor) {
+        editor.setContent('');
+      }
+
       const primerCurso = state.cursos.find((c) => !c.isArchivado);
       selectCursoEl.value = primerCurso ? primerCurso.nombre : 'General';
-      btnEliminarApunteEl.style.display = 'none';
+      // --- VISIBILIDAD BOTÓN ELIMINAR ---
+      btnEliminarEditorEl.style.display = 'none'; // Ocultar si es nuevo
+      // ---------------------------------
+
+      selectProyectoEl.value = '';
+      btnFavoritoEl.innerHTML = ICONS.star_outline;
+      btnFavoritoEl.classList.remove('active');
+
+      inputTagsEl.value = '';
     }
   }
   setTimeout(autoGrowTitulo, 0);
 }
+// ===== FIN DE CAMBIOS (renderizarEditor) =====
+
 function renderizarBarraAcciones() {
   const panelListaApuntes = document.getElementById('panel-lista-apuntes');
   if (!panelListaApuntes) return;
@@ -357,36 +528,55 @@ function renderizarBarraAcciones() {
   }
 }
 function renderizarPaginaApuntes() {
-  popularFiltroDeCursosApuntes();
   renderizarListaApuntes();
   renderizarBarraAcciones();
 }
 function handleInput() {
   if (apunteActivoId === null) {
     const titulo = document.getElementById('input-titulo-apunte')?.value.trim();
-    const contenido = document
-      .querySelector('trix-editor')
-      ?.editor.getDocument()
-      .toString()
-      .trim();
+    const contenido = tinymce.get('editor-tinymce')?.getContent().trim() || '';
+
     if (titulo === '' && contenido === '') return;
     crearNuevoApunte();
   }
   handleAutoSave();
 }
 function crearNuevoApunte() {
+  const tagsInput = document.getElementById('input-tags-apunte');
+  const tagsArray = tagsInput
+    ? tagsInput.value
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter((tag) => tag !== '')
+        .filter((tag, index, self) => self.indexOf(tag) === index)
+    : [];
+
   const nuevoApunte = {
     id: Date.now(),
     titulo: document.getElementById('input-titulo-apunte').value.trim(),
-    contenido: document.querySelector('trix-editor').value,
+    contenido: tinymce.get('editor-tinymce')?.getContent() || '',
     curso: document.getElementById('select-curso-apunte').value,
     fechaCreacion: new Date().toISOString(),
     fechaModificacion: new Date().toISOString(),
     fijado: false,
+    isFavorito:
+      document
+        .getElementById('btn-editor-favorito')
+        ?.classList.contains('active') || false,
+    proyectoId:
+      parseInt(document.getElementById('select-proyecto-apunte').value) || null,
+    tags: tagsArray,
   };
   state.apuntes.unshift(nuevoApunte);
   apunteActivoId = nuevoApunte.id;
   renderizarPaginaApuntes();
+
+  // --- MOSTRAR BOTÓN ELIMINAR DEL EDITOR ---
+  const btnEliminarEditorEl = document.getElementById('btn-editor-eliminar');
+  if (btnEliminarEditorEl) {
+    btnEliminarEditorEl.style.display = 'inline-flex';
+  }
+  // ---------------------------------------
 }
 function handleAutoSave() {
   clearTimeout(saveTimeout);
@@ -394,15 +584,43 @@ function handleAutoSave() {
     const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
     if (apunte) {
       const tituloAnterior = apunte.titulo;
+      const cursoAnterior = apunte.curso;
+      const proyectoAnterior = apunte.proyectoId;
+      const tagsAnteriores = JSON.stringify(apunte.tags);
+
       apunte.titulo = document
         .getElementById('input-titulo-apunte')
         .value.trim();
-      apunte.contenido = document.querySelector('trix-editor').value;
+      apunte.contenido = tinymce.get('editor-tinymce')?.getContent() || '';
       apunte.curso = document.getElementById('select-curso-apunte').value;
+      apunte.proyectoId =
+        parseInt(document.getElementById('select-proyecto-apunte').value) ||
+        null;
+
+      const tagsInput = document.getElementById('input-tags-apunte');
+      const tagsArray = tagsInput
+        ? tagsInput.value
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter((tag) => tag !== '')
+            .filter((tag, index, self) => self.indexOf(tag) === index)
+        : [];
+      apunte.tags = tagsArray;
+
       apunte.fechaModificacion = new Date().toISOString();
+
       guardarDatos();
-      if (apunte.titulo !== tituloAnterior) {
-        renderizarPaginaApuntes();
+
+      if (
+        apunte.titulo !== tituloAnterior ||
+        apunte.curso !== cursoAnterior ||
+        apunte.proyectoId !== proyectoAnterior ||
+        JSON.stringify(apunte.tags) !== tagsAnteriores
+      ) {
+        if (apunte.curso !== cursoAnterior) {
+          popularFiltroDeCursosApuntes();
+        }
+        renderizarListaApuntes();
       }
     }
   }, 500);
@@ -411,11 +629,19 @@ function seleccionarNuevoApunte() {
   if (state.apuntesEnModoSeleccion) {
     exitSelectionMode();
   }
-  apunteActivoId = null;
-  renderizarPaginaApuntes();
-  renderizarEditor();
-  document.getElementById('input-titulo-apunte')?.focus();
+  apunteActivoId = null; // Marcar que no hay apunte seleccionado
+  // renderizarListaApuntes(); // No es necesario aquí si no cambiamos selección visual
+  renderizarEditor(); // Limpia el editor
+
+  // --- Lógica Móvil ---
+  if (window.innerWidth <= 900) {
+    abrirEditorMovil(); // Abre el overlay del editor
+  } else {
+    document.getElementById('input-titulo-apunte')?.focus(); // Foco normal en escritorio
+  }
+  // ------------------
 }
+
 function eliminarApunte(id) {
   if (id === null) return;
   const apunte = state.apuntes.find((a) => a.id === id);
@@ -427,7 +653,7 @@ function eliminarApunte(id) {
       state.apuntes = state.apuntes.filter((a) => a.id !== id);
       if (apunteActivoId === id) {
         apunteActivoId = null;
-        renderizarEditor();
+        renderizarEditor(); // Esto ocultará el botón eliminar del editor
       }
       exitSelectionMode();
       guardarDatos();
@@ -479,10 +705,24 @@ function eliminarApuntesSeleccionados() {
   );
 }
 function handleSeleccionarApunte(apunteLi) {
-  if (state.apuntesEnModoSeleccion) return;
-  apunteActivoId = parseInt(apunteLi.dataset.id, 10);
-  renderizarPaginaApuntes();
-  renderizarEditor();
+  if (state.apuntesEnModoSeleccion) return; // No hacer nada si está en modo selección
+
+  const nuevoId = parseInt(apunteLi.dataset.id, 10);
+
+  // Evitar recargar si ya está seleccionado (útil en escritorio)
+  if (nuevoId === apunteActivoId && window.innerWidth > 900) {
+    return;
+  }
+
+  apunteActivoId = nuevoId; // Establecer el nuevo ID activo
+  renderizarListaApuntes(); // Actualiza la lista para marcar el nuevo activo
+  renderizarEditor(); // Carga el contenido del apunte seleccionado
+
+  // --- Lógica Móvil ---
+  if (window.innerWidth <= 900) {
+    abrirEditorMovil(); // Abre el overlay del editor
+  }
+  // ------------------
 }
 function handleActionClick(action, apunteId) {
   if (action === 'toggle-menu') {
@@ -501,6 +741,9 @@ function handleActionClick(action, apunteId) {
   }
   if (action === 'fijar') {
     toggleFijarApunte(apunteId);
+  }
+  if (action === 'favorito') {
+    toggleFavorito(apunteId);
   }
   if (action === 'seleccionar') {
     if (!state.apuntesEnModoSeleccion) state.apuntesEnModoSeleccion = true;
@@ -531,25 +774,243 @@ function toggleFijarApunte(id) {
     renderizarPaginaApuntes();
   }
 }
+function toggleFavorito(id) {
+  const apunte = state.apuntes.find((a) => a.id === id);
+  if (apunte) {
+    apunte.isFavorito = !apunte.isFavorito;
+    guardarDatos();
+    renderizarPaginaApuntes();
+    if (id === apunteActivoId) {
+      const btnFavoritoEl = document.getElementById('btn-editor-favorito');
+      if (btnFavoritoEl) {
+        btnFavoritoEl.innerHTML = apunte.isFavorito
+          ? ICONS.star_filled
+          : ICONS.star_outline;
+        btnFavoritoEl.classList.toggle('active', apunte.isFavorito);
+      }
+    }
+  }
+}
+function toggleEditorFavorito() {
+  if (apunteActivoId === null) return;
+
+  const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
+  if (apunte) {
+    toggleFavorito(apunteActivoId);
+  }
+}
+function inicializarTinyMCE() {
+  tinymce.remove('#editor-tinymce');
+
+  tinymce.init({
+    selector: '#editor-tinymce',
+    promotion: false,
+    branding: false,
+    menubar: false,
+    statusbar: false,
+    plugins: 'autoresize lists link autolink',
+    toolbar:
+      'bold italic underline strikethrough | ' +
+      'backcolor | ' +
+      'bullist numlist | ' +
+      'link | ' +
+      'undo redo',
+    autoresize_bottom_margin: 20,
+    content_style: `
+    html { 
+        /* Asegura que el html ocupe toda la altura del iframe */
+        height: 100%; 
+      }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+        line-height: 1.6;
+        color: var(--text-base);
+        padding: 0 10px !important; /* Ajustado padding */
+        margin: 0; /* Asegura que no haya márgenes extraños */
+        height: 100%; /* Ocupa toda la altura del html */
+        box-sizing: border-box; /* Incluye padding en la altura */
+        overflow-y: auto !important; /* ¡Clave! Añade scroll vertical al body */
+      }
+      a { color: var(--accent-color); }
+      ::marker { color: var(--text-muted); }
+    `,
+    skin: document.body.classList.contains('dark-theme')
+      ? 'oxide-dark'
+      : 'oxide',
+    content_css: document.body.classList.contains('dark-theme')
+      ? 'dark'
+      : 'default',
+
+    setup: (editor) => {
+      editor.on('init', () => {
+        editor.getContainer().style.visibility = 'visible';
+        renderizarEditor();
+      });
+      editor.on('input', () => {
+        handleInput();
+      });
+      editor.on('change', () => {
+        handleAutoSave();
+      });
+    },
+  });
+}
+
+function renderizarMenuFiltros() {
+  const menuEl = document.getElementById('menu-filtros-apuntes-dropdown');
+  if (!menuEl) return;
+
+  const cursosDisponibles = state.cursos.filter((c) => !c.isArchivado);
+  const proyectosDisponibles = state.proyectos;
+  const tagsUsadas = [
+    ...new Set(state.apuntes.flatMap((a) => a.tags || [])),
+  ].sort();
+
+  // --- HTML del Menú (Usando ICONS.expand) ---
+  menuEl.innerHTML = `
+    <div class="filtro-seccion">
+      <div class="filtro-seccion-titulo">Ordenar por Fecha</div>
+      <div class="filtro-opcion ${!ordenFechaAsc ? 'active' : ''}" data-action="ordenar" data-valor="desc">Más Recientes Primero</div>
+      <div class="filtro-opcion ${ordenFechaAsc ? 'active' : ''}" data-action="ordenar" data-valor="asc">Más Antiguos Primero</div>
+    </div>
+
+    <div class="filtro-seccion">
+       <div class="filtro-seccion-titulo">Favoritos</div>
+       <div class="filtro-opcion ${mostrarSoloFavoritos ? 'active' : ''}" data-action="filtrar-favoritos" data-valor="si">Mostrar Solo Favoritos</div>
+       <div class="filtro-opcion ${!mostrarSoloFavoritos ? 'active' : ''}" data-action="filtrar-favoritos" data-valor="no">Mostrar Todos</div>
+    </div>
+
+    <div class="filtro-seccion">
+      <div class="filtro-submenu-toggle" data-action="toggle-submenu" data-submenu="curso">
+        <span>Curso</span>
+        <span class="valor-actual">${filtroCurso === 'todos' ? 'Todos' : state.cursos.find((c) => c.nombre === filtroCurso)?.nombre || 'Todos'}</span>
+        <span class="submenu-icono">${ICONS.expand}</span> </div>
+      <div class="filtro-submenu hidden" data-submenu-id="curso">
+        <div class="filtro-opcion ${filtroCurso === 'todos' ? 'active' : ''}" data-action="filtrar-curso" data-valor="todos">Todos los Cursos</div>
+        ${cursosDisponibles
+          .map(
+            (curso) => `
+          <div class="filtro-opcion ${filtroCurso === curso.nombre ? 'active' : ''}" data-action="filtrar-curso" data-valor="${curso.nombre}">
+            ${curso.emoji ? curso.emoji + ' ' : ''}${curso.nombre}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    </div>
+
+    <div class="filtro-seccion">
+      <div class="filtro-submenu-toggle" data-action="toggle-submenu" data-submenu="proyecto">
+        <span>Proyecto</span>
+        <span class="valor-actual">${filtroProyecto === 'todos' ? 'Todos' : state.proyectos.find((p) => String(p.id) === filtroProyecto)?.nombre || 'Todos'}</span>
+        <span class="submenu-icono">${ICONS.expand}</span> </div>
+      <div class="filtro-submenu hidden" data-submenu-id="proyecto">
+        <div class="filtro-opcion ${filtroProyecto === 'todos' ? 'active' : ''}" data-action="filtrar-proyecto" data-valor="todos">Todos los Proyectos</div>
+        ${proyectosDisponibles
+          .map(
+            (proyecto) => `
+          <div class="filtro-opcion ${filtroProyecto === String(proyecto.id) ? 'active' : ''}" data-action="filtrar-proyecto" data-valor="${proyecto.id}">
+            ${proyecto.nombre}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    </div>
+
+    ${
+      tagsUsadas.length > 0
+        ? `
+    <div class="filtro-seccion">
+      <div class="filtro-submenu-toggle" data-action="toggle-submenu" data-submenu="tag">
+        <span>Etiqueta</span>
+        <span class="valor-actual">${filtroTag === 'todos' ? 'Todas' : `#${filtroTag}`}</span>
+        <span class="submenu-icono">${ICONS.expand}</span> </div>
+      <div class="filtro-submenu hidden" data-submenu-id="tag">
+        <div class="filtro-opcion ${filtroTag === 'todos' ? 'active' : ''}" data-action="filtrar-tag" data-valor="todos">Todas las Etiquetas</div>
+        ${tagsUsadas
+          .map(
+            (tag) => `
+          <div class="filtro-opcion ${filtroTag === tag ? 'active' : ''}" data-action="filtrar-tag" data-valor="${tag}">
+            #${tag}
+          </div>
+        `,
+          )
+          .join('')}
+      </div>
+    </div>
+    `
+        : ''
+    }
+  `;
+}
+function handleFiltrosDropdownClick(event) {
+  const target = event.target;
+  const opcion = target.closest('[data-action]');
+  if (!opcion) return;
+
+  const action = opcion.dataset.action;
+  const valor = opcion.dataset.valor;
+  const submenuId = opcion.dataset.submenu;
+
+  let necesitaRenderLista = false;
+
+  switch (action) {
+    case 'ordenar':
+      ordenFechaAsc = valor === 'asc';
+      necesitaRenderLista = true;
+      break;
+    case 'filtrar-favoritos':
+      mostrarSoloFavoritos = valor === 'si';
+      necesitaRenderLista = true;
+      break;
+    case 'filtrar-curso':
+      filtroCurso = valor;
+      necesitaRenderLista = true;
+      break;
+    case 'filtrar-proyecto':
+      filtroProyecto = valor;
+      necesitaRenderLista = true;
+      break;
+    case 'filtrar-tag':
+      filtroTag = valor;
+      necesitaRenderLista = true;
+      break;
+    case 'toggle-submenu':
+      const submenuEl = document.querySelector(
+        `.filtro-submenu[data-submenu-id="${submenuId}"]`,
+      );
+      if (submenuEl) {
+        submenuEl.classList.toggle('hidden');
+        opcion.classList.toggle('abierto');
+      }
+      // No necesita re-renderizar la lista, solo abre/cierra
+      break;
+    default:
+      return; // Acción desconocida
+  }
+
+  // Si se aplicó un filtro/orden, re-renderiza el menú y la lista
+  if (necesitaRenderLista) {
+    renderizarMenuFiltros(); // Actualiza visualmente el menú (checks, valores actuales)
+    renderizarListaApuntes(); // Aplica los filtros a la lista
+  }
+
+  // Importante: No cerramos el menú aquí para permitir selecciones múltiples
+  event.stopPropagation(); // Evita que el clic cierre el menú inmediatamente
+}
 
 export function inicializarApuntes() {
-  // ======================================================
-  // ==           INICIO DE LA MODIFICACIÓN              ==
-  // ======================================================
-
   // 1. Establecer el apunte activo (si viene de otra página)
-  //    (Ya añadimos `apunteSeleccionadoId` a `state.js`)
   apunteActivoId = state.apunteSeleccionadoId || null;
-  state.apunteSeleccionadoId = null; // Limpiar para que no salte al recargar
-  guardarDatos(); // Guardamos el estado limpio
+  state.apunteSeleccionadoId = null;
+  guardarDatos();
 
-  // 2. Obtener el selector de curso del editor
+  // 2. Obtener el selector de curso del editor y popularlo
   const selectCursoApunte = document.getElementById('select-curso-apunte');
   if (selectCursoApunte) {
-    // 3. Usar la función reutilizable de ui.js
     popularSelectorDeCursos(selectCursoApunte, false);
-
-    // 3.1 (NUEVO) Si NO venimos de un apunte específico Y SÍ venimos de un curso específico (botón "Nuevo Apunte"), pre-seleccionarlo
+    // Preseleccionar curso si viene de la página de cursos
     if (!apunteActivoId && state.cursoSeleccionadoId) {
       const curso = state.cursos.find(
         (c) => c.id === state.cursoSeleccionadoId,
@@ -560,61 +1021,37 @@ export function inicializarApuntes() {
       ) {
         selectCursoApunte.value = curso.nombre;
       }
-      state.cursoSeleccionadoId = null; // Limpiar para que no afecte la próxima vez
+      state.cursoSeleccionadoId = null;
       guardarDatos();
     }
   }
 
-  // ======================================================
-  // ==             FIN DE LA MODIFICACIÓN               ==
-  // ======================================================
-
   // Renderizado inicial
-  renderizarPaginaApuntes();
-  renderizarEditor(); // Renderiza según apunteActivoId (ahora se establece arriba)
+  renderizarListaApuntes(); // Renderiza con filtros/búsqueda actuales
+  inicializarTinyMCE();
+  renderizarEditor(); // Renderiza según apunteActivoId
 
-  // --- Lógica de Scroll (si se seleccionó desde Cursos) ---
-  if (apunteActivoId) {
-    // Esperar un breve instante para asegurar que el DOM esté listo
+  // --- Lógica de Scroll (Solo Escritorio) ---
+  if (apunteActivoId && window.innerWidth > 900) {
     setTimeout(() => {
       const apunteElemento = document.querySelector(
         `li[data-id="${apunteActivoId}"]`,
       );
       if (apunteElemento) {
-        // ===========================================
-        // ==          INICIO DE LA CORRECCIÓN      ==
-        // ===========================================
-
-        // 1. Identificamos el contenedor que SÍ debe hacer scroll
-        //    (En `renderizarListaApuntes` se usa .parentElement)
         const scrollContainer =
           document.getElementById('lista-apuntes')?.parentElement;
-
         if (scrollContainer) {
-          // 2. Calculamos las posiciones relativas
+          // Lógica para calcular scroll y centrar
           const containerRect = scrollContainer.getBoundingClientRect();
           const noteRect = apunteElemento.getBoundingClientRect();
-
-          // 3. Posición del 'top' del apunte RELATIVO al 'top' del contenedor
           const noteTopRelativeToContainer = noteRect.top - containerRect.top;
-
-          // 4. Calculamos un offset para centrarla (imitando 'block: 'center'')
           const containerHeight = scrollContainer.clientHeight;
           const noteHeight = apunteElemento.offsetHeight;
           const offset = containerHeight / 2 - noteHeight / 2;
-
-          // 5. El nuevo scrollTop es:
-          //    (scroll actual) + (posición relativa del apunte) - (offset para centrar)
           const newScrollTop =
             scrollContainer.scrollTop + noteTopRelativeToContainer - offset;
-
-          // 6. Usamos scrollTo() en el contenedor correcto
-          scrollContainer.scrollTo({
-            top: newScrollTop,
-            behavior: 'smooth',
-          });
+          scrollContainer.scrollTo({ top: newScrollTop, behavior: 'smooth' });
         } else {
-          // Fallback por si no encuentra el contenedor
           console.warn(
             "No se encontró el 'parentElement' de #lista-apuntes, usando scrollIntoView() de emergencia.",
           );
@@ -623,138 +1060,350 @@ export function inicializarApuntes() {
             block: 'center',
           });
         }
-        // ===========================================
-        // ==           FIN DE LA CORRECCIÓN        ==
-        // ===========================================
-
-        // Resaltado temporal (sin cambios)
+        // Resaltado temporal
         apunteElemento.classList.add('resaltado-temporal');
         setTimeout(
           () => apunteElemento.classList.remove('resaltado-temporal'),
           2500,
         );
       }
-    }, 100); // 100ms suelen ser suficientes
+    }, 100);
   }
 
-  // --- Listeners (sin cambios) ---
+  // --- LISTENERS ---
+
+  // Input Búsqueda
+  const inputBuscarApuntes = document.getElementById('input-buscar-apuntes');
+  if (inputBuscarApuntes) {
+    inputBuscarApuntes.value = searchTermApuntes; // Restore value
+    if (!inputBuscarApuntes.dataset.listenerAttached) {
+      inputBuscarApuntes.addEventListener('input', (e) => {
+        searchTermApuntes = e.target.value;
+        renderizarListaApuntes();
+      });
+      inputBuscarApuntes.dataset.listenerAttached = 'true';
+    }
+  }
+
+  // Botón Nuevo Apunte
   const btnNuevoApunteEl = document.getElementById('btn-nuevo-apunte');
-  if (btnNuevoApunteEl && !btnNuevoApunteEl.dataset.initialized) {
-    btnNuevoApunteEl.addEventListener('click', seleccionarNuevoApunte);
-    btnNuevoApunteEl.dataset.initialized = 'true';
+  if (btnNuevoApunteEl) {
+    btnNuevoApunteEl.innerHTML = ICONS.add;
+    if (!btnNuevoApunteEl.dataset.listenerAttached) {
+      btnNuevoApunteEl.addEventListener('click', seleccionarNuevoApunte);
+      btnNuevoApunteEl.dataset.listenerAttached = 'true';
+    }
   }
 
-  const btnEliminarApunteEl = document.getElementById('btn-eliminar-apunte');
-  if (btnEliminarApunteEl) {
-    btnEliminarApunteEl.addEventListener('click', () =>
-      eliminarApunte(apunteActivoId),
-    );
+  // Botón Eliminar (Editor Header)
+  const btnEliminarEditorEl = document.getElementById('btn-editor-eliminar');
+  if (btnEliminarEditorEl) {
+    btnEliminarEditorEl.innerHTML = ICONS.delete;
+    if (!btnEliminarEditorEl.dataset.listenerAttached) {
+      btnEliminarEditorEl.addEventListener('click', () => {
+        if (apunteActivoId !== null) {
+          eliminarApunte(apunteActivoId);
+        }
+      });
+      btnEliminarEditorEl.dataset.listenerAttached = 'true';
+    }
   }
 
-  const listaApuntesEl = document.getElementById('lista-apuntes');
+  // --- Listener Lista de Apuntes (CORREGIDO y con Long Press) ---
+  const listaApuntesEl = document.getElementById('lista-apuntes'); // Declarado UNA SOLA VEZ
   if (listaApuntesEl) {
-    listaApuntesEl.addEventListener('click', (e) => {
+    let touchstartTime = 0;
+    let touchstartX = 0;
+    let touchstartY = 0;
+    let longPressTimeout = null;
+    const LONG_PRESS_DURATION = 500;
+    const MAX_MOVE_THRESHOLD = 10;
+
+    // Limpiar listeners previos si existen
+    if (listaApuntesEl.dataset.touchStartListener)
+      listaApuntesEl.removeEventListener(
+        'touchstart',
+        listaApuntesEl._touchStartHandler,
+      );
+    if (listaApuntesEl.dataset.touchEndListener)
+      listaApuntesEl.removeEventListener(
+        'touchend',
+        listaApuntesEl._touchEndHandler,
+      );
+    if (listaApuntesEl.dataset.touchMoveListener)
+      listaApuntesEl.removeEventListener(
+        'touchmove',
+        listaApuntesEl._touchMoveHandler,
+      );
+    if (listaApuntesEl.dataset.clickListener)
+      listaApuntesEl.removeEventListener('click', listaApuntesEl._clickHandler);
+
+    // --- Handler Touch Start ---
+    const touchStartHandler = (e) => {
       const apunteLi = e.target.closest('li[data-id]');
+      if (!apunteLi || state.apuntesEnModoSeleccion) return;
+      touchstartTime = Date.now();
+      touchstartX = e.touches[0].clientX;
+      touchstartY = e.touches[0].clientY;
+      longPressTimeout = setTimeout(() => {
+        longPressTimeout = null;
+        const apunteId = parseInt(apunteLi.dataset.id, 10);
+        state.apuntesEnModoSeleccion = true;
+        if (!state.apuntesSeleccionadosIds.includes(apunteId)) {
+          state.apuntesSeleccionadosIds.push(apunteId);
+        }
+        renderizarPaginaApuntes();
+      }, LONG_PRESS_DURATION);
+    };
+
+    // --- Handler Touch Move ---
+    const touchMoveHandler = (e) => {
+      if (!longPressTimeout) return;
+      const deltaX = Math.abs(e.touches[0].clientX - touchstartX);
+      const deltaY = Math.abs(e.touches[0].clientY - touchstartY);
+      if (deltaX > MAX_MOVE_THRESHOLD || deltaY > MAX_MOVE_THRESHOLD) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
+      }
+    };
+
+    // --- Handler Touch End ---
+    const touchEndHandler = (e) => {
+      if (longPressTimeout) {
+        clearTimeout(longPressTimeout);
+        longPressTimeout = null;
+        handleTap(e.target); // Llama a la lógica de tap normal
+      }
+    };
+
+    // --- Handler Click (para escritorio y fallback) ---
+    const clickHandler = (e) => {
+      if (e.pointerType === 'touch' && !state.apuntesEnModoSeleccion) return;
+      handleTap(e.target);
+    };
+
+    // --- Función Unificada para Tap/Click ---
+    const handleTap = (targetElement) => {
+      const apunteLi = targetElement.closest('li[data-id]');
       if (!apunteLi) return;
       const apunteId = parseInt(apunteLi.dataset.id, 10);
-      const actionBtn = e.target.closest('button[data-action]');
-      const checkbox = e.target.closest('input[type="checkbox"]');
+      const actionBtn = targetElement.closest('button[data-action]');
+      const checkbox = targetElement.closest('input[type="checkbox"]');
       if (actionBtn) {
-        e.stopPropagation();
         handleActionClick(actionBtn.dataset.action, apunteId);
       } else if (checkbox || state.apuntesEnModoSeleccion) {
         handleCheckboxClick(apunteId);
       } else {
         handleSeleccionarApunte(apunteLi);
       }
-    });
-  }
+    };
 
+    // Adjuntar los nuevos listeners
+    listaApuntesEl.addEventListener('touchstart', touchStartHandler);
+    listaApuntesEl.addEventListener('touchend', touchEndHandler);
+    listaApuntesEl.addEventListener('touchmove', touchMoveHandler);
+    listaApuntesEl.addEventListener('click', clickHandler);
+
+    // Guardar referencias y marcar listeners
+    listaApuntesEl._touchStartHandler = touchStartHandler;
+    listaApuntesEl._touchEndHandler = touchEndHandler;
+    listaApuntesEl._touchMoveHandler = touchMoveHandler;
+    listaApuntesEl._clickHandler = clickHandler;
+    listaApuntesEl.dataset.touchStartListener = 'true';
+    listaApuntesEl.dataset.touchEndListener = 'true';
+    listaApuntesEl.dataset.touchMoveListener = 'true';
+    listaApuntesEl.dataset.clickListener = 'true';
+  }
+  // --- Fin Listener Lista de Apuntes ---
+
+  // Input Título
   const inputTituloEl = document.getElementById('input-titulo-apunte');
   if (inputTituloEl) {
-    inputTituloEl.addEventListener('input', () => {
-      autoGrowTitulo();
-      handleInput();
-    });
+    if (!inputTituloEl.dataset.listenerAttached) {
+      inputTituloEl.addEventListener('input', () => {
+        autoGrowTitulo();
+        handleInput();
+      });
+      inputTituloEl.dataset.listenerAttached = 'true';
+    }
   }
 
-  const trixEditorEl = document.querySelector('trix-editor');
-  if (trixEditorEl) {
-    trixEditorEl.addEventListener('trix-change', handleInput);
-  }
-
+  // Select Curso (Editor)
   const selectCursoEditor = document.getElementById('select-curso-apunte');
   if (selectCursoEditor) {
-    selectCursoEditor.addEventListener('change', handleAutoSave);
+    if (!selectCursoEditor.dataset.listenerAttached) {
+      selectCursoEditor.addEventListener('change', handleAutoSave);
+      selectCursoEditor.dataset.listenerAttached = 'true';
+    }
   }
 
-  const filtroCursoSelect = document.getElementById('filtro-curso-apuntes');
-  if (filtroCursoSelect) {
-    filtroCursoSelect.addEventListener('change', (e) => {
-      state.filtroCursoApuntes = e.target.value;
-      renderizarPaginaApuntes();
-    });
+  // Select Proyecto (Editor)
+  const selectProyectoEditor = document.getElementById(
+    'select-proyecto-apunte',
+  );
+  if (selectProyectoEditor) {
+    if (!selectProyectoEditor.dataset.listenerAttached) {
+      selectProyectoEditor.addEventListener('change', handleAutoSave);
+      selectProyectoEditor.dataset.listenerAttached = 'true';
+    }
   }
 
+  // Input Tags (Editor)
+  const inputTagsEditor = document.getElementById('input-tags-apunte');
+  if (inputTagsEditor) {
+    if (!inputTagsEditor.dataset.listenerAttached) {
+      inputTagsEditor.addEventListener('change', handleAutoSave);
+      inputTagsEditor.dataset.listenerAttached = 'true';
+    }
+  }
+
+  // Botón Favorito (Editor)
+  const btnEditorFavorito = document.getElementById('btn-editor-favorito');
+  if (btnEditorFavorito) {
+    if (!btnEditorFavorito.dataset.listenerAttached) {
+      btnEditorFavorito.addEventListener('click', toggleEditorFavorito);
+      btnEditorFavorito.dataset.listenerAttached = 'true';
+    }
+  }
+
+  // Botón Cerrar (Editor Móvil)
+  const btnCerrarEditorMovil = document.getElementById(
+    'btn-cerrar-editor-movil',
+  );
+  if (btnCerrarEditorMovil) {
+    btnCerrarEditorMovil.innerHTML = ICONS.close;
+    if (!btnCerrarEditorMovil.dataset.listenerAttached) {
+      btnCerrarEditorMovil.addEventListener('click', cerrarEditorMovil);
+      btnCerrarEditorMovil.dataset.listenerAttached = 'true';
+    }
+  }
+
+  // Filtros Dropdown
+  const btnFiltros = document.getElementById('btn-filtros-apuntes');
+  const menuFiltros = document.getElementById('menu-filtros-apuntes-dropdown');
+  if (btnFiltros && menuFiltros) {
+    btnFiltros.innerHTML = ICONS.filter;
+    if (!btnFiltros.dataset.listenerAttached) {
+      btnFiltros.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menuVisible = !menuFiltros.classList.contains('hidden');
+        if (!menuVisible) renderizarMenuFiltros();
+        menuFiltros.classList.toggle('hidden');
+      });
+      btnFiltros.dataset.listenerAttached = 'true';
+    }
+    if (filtrosDropdownClickHandler)
+      menuFiltros.removeEventListener('click', filtrosDropdownClickHandler);
+    filtrosDropdownClickHandler = handleFiltrosDropdownClick;
+    menuFiltros.addEventListener('click', filtrosDropdownClickHandler);
+    if (!document.body.dataset.apuntesFiltroListener) {
+      document.addEventListener(
+        'click',
+        (e) => {
+          const menu = document.getElementById('menu-filtros-apuntes-dropdown'); // Re-get elements inside listener
+          const btn = document.getElementById('btn-filtros-apuntes');
+          if (
+            menu &&
+            btn &&
+            !menu.classList.contains('hidden') &&
+            !menu.contains(e.target) &&
+            !btn.contains(e.target)
+          ) {
+            menu.classList.add('hidden');
+          }
+        },
+        true,
+      );
+      document.body.dataset.apuntesFiltroListener = 'true';
+    }
+  }
+
+  // Barra Selección Múltiple y Menú Editor
   const selectAllCheckbox = document.getElementById('select-all-apuntes');
   if (selectAllCheckbox) {
-    selectAllCheckbox.addEventListener('change', handleSelectAll);
+    if (!selectAllCheckbox.dataset.listenerAttached) {
+      selectAllCheckbox.addEventListener('change', handleSelectAll);
+      selectAllCheckbox.dataset.listenerAttached = 'true';
+    }
   }
-
   const btnDeleteSelected = document.getElementById('btn-delete-selected');
   if (btnDeleteSelected) {
     btnDeleteSelected.innerHTML = ICONS.delete;
-    btnDeleteSelected.addEventListener('click', eliminarApuntesSeleccionados);
+    if (!btnDeleteSelected.dataset.listenerAttached) {
+      btnDeleteSelected.addEventListener('click', eliminarApuntesSeleccionados);
+      btnDeleteSelected.dataset.listenerAttached = 'true';
+    }
   }
-
   const btnPrintSelected = document.getElementById('btn-print-selected');
   if (btnPrintSelected) {
     btnPrintSelected.innerHTML = ICONS.print;
-    btnPrintSelected.addEventListener('click', () =>
-      imprimirApuntesSeleccionados(),
-    );
+    if (!btnPrintSelected.dataset.listenerAttached) {
+      btnPrintSelected.addEventListener('click', () =>
+        imprimirApuntesSeleccionados(),
+      );
+      btnPrintSelected.dataset.listenerAttached = 'true';
+    }
   }
-
   const btnDownloadSelected = document.getElementById('btn-download-selected');
   if (btnDownloadSelected) {
     btnDownloadSelected.innerHTML = ICONS.download;
-    btnDownloadSelected.addEventListener('click', () =>
-      descargarApuntesSeleccionados(),
-    );
+    if (!btnDownloadSelected.dataset.listenerAttached) {
+      btnDownloadSelected.addEventListener('click', () =>
+        descargarApuntesSeleccionados(),
+      );
+      btnDownloadSelected.dataset.listenerAttached = 'true';
+    }
   }
-
   const btnEditorMenu = document.getElementById('btn-editor-menu');
   const editorMenuDropdown = document.getElementById('editor-menu-dropdown');
   if (btnEditorMenu && editorMenuDropdown) {
     btnEditorMenu.innerHTML = ICONS.menu;
-    btnEditorMenu.addEventListener('click', (e) => {
-      e.stopPropagation();
-      editorMenuDropdown.classList.toggle('visible');
-    });
-    document.addEventListener('click', (e) => {
-      if (
-        btnEditorMenu &&
-        !btnEditorMenu.contains(e.target) &&
-        !editorMenuDropdown.contains(e.target)
-      ) {
-        editorMenuDropdown.classList.remove('visible');
-      }
-    });
+    if (!btnEditorMenu.dataset.listenerAttached) {
+      btnEditorMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        editorMenuDropdown.classList.toggle('visible');
+      });
+      btnEditorMenu.dataset.listenerAttached = 'true';
+    }
+    if (!document.body.dataset.apuntesEditorMenuListener) {
+      document.addEventListener('click', (e) => {
+        const menu = document.getElementById('editor-menu-dropdown');
+        const btn = document.getElementById('btn-editor-menu');
+        if (
+          menu &&
+          btn &&
+          menu.classList.contains('visible') &&
+          !menu.contains(e.target) &&
+          !btn.contains(e.target)
+        ) {
+          menu.classList.remove('visible');
+        }
+      });
+      document.body.dataset.apuntesEditorMenuListener = 'true';
+    }
   }
-
   const btnDescargarActual = document.getElementById('btn-descargar-actual');
   if (btnDescargarActual) {
-    btnDescargarActual.addEventListener('click', () => {
-      descargarApunteActual();
-      if (editorMenuDropdown) editorMenuDropdown.classList.remove('visible');
-    });
+    if (!btnDescargarActual.dataset.listenerAttached) {
+      btnDescargarActual.addEventListener('click', () => {
+        descargarApunteActual();
+        document
+          .getElementById('editor-menu-dropdown')
+          ?.classList.remove('visible');
+      });
+      btnDescargarActual.dataset.listenerAttached = 'true';
+    }
   }
-
   const btnImprimirActual = document.getElementById('btn-imprimir-actual');
   if (btnImprimirActual) {
-    btnImprimirActual.addEventListener('click', () => {
-      imprimirApunteActual();
-      if (editorMenuDropdown) editorMenuDropdown.classList.remove('visible');
-    });
+    if (!btnImprimirActual.dataset.listenerAttached) {
+      btnImprimirActual.addEventListener('click', () => {
+        imprimirApunteActual();
+        document
+          .getElementById('editor-menu-dropdown')
+          ?.classList.remove('visible');
+      });
+      btnImprimirActual.dataset.listenerAttached = 'true';
+    }
   }
-}
+} // Fin de inicializarApuntes

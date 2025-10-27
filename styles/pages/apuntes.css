@@ -5,8 +5,81 @@
   flex-basis: 390px;
   flex-shrink: 0;
   flex-grow: 0;
-  min-height: 0;
+  min-height: 0; /* Importante para flex y overflow */
+  display: flex; /* Contenedor flex */
+  flex-direction: column; /* Hijos apilados */
+  position: relative; /* Para posicionar el dropdown de filtros */
 }
+
+/* --- ESTILOS HEADER PANEL IZQUIERDO --- */
+#panel-lista-apuntes > .panel-header:not(.contextual) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Título a la izq, botones a la der */
+  padding: 15px; /* Ajusta padding si es necesario */
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0; /* Evita que se encoja */
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espacio entre botones */
+}
+/* Estilo común para botones icono en el header */
+.header-actions .btn-icon {
+  width: 38px; /* Tamaño similar al botón + */
+  height: 38px;
+  padding: 0; /* Sin padding extra */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.header-actions .btn-icon svg {
+  width: 20px; /* Tamaño del icono interno */
+  height: 20px;
+}
+/* Estilo específico botón Nuevo Apunte (si usas btn-accent) */
+#btn-nuevo-apunte {
+  /* Puede heredar de .btn-accent */
+}
+
+/* --- ESTILO BOTÓN FILTROS (ahora en header) --- */
+#btn-filtros-apuntes {
+  /* Hereda .btn-icon de .header-actions */
+  /* Puedes darle un estilo secundario si quieres diferenciarlo */
+  background-color: var(--bg-elevated); /* Fondo sutil */
+  color: var(--text-muted); /* Color del icono */
+}
+#btn-filtros-apuntes:hover {
+  background-color: var(--bg-hover);
+}
+#btn-filtros-apuntes .btn-icon {
+  /* No necesita span interno, el SVG va directo en el botón */
+}
+#btn-filtros-apuntes svg {
+  width: 20px; /* Aumentamos tamaño del icono filtro */
+  height: 20px;
+}
+
+/* --- POSICIONAMIENTO DROPDOWN FILTROS --- */
+.filtros-dropdown {
+  position: absolute;
+  top: 65px; /* Ajusta según altura del header + espacio deseado */
+  right: 15px; /* Alineado a la derecha del panel */
+  width: 280px; /* Ancho fijo para el dropdown */
+  /* left: auto; */ /* Quita el left: 15px anterior */
+  background-color: var(--bg-content);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px var(--shadow-color);
+  z-index: 150;
+  padding: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+  transition: all 0.2s ease-out;
+}
+/* --- FIN AJUSTES FILTROS --- */
+
 #panel-editor-apuntes {
   border: none;
   padding: 0;
@@ -86,9 +159,19 @@
   color: white;
   background-color: #e74c3c;
 }
+
+/* --- ESTILO CONTENEDOR LISTA (CORREGIDO) --- */
+#panel-lista-apuntes > .panel-content {
+  flex-grow: 1; /* Hace que crezca */
+  overflow-y: auto; /* Permite scroll interno */
+  padding: 0; /* Sin padding extra */
+  min-height: 0; /* Ayuda a calcular el tamaño flex con overflow */
+}
+/* ------------------------------------------- */
+
 #lista-apuntes {
   list-style: none;
-  padding: 10px;
+  padding: 10px; /* Padding interno de la lista */
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -96,7 +179,7 @@
 }
 .apunte-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Alinea al inicio verticalmente */
   gap: 10px;
   padding: 15px;
   border: 1px solid var(--border-color);
@@ -115,6 +198,8 @@
 .apunte-item.fijado {
   background-color: rgba(var(--text-base-rgb), 0.04);
 }
+.apunte-item.favorito {
+}
 .apunte-item.seleccionado {
   background-color: rgba(var(--accent-color-rgb), 0.1) !important;
   border-left: 4px solid var(--accent-color);
@@ -126,6 +211,7 @@
   height: 20px;
   flex-shrink: 0;
   display: none;
+  margin-top: 2px; /* Alinea checkbox con el título */
 }
 #panel-lista-apuntes.modo-seleccion .apunte-selection-control {
   display: block;
@@ -167,6 +253,9 @@
   margin: 0 0 4px 0;
   white-space: normal;
   word-wrap: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -178,8 +267,7 @@
   font-size: 0.85rem;
   color: var(--text-muted);
   margin: 0;
-  white-space: normal;
-  word-wrap: break-word;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -190,22 +278,49 @@
   color: var(--text-base);
 }
 .apunte-item-preview {
-  overflow: hidden;
-  text-overflow: ellipsis;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 6px;
 }
+.apunte-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  max-height: 40px;
+  overflow: hidden;
+}
+.apunte-tag {
+  background-color: rgba(var(--accent-color-rgb), 0.1);
+  color: var(--accent-color);
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
 .apunte-item-actions {
   position: relative;
   flex-shrink: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column; /* Apila verticalmente */
+  align-items: center; /* Centra horizontalmente */
+  gap: 6px; /* Espacio vertical */
+  margin-left: auto;
 }
+.apunte-item-actions .btn-icon svg {
+  /* Tamaño iconos lista */
+  width: 18px;
+  height: 18px;
+}
+
 .apunte-menu-container {
   position: relative;
+  display: flex; /* Necesario para que el botón ocupe su espacio */
 }
 .apunte-actions-dropdown {
   position: absolute;
@@ -250,13 +365,22 @@
 .btn-eliminar-apunte-item {
   color: var(--accent-color);
 }
-.btn-apunte-fijar svg {
-  width: 20px;
-  height: 20px;
+.btn-apunte-fijar svg,
+.btn-apunte-favorito svg {
+  width: 18px; /* Reducido para lista */
+  height: 18px;
 }
 .btn-apunte-fijar.active {
   color: var(--accent-color);
 }
+.btn-apunte-favorito {
+  color: var(--text-muted);
+}
+.btn-apunte-favorito.active {
+  color: #f39c12;
+}
+
+/* --- ESTILOS EDITOR --- */
 #editor-wrapper {
   border-radius: 8px;
   border: 1px solid var(--border-color);
@@ -268,14 +392,15 @@
 .editor-header {
   display: flex;
   align-items: center;
-  padding-right: 10px;
+  padding: 5px 10px 5px 0; /* Ajusta padding si es necesario */
   flex-shrink: 0;
   position: relative;
+  gap: 6px; /* Espacio entre titulo y botones */
 }
 #input-titulo-apunte {
   font-size: 1.5rem;
   font-weight: bold;
-  padding: 20px 25px;
+  padding: 15px 25px; /* Ajustado */
   line-height: 1.3;
   border: none;
   background: transparent;
@@ -286,68 +411,107 @@
 #input-titulo-apunte:focus {
   outline: none;
 }
-trix-toolbar {
-  background-color: var(--bg-content);
-  border-top: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-  padding: 10px;
-  overflow-x: auto;
-  flex-shrink: 0;
+/* Tamaño iconos header editor */
+.editor-header .btn-icon {
+  width: 36px;
+  height: 36px;
 }
-trix-toolbar .trix-button-row {
-  flex-wrap: wrap;
-  height: auto;
+.editor-header .btn-icon svg {
+  width: 20px;
+  height: 20px;
 }
-trix-editor {
+
+/* --- ESTILOS TINYMCE --- */
+.tox-tinymce {
+  flex-grow: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
   border: none !important;
-  background-color: var(--bg-content);
+  border-top: 1px solid var(--border-color) !important;
+  border-radius: 0 !important;
+}
+.tox-editor-container {
   flex-grow: 1;
-  overflow-y: auto;
-  min-height: 150px;
+  display: flex;
+  flex-direction: column;
 }
-trix-editor .trix-content {
-  padding: 15px 25px;
+.tox-edit-area {
+  flex-grow: 1;
+  /* overflow: auto; quitado */
 }
-trix-editor:not([aria-placeholder=''])
-  > .trix-content:not(.trix-content--non-breaking-space)::before {
-  color: var(--text-muted);
-  opacity: 0.7;
-  font-size: 1rem;
-  white-space: pre-wrap;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  width: 80%;
-  pointer-events: none;
+.tox-toolbar__primary {
+  padding: 0 8px !important;
+  background-color: var(--bg-content) !important;
 }
+/* --------------------------------- */
+
 .editor-footer {
   padding: 15px;
   border-top: 1px solid var(--border-color);
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start; /* Alineado a la izquierda */
   align-items: center;
   background-color: var(--bg-content);
   flex-shrink: 0;
+  gap: 15px;
+  flex-wrap: wrap;
 }
-.editor-footer .footer-izquierdo label,
-.editor-footer .footer-izquierdo select {
+.editor-footer .footer-izquierdo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-grow: 1;
+  flex-wrap: wrap;
+}
+.footer-select-group,
+.footer-tags-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-footer label {
   font-size: 0.85rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
 }
-.editor-footer .footer-derecho button {
-  background-color: #e74c3c;
-  color: white;
-  border: none;
+.editor-footer select,
+.editor-footer input[type='text'] {
+  font-size: 0.85rem;
+  min-width: 150px;
 }
+.footer-tags-group {
+  flex-grow: 1;
+}
+#input-tags-apunte {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* --- ESTILOS BOTONES HEADER EDITOR --- */
 .editor-menu-container {
   position: relative;
   flex-shrink: 0;
 }
+#btn-editor-favorito {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+#btn-editor-favorito.active {
+  color: #f39c12;
+}
+.btn-eliminar-apunte-editor {
+  color: #e74c3c;
+  flex-shrink: 0;
+}
+.btn-eliminar-apunte-editor:hover {
+  background-color: rgba(231, 76, 60, 0.1);
+}
+/* --------------------------------------- */
+
 .editor-actions-dropdown {
   position: absolute;
   top: 100%;
-  right: 10px;
+  right: 0; /* Ajustado para que salga desde el botón */
   background-color: var(--bg-content);
   border: 1px solid var(--border-color);
   border-radius: 8px;
@@ -381,11 +545,244 @@ trix-editor:not([aria-placeholder=''])
 .editor-actions-dropdown button:hover {
   background-color: var(--accent-color-hover);
 }
-.apuntes-filtros-container {
-  padding: 0 15px 10px 15px;
-  border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
+
+/* --- ESTILOS DROPDOWN FILTROS (dentro del panel izquierdo) --- */
+.filtros-dropdown .filtro-seccion {
+  margin-bottom: 15px;
 }
-.apuntes-filtros-container .filtro-select {
+.filtros-dropdown .filtro-seccion:last-child {
+  margin-bottom: 0;
+}
+.filtros-dropdown .filtro-seccion-titulo {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-color-light);
+}
+.filtros-dropdown .filtro-opcion,
+.filtros-dropdown .filtro-submenu-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+}
+.filtros-dropdown .filtro-opcion:hover,
+.filtros-dropdown .filtro-submenu-toggle:hover {
+  background-color: var(--accent-color-hover);
+}
+/* --- AJUSTE ESTILO ACTIVO OPCIONES --- */
+.filtros-dropdown .filtro-opcion.active {
+  background-color: rgba(var(--accent-color-rgb), 0.15);
+  color: var(--accent-color);
+  font-weight: 500;
+}
+.filtros-dropdown .filtro-opcion.active::before {
+  content: '✓';
+  font-size: 0.8em;
+  margin-right: 8px;
+}
+/* ------------------------------------- */
+
+/* --- AJUSTE ESTILO SUBMENU TOGGLE --- */
+.filtros-dropdown .filtro-submenu-toggle {
+  background-color: transparent !important;
+  color: var(--text-base) !important;
+  font-weight: normal !important;
+}
+.filtros-dropdown .filtro-submenu-toggle:hover {
+  background-color: var(--accent-color-hover); /* Mantiene hover */
+}
+.filtros-dropdown .filtro-submenu-toggle span {
+  flex-grow: 1;
+}
+.filtros-dropdown .filtro-submenu-toggle .valor-actual {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-left: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+.filtros-dropdown .filtro-submenu-toggle .submenu-icono {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  margin-left: 5px;
+}
+.filtros-dropdown .filtro-submenu-toggle .submenu-icono svg {
   width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.filtros-dropdown .filtro-submenu-toggle.abierto .submenu-icono {
+  transform: rotate(90deg);
+}
+/* ---------------------------------- */
+
+.filtros-dropdown .filtro-submenu {
+  padding-left: 15px;
+  margin-top: 5px;
+  max-height: 150px;
+  overflow-y: auto;
+}
+.filtros-dropdown .filtro-submenu .filtro-opcion {
+  padding: 6px 8px;
+  font-size: 0.85rem;
+}
+
+/* --- AÑADIDO: Estilos Contenedor Búsqueda --- */
+.apuntes-search-container {
+  padding: 0 15px 10px 15px; /* Similar a filtros */
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0; /* Evita que se encoja */
+}
+#input-buscar-apuntes {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-base);
+  box-sizing: border-box; /* Incluye padding/border en el width */
+}
+#input-buscar-apuntes:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+}
+/* Placeholder style */
+#input-buscar-apuntes::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+/* ------------------------------------------ */
+
+/* --- Estilo Contenedor Lista (Confirmar) --- */
+#page-apuntes > #panel-lista-apuntes > .panel-content {
+  flex-grow: 1;
+  overflow-y: auto;
+  padding: 0; /* Confirmar sin padding */
+  min-height: 0;
+}
+
+/* ===== INICIO DE CAMBIOS (Estilos Móviles) ===== */
+
+/* Estilos base para el botón cerrar (oculto por defecto) */
+.btn-cerrar-panel-movil {
+  display: none;
+  /* margin-right: 10px; */ /* Quitamos margen derecho, usamos gap */
+  color: var(--text-muted);
+  flex-shrink: 0; /* Evita que se encoja */
+}
+
+/* --- Media Query para Tablets y Móviles (ej: < 900px) --- */
+@media (max-width: 900px) {
+  #page-apuntes {
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Ocultar editor por defecto en móvil */
+  #panel-editor-apuntes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 200;
+    background-color: var(--bg-base);
+    transform: translateX(100%);
+    transition: transform 0.3s ease-out;
+    visibility: hidden;
+    border-left: none;
+    padding: 0;
+    display: flex; /* Asegurar que es flex para que .editor-wrapper funcione */
+    flex-direction: column; /* Apilar wrapper verticalmente (aunque solo haya uno) */
+  }
+
+  #panel-editor-apuntes #editor-wrapper {
+    height: 100%;
+    border: none; /* Quitar borde del wrapper en móvil */
+    border-radius: 0;
+    /* overflow: hidden; */ /* No es necesario aquí si los hijos se manejan bien */
+  }
+
+  /* Mostrar editor cuando tenga la clase 'visible-movil' */
+  #panel-editor-apuntes.visible-movil {
+    transform: translateX(0); /* Traer a la pantalla */
+    visibility: visible;
+  }
+
+  /* Ajustar panel de lista para ocupar todo el ancho */
+  #panel-lista-apuntes {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+    border-right: none; /* Quitar borde derecho en móvil */
+  }
+
+  /* Mostrar el botón de cerrar en el editor móvil */
+  .btn-cerrar-panel-movil {
+    display: flex; /* Mostrar como icono flex */
+  }
+
+  /* Ajustar header del editor en móvil */
+  .editor-header {
+    padding: 5px 10px; /* Reducir padding */
+    gap: 8px; /* Espacio uniforme entre elementos */
+    background-color: var(--bg-content);
+    border-bottom: 1px solid var(--border-color);
+  }
+  #input-titulo-apunte {
+    padding: 10px; /* Reducir padding */
+    font-size: 1.3rem; /* Título un poco más pequeño */
+    /* --- AÑADIDO: Permitir que se encoja --- */
+    min-width: 0;
+    /* ------------------------------------- */
+  }
+
+  .editor-header .btn-icon,
+  .editor-header .editor-menu-container {
+    flex-shrink: 0;
+  }
+
+  /* Ajustar footer del editor en móvil */
+  .editor-footer {
+    flex-direction: column; /* Apilar elementos */
+    align-items: stretch; /* Ocupar ancho */
+    gap: 10px;
+  }
+  .editor-footer .footer-izquierdo {
+    flex-direction: column; /* Apilar selects y tags */
+    align-items: stretch;
+    gap: 10px;
+  }
+  .footer-select-group,
+  .footer-tags-group {
+    width: 100%; /* Ocupar todo el ancho */
+  }
+  .editor-footer select,
+  .editor-footer input[type='text'] {
+    min-width: 0; /* Permitir que se encojan */
+    width: 100%; /* Ocupar ancho */
+    box-sizing: border-box;
+  }
+  .editor-footer .footer-derecho {
+    /* Si tuvieras algo aquí */
+    width: 100%;
+    display: flex;
+    justify-content: flex-end; /* Alinear a la derecha */
+  }
 }

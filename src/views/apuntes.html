@@ -2,9 +2,22 @@
   <aside id="panel-lista-apuntes" class="panel panel-izquierdo">
     <div class="panel-header">
       <h2 class="titulo-panel accent">Mis Apuntes</h2>
-      <button id="btn-nuevo-apunte" class="btn-accent" style="min-width: 40px">
-        +
-      </button>
+      <div class="header-actions">
+        <button id="btn-filtros-apuntes" class="btn-icon" title="Filtros">
+          <span class="btn-icon"> </span>
+        </button>
+        <button
+          id="btn-nuevo-apunte"
+          class="btn-accent btn-icon"
+          title="Nuevo Apunte"
+        >
+          +
+        </button>
+      </div>
+      <div
+        id="menu-filtros-apuntes-dropdown"
+        class="filtros-dropdown hidden"
+      ></div>
     </div>
     <div id="apuntes-actions-bar" class="panel-header contextual">
       <span id="apuntes-selection-info"></span>
@@ -30,8 +43,12 @@
         ></button>
       </div>
     </div>
-    <div class="apuntes-filtros-container">
-      <select id="filtro-curso-apuntes" class="filtro-select"></select>
+    <div class="apuntes-search-container">
+      <input
+        type="search"
+        id="input-buscar-apuntes"
+        placeholder="Buscar por título..."
+      />
     </div>
     <div class="panel-content" style="overflow-y: auto; padding: 0">
       <ul id="lista-apuntes"></ul>
@@ -40,11 +57,26 @@
   <main id="panel-editor-apuntes" class="panel panel-central">
     <div id="editor-wrapper">
       <div class="editor-header">
+        <button
+          id="btn-cerrar-editor-movil"
+          class="btn-icon btn-cerrar-panel-movil"
+        ></button>
         <textarea
           id="input-titulo-apunte"
           rows="1"
           placeholder="Título..."
         ></textarea>
+
+        <button
+          id="btn-editor-favorito"
+          class="btn-icon"
+          title="Marcar como favorito"
+        ></button>
+        <button
+          id="btn-editor-eliminar"
+          class="btn-icon btn-eliminar-apunte-editor"
+          title="Eliminar Apunte"
+        ></button>
         <div class="editor-menu-container">
           <button id="btn-editor-menu" class="btn-icon"></button>
           <div id="editor-menu-dropdown" class="editor-actions-dropdown">
@@ -53,21 +85,27 @@
           </div>
         </div>
       </div>
-      <input id="trix-input-content" type="hidden" />
-      <trix-editor
-        input="trix-input-content"
-        class="trix-content"
-        placeholder="¡Hola! :D&#10;&#10; Escribe aquí para crear una nota nueva.&#10;&#10; Para pegar texto desde otra página, te recomiendo usar Ctrl+Shift+V para evitar problemas de formato."
-      ></trix-editor>
+
+      <textarea id="editor-tinymce" style="visibility: hidden"></textarea>
+
       <div class="editor-footer">
         <div class="footer-izquierdo">
-          <label for="select-curso-apunte">Curso:</label>
-          <select id="select-curso-apunte" class="filtro-select"></select>
-        </div>
-        <div class="footer-derecho">
-          <button id="btn-eliminar-apunte" class="btn-secondary">
-            Eliminar Apunte
-          </button>
+          <div class="footer-select-group">
+            <label for="select-curso-apunte">Curso:</label>
+            <select id="select-curso-apunte" class="filtro-select"></select>
+          </div>
+          <div class="footer-select-group">
+            <label for="select-proyecto-apunte">Proyecto:</label>
+            <select id="select-proyecto-apunte" class="filtro-select"></select>
+          </div>
+          <div class="footer-tags-group">
+            <label for="input-tags-apunte">Etiquetas:</label>
+            <input
+              type="text"
+              id="input-tags-apunte"
+              placeholder="idea, importante, examen..."
+            />
+          </div>
         </div>
       </div>
     </div>
