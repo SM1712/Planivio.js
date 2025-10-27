@@ -26,6 +26,7 @@ import { ICONS } from './icons.js';
 import {
   inicializarDashboard,
   abrirModalNuevaTarea,
+  agregarTareaDesdeDashboard,
 } from './pages/dashboard.js'; // Necesitamos abrirModalNuevaTarea aquí
 import { inicializarTareas } from './pages/tareas.js';
 import { inicializarCursos } from './pages/cursos.js';
@@ -275,6 +276,33 @@ function agregarEventListenersGlobales() {
         }
       }
     });
+
+  const formQuickAddTask = document.getElementById(
+    'form-dashboard-nueva-tarea',
+  );
+  if (formQuickAddTask) {
+    // Limpiar listener previo si existe (buena práctica por si acaso)
+    if (formQuickAddTask._submitHandler) {
+      formQuickAddTask.removeEventListener(
+        'submit',
+        formQuickAddTask._submitHandler,
+      );
+    }
+    // Definir el handler (llama a la función importada de dashboard.js)
+    const quickAddTaskSubmitHandler = (event) => {
+      agregarTareaDesdeDashboard(event); // Llama a la función original
+    };
+    // Añadir el listener
+    formQuickAddTask.addEventListener('submit', quickAddTaskSubmitHandler);
+    // Guardar referencia para limpieza futura (si fuera necesario)
+    formQuickAddTask._submitHandler = quickAddTaskSubmitHandler;
+  } else {
+    // Este error no debería ocurrir si tu index.html está bien
+    console.error(
+      'Error Crítico: No se encontró el formulario #form-dashboard-nueva-tarea en index.html',
+    );
+    alert('Error: No se puede configurar el guardado rápido de tareas.');
+  }
   const settingsNavList = document.getElementById('settings-nav-list');
   if (settingsNavList) {
     settingsNavList.querySelector('[data-tab="usuario"] .nav-icon').innerHTML =

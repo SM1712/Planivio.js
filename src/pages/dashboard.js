@@ -599,7 +599,7 @@ export function abrirModalNuevaTarea(
       'dashboard-select-curso-tarea',
     );
     if (selectorCurso) {
-      popularSelectorDeCursos(selectorCurso, true); // true para omitir 'General'
+      popularSelectorDeCursos(selectorCurso, false); // true para omitir 'General'
       // 2. Pre-seleccionar curso si viene del modal chooser
       if (
         cursoPreseleccionado &&
@@ -645,7 +645,7 @@ export function abrirModalNuevaTarea(
 }
 
 /** Procesa el formulario del modal y añade la nueva tarea */
-function agregarTareaDesdeDashboard(event) {
+export function agregarTareaDesdeDashboard(event) {
   // ... (función sin cambios internos, solo verifica elementos)
   event.preventDefault();
   const cursoSelect = document.getElementById('dashboard-select-curso-tarea');
@@ -772,11 +772,6 @@ export function inicializarDashboard() {
       else if (action === 'nueva-tarea-modal') abrirModalNuevaTarea(); // Llama sin argumentos aquí
     });
 
-    const form = document.getElementById('form-dashboard-nueva-tarea');
-    if (form) {
-      form.removeEventListener('submit', agregarTareaDesdeDashboard);
-      form.addEventListener('submit', agregarTareaDesdeDashboard);
-    }
     pageDashboard.dataset.initialized = 'true';
   }
   console.log('--- [Dashboard] inicializarDashboard completado ---');

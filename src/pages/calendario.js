@@ -623,7 +623,7 @@ export function iniciarEdicionEvento(evento, cursoPreseleccionado = null) {
 
   // Popular y seleccionar Curso (usando el preseleccionado si existe)
   if (selectCurso) {
-    popularSelectorDeCursos(selectCurso, true); // Popula omitiendo 'General'
+    popularSelectorDeCursos(selectCurso, false); // Popula omitiendo 'General'
     // Prioridad: 1. Curso del evento existente, 2. Curso preseleccionado, 3. Vacío
     selectCurso.value = evento.curso || cursoPreseleccionado || '';
   }
@@ -738,9 +738,12 @@ function limpiarSeleccionArrastre() {
     .querySelectorAll('#calendario-grid .selection-range')
     .forEach((c) => c.classList.remove('selection-range'));
 }
+
+// ===== FUNCIÓN COMPLETA Y CORREGIDA =====
 export function inicializarCalendario() {
   cargarIconos();
   renderizarCalendario();
+
   const btnPrev = document.getElementById('cal-btn-prev');
   if (btnPrev && !btnPrev.dataset.initialized) {
     btnPrev.addEventListener('click', () => {
@@ -749,6 +752,7 @@ export function inicializarCalendario() {
     });
     btnPrev.dataset.initialized = 'true';
   }
+
   const btnNext = document.getElementById('cal-btn-next');
   if (btnNext && !btnNext.dataset.initialized) {
     btnNext.addEventListener('click', () => {
@@ -757,29 +761,45 @@ export function inicializarCalendario() {
     });
     btnNext.dataset.initialized = 'true';
   }
+
   const btnNuevoEvento = document.getElementById('btn-nuevo-evento');
   if (btnNuevoEvento && !btnNuevoEvento.dataset.initialized) {
     btnNuevoEvento.addEventListener('click', () => {
       const form = document.getElementById('form-nuevo-evento');
-      if (form) form.reset();
+      if (form) form.reset(); // Resetear antes de rellenar
       const today = new Date().toISOString().split('T')[0];
-      iniciarEdicionEvento({ fechaInicio: today, fechaFin: today });
+      // Asegurar que cursoPreseleccionado sea null al crear desde aquí
+      iniciarEdicionEvento({ fechaInicio: today, fechaFin: today }, null);
     });
     btnNuevoEvento.dataset.initialized = 'true';
   }
+
   const gridFechas = document.getElementById('calendario-grid');
   if (gridFechas) {
-    gridFechas.addEventListener('click', (e) => {
+    // Limpiar listeners antiguos si existen (más robusto)
+    if (gridFechas._clickHandler)
+      gridFechas.removeEventListener('click', gridFechas._clickHandler);
+    if (gridFechas._mouseDownHandler)
+      gridFechas.removeEventListener('mousedown', gridFechas._mouseDownHandler);
+    if (gridFechas._mouseOverHandler)
+      gridFechas.removeEventListener('mouseover', gridFechas._mouseOverHandler);
+    if (gridFechas._contextMenuHandler)
+      gridFechas.removeEventListener(
+        'contextmenu',
+        gridFechas._contextMenuHandler,
+      );
+
+    // Definir handlers
+    const clickHandler = (e) => {
       const esMovil = window.innerWidth <= 900;
       if (wasDragging) {
+        // Si venimos de un arrastre, no hacer nada en el click
+        wasDragging = false; // Resetear para el próximo click
         return;
       }
-      const celda = e.target.closest('.dia-mes');
-      if (!celda) {
-        wasDragging = false;
-        return;
-      }
-      e.stopPropagation();
+      const celda = e.target.closest('.dia-mes'); // Celda de día del mes actual
+
+      // Determinar si se hizo clic sobre una barra de evento largo
       const clickX = e.clientX;
       const clickY = e.clientY;
       let eventoClicado = null;
@@ -795,144 +815,207 @@ export function inicializarCalendario() {
           break;
         }
       }
+
+      // Si se hizo clic en una barra de evento
       if (eventoClicado) {
         mostrarDetallesEvento(eventoClicado);
-      } else {
-        e.stopPropagation();
-        if (esMovil) {
-          document.body.classList.add('resumen-movil-visible');
-          const celdaInfo = celdasCache.find(
-            (c) => c.fecha.toISOString().split('T')[0] === celda.dataset.fecha,
-          );
-          if (celdaInfo) mostrarResumenDia(celdaInfo.fecha);
+      }
+      // Si se hizo clic en una celda (y no en una barra)
+      else if (celda) {
+        e.stopPropagation(); // Evitar que otros listeners (ej. body) se activen
+        const fechaCelda = celda.dataset.fecha;
+        const celdaInfo = celdasCache.find(
+          (c) => c.fecha.toISOString().split('T')[0] === fechaCelda,
+        );
+
+        if (celdaInfo) {
+          // Quitar selección previa
           document
             .querySelectorAll('#calendario-grid .dia-mes.dia-seleccionado')
             .forEach((c) => c.classList.remove('dia-seleccionado'));
+          // Marcar celda actual como seleccionada
           celda.classList.add('dia-seleccionado');
-        } else {
-          document
-            .querySelectorAll('#calendario-grid .dia-mes.dia-seleccionado')
-            .forEach((c) => c.classList.remove('dia-seleccionado'));
-          celda.classList.add('dia-seleccionado');
-          const celdaInfo = celdasCache.find(
-            (c) => c.fecha.toISOString().split('T')[0] === celda.dataset.fecha,
-          );
-          if (celdaInfo) {
-            mostrarResumenDia(celdaInfo.fecha);
+          // Mostrar resumen del día
+          mostrarResumenDia(celdaInfo.fecha);
+          // En móvil, mostrar el panel de resumen como overlay
+          if (esMovil) {
+            document.body.classList.add('resumen-movil-visible');
           }
         }
       }
-      wasDragging = false;
-    });
-    gridFechas.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
+    };
+    const mouseDownHandler = (e) => {
+      if (e.button !== 0) return; // Solo botón izquierdo
       const celda = e.target.closest('.dia-mes');
       if (!celda) return;
       isDragging = true;
-      wasDragging = false;
+      wasDragging = false; // Resetear al iniciar
       dragStartDate = celda.dataset.fecha;
       dragEndDate = celda.dataset.fecha;
       actualizarSeleccionArrastre();
-      e.preventDefault();
-    });
-    gridFechas.addEventListener('mouseover', (e) => {
+      e.preventDefault(); // Prevenir selección de texto
+    };
+    const mouseOverHandler = (e) => {
       if (!isDragging) return;
       const celda = e.target.closest('.dia-mes');
       if (!celda) return;
       if (celda.dataset.fecha !== dragEndDate) {
-        wasDragging = true;
+        wasDragging = true; // Marcar que sí hubo arrastre
         dragEndDate = celda.dataset.fecha;
         actualizarSeleccionArrastre();
       }
-    });
-    gridFechas.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
+    };
+    const contextMenuHandler = (e) => {
+      e.preventDefault(); // Prevenir menú contextual del navegador
       const celda = e.target.closest('.dia-mes');
       if (celda) {
         const fechaStr = celda.dataset.fecha;
         const modalChooser = document.getElementById('modal-chooser-crear');
         if (modalChooser && fechaStr) {
           modalChooser.dataset.fechaSeleccionada = fechaStr;
+          // Limpiar curso preseleccionado por si acaso
+          delete modalChooser.dataset.cursoPreseleccionado;
           mostrarModal('modal-chooser-crear');
         }
       }
-    });
+    };
+
+    // Añadir listeners
+    gridFechas.addEventListener('click', clickHandler);
+    gridFechas.addEventListener('mousedown', mouseDownHandler);
+    gridFechas.addEventListener('mouseover', mouseOverHandler);
+    gridFechas.addEventListener('contextmenu', contextMenuHandler);
+
+    // Guardar referencias
+    gridFechas._clickHandler = clickHandler;
+    gridFechas._mouseDownHandler = mouseDownHandler;
+    gridFechas._mouseOverHandler = mouseOverHandler;
+    gridFechas._contextMenuHandler = contextMenuHandler;
   }
-  window.addEventListener('mouseup', () => {
+
+  // Listener global mouseup (para finalizar arrastre)
+  if (window._calendarioMouseUpHandler) {
+    window.removeEventListener('mouseup', window._calendarioMouseUpHandler);
+  }
+  const mouseUpHandler = () => {
     if (!isDragging) return;
     if (wasDragging) {
-      const start = new Date(dragStartDate);
-      const end = new Date(dragEndDate);
-      iniciarEdicionEvento({
-        fechaInicio: start < end ? dragStartDate : dragEndDate,
-        fechaFin: start < end ? dragEndDate : dragStartDate,
-      });
+      // Solo abrir modal si hubo arrastre real
+      const start = new Date(dragStartDate + 'T00:00:00'); // Añadir T00:00:00
+      const end = new Date(dragEndDate + 'T00:00:00'); // Añadir T00:00:00
+      const fechaInicio = start < end ? dragStartDate : dragEndDate;
+      const fechaFin = start < end ? dragEndDate : dragStartDate;
+      // Limpiar curso preseleccionado
+      iniciarEdicionEvento(
+        { fechaInicio: fechaInicio, fechaFin: fechaFin },
+        null,
+      );
     }
     isDragging = false;
-    wasDragging = false;
+    // wasDragging se resetea en el próximo mousedown o click
     limpiarSeleccionArrastre();
-  });
+  };
+  window.addEventListener('mouseup', mouseUpHandler);
+  window._calendarioMouseUpHandler = mouseUpHandler; // Guardar referencia
+
   const panelResumen = document.getElementById('calendario-resumen');
   if (panelResumen) {
-    panelResumen.addEventListener('click', (e) => {
+    // Limpiar listeners antiguos
+    if (panelResumen._clickHandler)
+      panelResumen.removeEventListener('click', panelResumen._clickHandler);
+    if (panelResumen._dblClickHandler)
+      panelResumen.removeEventListener(
+        'dblclick',
+        panelResumen._dblClickHandler,
+      );
+
+    const clickHandler = (e) => {
       const esMovil = window.innerWidth <= 900;
-      if (e.target.closest('#btn-cerrar-resumen-dia')) {
+      const btnCerrar = e.target.closest('#btn-cerrar-resumen-dia');
+      const btnAgregarRapido = e.target.closest('#btn-agregar-rapido-dia');
+      const tareaItem = e.target.closest('.tarea-item-resumen');
+      const btnEditarEvento = e.target.closest('.btn-editar-resumen');
+
+      if (btnCerrar) {
         if (esMovil) {
           document.body.classList.remove('resumen-movil-visible');
-        } else {
-          mostrarResumenMes(fechaActual.getMonth(), fechaActual.getFullYear());
         }
-      }
-      if (e.target.closest('#btn-agregar-rapido-dia')) {
+        // Volver a mostrar resumen del mes (puede optimizarse guardando estado)
+        mostrarResumenMes(fechaActual.getMonth(), fechaActual.getFullYear());
+        // Quitar selección de día
+        document
+          .querySelectorAll('#calendario-grid .dia-mes.dia-seleccionado')
+          .forEach((c) => c.classList.remove('dia-seleccionado'));
+      } else if (btnAgregarRapido) {
         const fechaStr = document.querySelector(
           '#calendario-grid .dia-mes.dia-seleccionado',
         )?.dataset.fecha;
         const modalChooser = document.getElementById('modal-chooser-crear');
         if (modalChooser && fechaStr) {
           modalChooser.dataset.fechaSeleccionada = fechaStr;
+          delete modalChooser.dataset.cursoPreseleccionado; // Limpiar curso
           mostrarModal('modal-chooser-crear');
         }
-      } else if (e.target.closest('.tarea-item-resumen')) {
-        const tareaItem = e.target.closest('.tarea-item-resumen');
+      } else if (tareaItem) {
         const tareaId = tareaItem.dataset.taskId;
         if (tareaId) {
-          state.tareaSeleccionadald = parseInt(tareaId);
+          state.tareaSeleccionadald = parseInt(tareaId); // Typo mantenido
           guardarDatos();
           cambiarPagina('tareas');
         }
-      } else if (e.target.closest('.btn-editar-resumen')) {
-        const btn = e.target.closest('.btn-editar-resumen');
-        const eventId = btn.dataset.eventId;
+      } else if (btnEditarEvento) {
+        const eventId = btnEditarEvento.dataset.eventId;
+        // Buscar el evento original (no la instancia)
         const eventoOriginal = state.eventos.find(
-          (ev) => ev.id === parseInt(eventId),
+          (ev) => String(ev.id) === String(eventId),
         );
         if (eventoOriginal) {
-          iniciarEdicionEvento(eventoOriginal);
+          iniciarEdicionEvento(eventoOriginal, null); // Sin curso preseleccionado
+        } else {
+          console.warn(
+            'No se encontró el evento original para editar:',
+            eventId,
+          );
         }
       }
-    });
+    };
+    const dblClickHandler = (e) => {
+      const tareaItem = e.target.closest('.tarea-item-resumen');
+      if (!tareaItem) return;
+      const tareaId = tareaItem.dataset.taskId;
+      const tarea = state.tareas.find((t) => String(t.id) === String(tareaId)); // Comparar como string por si acaso
+      if (tarea && !tarea.completada) {
+        // Solo si no está completada
+        mostrarConfirmacion(
+          'Completar Tarea',
+          `¿Marcar "${tarea.titulo}" como completada?`,
+          () => {
+            tarea.completada = true;
+            tarea.fechaCompletado = new Date().toISOString().split('T')[0]; // Añadir fecha completado
+            guardarDatos();
+            renderizarCalendario(); // Refresca todo (incluye resumen)
+          },
+        );
+      } else if (tarea && tarea.completada) {
+        // Opcional: Permitir desmarcar con doble clic también?
+        // mostrarConfirmacion('Marcar como Pendiente', `¿Marcar "${tarea.titulo}" como pendiente?`, () => { ... });
+      }
+    };
+
+    panelResumen.addEventListener('click', clickHandler);
+    panelResumen.addEventListener('dblclick', dblClickHandler);
+    panelResumen._clickHandler = clickHandler;
+    panelResumen._dblClickHandler = dblClickHandler;
   }
-  panelResumen.addEventListener('dblclick', (e) => {
-    const tareaItem = e.target.closest('.tarea-item-resumen');
-    if (!tareaItem) return;
-    const tareaId = tareaItem.dataset.taskId;
-    const tarea = state.tareas.find((t) => t.id == tareaId);
-    if (tarea) {
-      mostrarConfirmacion(
-        'Completar Tarea',
-        `¿Marcar "${tarea.titulo}" como completada?`,
-        () => {
-          tarea.completada = true;
-          guardarDatos();
-          renderizarCalendario();
-        },
-      );
-    }
-  });
+
+  // --- Listener Formulario Nuevo Evento (CON GUARDA) ---
   const formNuevoEvento = document.getElementById('form-nuevo-evento');
-  if (formNuevoEvento) {
-    formNuevoEvento.addEventListener('submit', (e) => {
+  // Aseguramos que el listener se añada UNA SOLA VEZ
+  if (formNuevoEvento && !formNuevoEvento.dataset.listenerAttached) {
+    const submitHandler = (e) => {
+      // Definimos el handler aquí dentro
       e.preventDefault();
+      // --- Leer datos del formulario ---
       const datosEvento = {
         titulo: document.getElementById('input-evento-titulo').value.trim(),
         fechaInicio: document.getElementById('input-evento-inicio').value,
@@ -954,80 +1037,153 @@ export function inicializarCalendario() {
       const eventoId = parseInt(
         document.getElementById('input-evento-id').value,
       );
+
+      // --- Validaciones ---
+      if (
+        !datosEvento.titulo ||
+        !datosEvento.fechaInicio ||
+        !datosEvento.fechaFin
+      ) {
+        alert('El evento debe tener un título y fechas de inicio y fin.');
+        return;
+      }
+      if (
+        new Date(datosEvento.fechaFin + 'T00:00:00') <
+        new Date(datosEvento.fechaInicio + 'T00:00:00')
+      ) {
+        // Comparar con hora
+        alert('La fecha de fin no puede ser anterior a la fecha de inicio.');
+        return;
+      }
+
+      // --- Lógica Guardar/Actualizar ---
       if (eventoId) {
+        // Si hay ID, es una actualización
         const index = state.eventos.findIndex((ev) => ev.id === eventoId);
         if (index !== -1) {
-          state.eventos[index] = { ...state.eventos[index], ...datosEvento };
-          guardarDatos();
-          renderizarCalendario();
+          // Preservar ID original, actualizar resto de datos
+          state.eventos[index] = { id: eventoId, ...datosEvento };
+          console.log('Evento actualizado:', state.eventos[index]);
+          guardarDatos(); // Guardar cambios
+          renderizarCalendario(); // Refrescar vista
+        } else {
+          console.error(
+            'Error: No se encontró el evento para actualizar con ID:',
+            eventoId,
+          );
         }
       } else {
+        // Si no hay ID, es un evento nuevo
+        // Llamar a agregarEvento que hace push, guarda y renderiza
         agregarEvento(datosEvento);
       }
+
       cerrarModal('modal-nuevo-evento');
-    });
+    }; // Fin de submitHandler
+
+    formNuevoEvento.addEventListener('submit', submitHandler);
+    formNuevoEvento.dataset.listenerAttached = 'true'; // Marcar que ya tiene listener
   }
+  // --- FIN CORRECCIÓN LISTENER SUBMIT ---
+
+  // --- Listener Paleta Color (Con guarda) ---
   const paleta = document.getElementById('evento-color-palette');
   const inputColorOculto = document.getElementById('input-evento-color');
   const inputColorCustom = document.getElementById('input-evento-color-custom');
   if (paleta && inputColorOculto && inputColorCustom) {
-    paleta.addEventListener('click', (e) => {
-      if (e.target.matches('.color-swatch[data-color]')) {
-        const color = e.target.dataset.color;
-        inputColorOculto.value = color;
-        inputColorCustom.value = color;
+    if (!paleta.dataset.listenerAttached) {
+      paleta.addEventListener('click', (e) => {
+        if (e.target.matches('.color-swatch[data-color]')) {
+          const color = e.target.dataset.color;
+          inputColorOculto.value = color;
+          inputColorCustom.value = color;
+          paleta
+            .querySelectorAll('.color-swatch')
+            .forEach((s) => s.classList.remove('active'));
+          e.target.classList.add('active');
+          // Desmarcar custom si se selecciona un preset
+          const customSwatchDiv = inputColorCustom.closest(
+            '.custom-color-swatch',
+          );
+          if (customSwatchDiv) customSwatchDiv.classList.remove('active');
+        }
+      });
+      paleta.dataset.listenerAttached = 'true';
+    }
+    if (!inputColorCustom.dataset.listenerAttached) {
+      inputColorCustom.addEventListener('input', (e) => {
+        inputColorOculto.value = e.target.value;
         paleta
           .querySelectorAll('.color-swatch')
           .forEach((s) => s.classList.remove('active'));
-        e.target.classList.add('active');
-      }
-    });
-    inputColorCustom.addEventListener('input', (e) => {
-      inputColorOculto.value = e.target.value;
-      paleta
-        .querySelectorAll('.color-swatch')
-        .forEach((s) => s.classList.remove('active'));
-    });
+        // Marcar el div del custom picker como activo
+        const customSwatchDiv = inputColorCustom.closest(
+          '.custom-color-swatch',
+        );
+        if (customSwatchDiv) customSwatchDiv.classList.add('active');
+      });
+      inputColorCustom.dataset.listenerAttached = 'true';
+    }
   }
-  document
-    .getElementById('btn-accion-nueva-tarea')
-    ?.addEventListener('click', () => {
+
+  // --- Listener Botones Acción Rápida (Con guarda) ---
+  const btnAccionTarea = document.getElementById('btn-accion-nueva-tarea');
+  if (btnAccionTarea && !btnAccionTarea.dataset.listenerAttached) {
+    btnAccionTarea.addEventListener('click', () => {
       const fecha = document.getElementById('accion-rapida-fecha').value;
       cerrarModal('modal-accion-rapida');
-      document.querySelector('.nav-item[data-page="tareas"]')?.click();
-      setTimeout(() => {
-        const inputFecha = document.getElementById('input-fecha-tarea');
-        if (inputFecha) inputFecha.value = fecha;
-      }, 50);
+      // Asegurarse que se pasa la fecha a la página de tareas
+      // (Esto requiere lógica en inicializarTareas para leerla)
+      state.fechaPreseleccionada = fecha; // Guardar temporalmente
+      guardarDatos();
+      cambiarPagina('tareas');
     });
-  document
-    .getElementById('btn-accion-nuevo-evento')
-    ?.addEventListener('click', () => {
+    btnAccionTarea.dataset.listenerAttached = 'true';
+  }
+  const btnAccionEvento = document.getElementById('btn-accion-nuevo-evento');
+  if (btnAccionEvento && !btnAccionEvento.dataset.listenerAttached) {
+    btnAccionEvento.addEventListener('click', () => {
       const fecha = document.getElementById('accion-rapida-fecha').value;
       cerrarModal('modal-accion-rapida');
-      iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha });
+      iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha }, null); // Sin curso
     });
+    btnAccionEvento.dataset.listenerAttached = 'true';
+  }
+
+  // --- Listener Modal Chooser (Con guarda) ---
   const modalChooser = document.getElementById('modal-chooser-crear');
   if (modalChooser) {
-    document
-      .getElementById('btn-chooser-evento')
-      ?.addEventListener('click', () => {
+    const btnChooserEvento = document.getElementById('btn-chooser-evento');
+    if (btnChooserEvento && !btnChooserEvento.dataset.listenerAttached) {
+      btnChooserEvento.addEventListener('click', () => {
         const fecha = modalChooser.dataset.fechaSeleccionada;
+        const curso = modalChooser.dataset.cursoPreseleccionado;
+        cerrarModal('modal-chooser-crear');
         if (fecha) {
-          cerrarModal('modal-chooser-crear');
-          iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha });
+          iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha }, curso);
         }
+        delete modalChooser.dataset.fechaSeleccionada;
+        delete modalChooser.dataset.cursoPreseleccionado;
       });
-    document
-      .getElementById('btn-chooser-tarea')
-      ?.addEventListener('click', () => {
+      btnChooserEvento.dataset.listenerAttached = 'true';
+    }
+    const btnChooserTarea = document.getElementById('btn-chooser-tarea');
+    if (btnChooserTarea && !btnChooserTarea.dataset.listenerAttached) {
+      btnChooserTarea.addEventListener('click', () => {
         const fecha = modalChooser.dataset.fechaSeleccionada;
+        const curso = modalChooser.dataset.cursoPreseleccionado;
+        cerrarModal('modal-chooser-crear');
         if (fecha) {
-          cerrarModal('modal-chooser-crear');
-          abrirModalNuevaTarea(fecha);
+          abrirModalNuevaTarea(fecha, curso);
         }
+        delete modalChooser.dataset.fechaSeleccionada;
+        delete modalChooser.dataset.cursoPreseleccionado;
       });
+      btnChooserTarea.dataset.listenerAttached = 'true';
+    }
   }
+
+  // --- Listener Select Recurrencia (Con guarda) ---
   const selectRecurrenciaEvento = document.getElementById(
     'evento-select-recurrencia',
   );
@@ -1035,12 +1191,14 @@ export function inicializarCalendario() {
     'evento-fin-recurrencia-container',
   );
   if (selectRecurrenciaEvento && containerFinEvento) {
-    selectRecurrenciaEvento.addEventListener('change', (e) => {
-      if (e.target.value === 'nunca') {
-        containerFinEvento.classList.add('hidden');
-      } else {
-        containerFinEvento.classList.remove('hidden');
-      }
-    });
+    if (!selectRecurrenciaEvento.dataset.listenerAttached) {
+      selectRecurrenciaEvento.addEventListener('change', (e) => {
+        containerFinEvento.classList.toggle(
+          'hidden',
+          e.target.value === 'nunca',
+        );
+      });
+      selectRecurrenciaEvento.dataset.listenerAttached = 'true';
+    }
   }
 }
