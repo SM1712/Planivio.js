@@ -210,30 +210,77 @@ export function popularFiltroDeCursos() {
 
 // --- (Funciones de Proyectos y Onboarding sin cambios) ---
 
+/**
+ * ACTUALIZADO: Popula un <select> con los proyectos, opcionalmente excluyendo
+ * aquellos cuyo curso asociado está archivado.
+ * @param {string} selectorId - El ID del elemento <select> a popular.
+ * @param {boolean} excluirProyectosDeCursosArchivados - Si es true, omite proyectos de cursos archivados. (Default: true)
+ */
 export function popularSelectorDeProyectos(
   selectorId = 'select-proyecto-tarea',
+  excluirProyectosDeCursosArchivados = true, // Default a true para la nueva lógica
 ) {
   const selector = document.getElementById(selectorId);
   if (!selector) return;
 
   const valorSeleccionado = selector.value;
-  selector.innerHTML = '<option value="">Ninguno</option>';
+  selector.innerHTML = '<option value="">Ninguno</option>'; // Opción "Ninguno" siempre presente
+
+  // Construir un Set con los nombres de cursos archivados para búsqueda rápida
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
+  );
+
   state.proyectos.forEach((proyecto) => {
-    const opcion = document.createElement('option');
-    opcion.value = proyecto.id;
-    opcion.textContent = proyecto.nombre;
-    selector.appendChild(opcion);
+    // --- NUEVA LÓGICA DE FILTRADO ---
+    let incluirProyecto = true;
+    if (excluirProyectosDeCursosArchivados && proyecto.curso) {
+      // Si se deben excluir Y el proyecto tiene un curso asociado Y ese curso está en la lista de archivados
+      if (cursosArchivadosNombres.has(proyecto.curso)) {
+        incluirProyecto = false; // No incluir este proyecto
+      }
+    }
+    // -------------------------------
+
+    if (incluirProyecto) {
+      const opcion = document.createElement('option');
+      opcion.value = proyecto.id;
+      opcion.textContent = proyecto.nombre;
+      selector.appendChild(opcion);
+    }
   });
-  if (valorSeleccionado) {
+
+  // Re-seleccionar valor si aún existe en la lista filtrada
+  if (
+    valorSeleccionado &&
+    selector.querySelector(`option[value="${valorSeleccionado}"]`)
+  ) {
     selector.value = valorSeleccionado;
+  } else if (selector.options.length > 0) {
+    // Si el valor seleccionado ya no existe (porque se filtró),
+    // seleccionar "Ninguno" por defecto si es posible
+    selector.value = '';
   }
 }
 
+/**
+ * ACTUALIZADO: Llama a popularSelectorDeProyectos asegurando excluir archivados.
+ * (Usado específicamente en el modal de editar tarea)
+ * @param {number | string | null} proyectoIdSeleccionado - El ID del proyecto a seleccionar.
+ */
 export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
+  // Llama a la función principal, asegurando excluir archivados
+  popularSelectorDeProyectos('edit-select-proyecto-tarea', true);
+
+  // Re-seleccionar el valor (sin cambios aquí)
   const selector = document.getElementById('edit-select-proyecto-tarea');
-  popularSelectorDeProyectos('edit-select-proyecto-tarea');
   if (selector && proyectoIdSeleccionado) {
-    selector.value = proyectoIdSeleccionado;
+    // Asegurarse de que la opción todavía exista después del filtrado
+    if (selector.querySelector(`option[value="${proyectoIdSeleccionado}"]`)) {
+      selector.value = proyectoIdSeleccionado;
+    } else {
+      selector.value = ''; // Si no existe, seleccionar "Ninguno"
+    }
   }
 }
 
