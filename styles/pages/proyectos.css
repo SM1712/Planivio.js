@@ -1,10 +1,14 @@
 /* --- ESTILOS PÁGINA DE PROYECTOS --- */
-
+#page-proyectos {
+  display: flex; /* <-- ESTA ES LA LÍNEA CLAVE QUE FALTABA */
+  overflow: hidden; /* Evita scroll a nivel de página */
+  height: 100%; /* Ocupa toda la altura */
+  position: relative; /* Contexto para el panel móvil */
+}
 /* --- Layout Principal (Modificado FASE 4) --- */
 .panel-proyectos-lista {
-  flex: 0 0 350px; /* No crece, no encoge, tamaño fijo inicial */
-  max-width: 400px; /* Tamaño máximo para la lista de proyectos */
-  min-width: 300px; /* Tamaño mínimo para la lista de proyectos */
+  flex: 1; /* No crece, no encoge, tamaño fijo inicial */
+  min-width: 400px; /* Tamaño mínimo para la lista de proyectos */
   overflow-y: auto;
 }
 #lista-proyectos-container {
