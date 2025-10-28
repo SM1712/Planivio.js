@@ -5,13 +5,20 @@ import {
   cerrarModal,
   mostrarConfirmacion,
   mostrarAlerta,
-  popularSelectorDeCursos, // ¡Importamos la función que arreglamos!
+  popularSelectorDeCursos,
 } from '../ui.js';
 import { ICONS } from '../icons.js';
+// ================== INICIO DE LÍNEAS AÑADIDAS (FASE 3) ==================
+import { cambiarPagina } from '../main.js';
+import { iniciarEdicionEvento } from './calendario.js';
+// =================== FIN DE LÍNEAS AÑADIDAS (FASE 3) ==================
 
 let graficaDeProyecto = null;
+// ================== INICIO DE LÍNEA AÑADIDA (FASE 1) ==================
+let searchTermProyectos = ''; // Variable para guardar la búsqueda
+// =================== FIN DE LÍNEA AÑADIDA (FASE 1) ==================
 
-// ... (calcularEstadisticasProyecto, renderizarProyectos, renderizarGraficaProyecto, renderizarListasDeTareas, renderizarDetallesProyecto sin cambios) ...
+// ... (calcularEstadisticasProyecto se mantiene igual) ...
 export function calcularEstadisticasProyecto(proyectoId) {
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
@@ -46,26 +53,50 @@ export function calcularEstadisticasProyecto(proyectoId) {
   return { total: totalTareas, completadas, alta, media, baja, porcentaje };
 }
 
+// ================== INICIO FUNCIÓN MODIFICADA (FASE 1 y Corrección) ==================
 function renderizarProyectos() {
   const container = document.getElementById('lista-proyectos-container');
   if (!container) return;
-  container.innerHTML = '';
+  container.innerHTML = ''; // Limpia el contenedor
 
+  // 1. Carga los cursos archivados
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
-  // Filtra proyectos: solo muestra si NO tiene curso O si el curso NO está archivado.
-  const proyectosMostrables = state.proyectos.filter(
-    (proyecto) =>
-      !(proyecto.curso && cursosArchivadosNombres.has(proyecto.curso)),
-  );
 
+  // 2. Obtiene el término de búsqueda
+  const terminoBusqueda = searchTermProyectos.toLowerCase();
+
+  // 3. Filtra los proyectos
+  const proyectosMostrables = state.proyectos.filter((proyecto) => {
+    // Condición 1: El curso NO debe estar archivado
+    const cursoArchivado =
+      proyecto.curso && cursosArchivadosNombres.has(proyecto.curso);
+
+    // Condición 2: Debe coincidir con la búsqueda
+    const coincideBusqueda =
+      terminoBusqueda === '' ||
+      proyecto.nombre.toLowerCase().includes(terminoBusqueda);
+
+    // El proyecto se muestra si NO está archivado Y coincide con la búsqueda
+    return !cursoArchivado && coincideBusqueda;
+  });
+
+  // 4. Muestra el mensaje de "Vacío"
   if (proyectosMostrables.length === 0) {
-    container.innerHTML =
-      '<p style="padding: 15px; color: var(--text-muted);">No tienes proyectos creados. ¡Añade el primero!</p>';
-    return;
+    if (searchTermProyectos !== '') {
+      // Mensaje si no hay resultados de búsqueda
+      container.innerHTML =
+        '<p style="padding: 15px; color: var(--text-muted);">No se encontraron proyectos que coincidan con tu búsqueda.</p>';
+    } else {
+      // Mensaje si no hay proyectos en general
+      container.innerHTML =
+        '<p style="padding: 15px; color: var(--text-muted);">No tienes proyectos creados. ¡Añade el primero!</p>';
+    }
+    return; // Importante salir aquí
   }
 
+  // 5. Renderiza las tarjetas (Tu código original)
   proyectosMostrables.forEach((proyecto) => {
     const stats = calcularEstadisticasProyecto(proyecto.id);
     const card = document.createElement('div');
@@ -111,7 +142,9 @@ function renderizarProyectos() {
     container.appendChild(card);
   });
 }
+// ================== FIN FUNCIÓN MODIFICADA (FASE 1 y Corrección) ==================
 
+// ... (renderizarGraficaProyecto se mantiene igual) ...
 function renderizarGraficaProyecto(stats) {
   const ctx = document
     .getElementById('proyecto-grafica-progreso')
@@ -157,6 +190,7 @@ function renderizarGraficaProyecto(stats) {
   });
 }
 
+// ================== INICIO FUNCIÓN MODIFICADA (FASE 3) ==================
 function renderizarListasDeTareas(proyectoId) {
   const container = document.getElementById('proyecto-det-tareas-container');
   if (!container) return;
@@ -168,11 +202,13 @@ function renderizarListasDeTareas(proyectoId) {
     (t) =>
       t.proyectoId === proyectoId &&
       !t.completada &&
-      !cursosArchivadosNombres.has(t.curso), // <-- AÑADIDO ESTO
+      !cursosArchivadosNombres.has(t.curso),
   );
+
   const totalTareasProyecto = state.tareas.filter(
-    (t) => t.proyectoId === proyectoId && !cursosArchivadosNombres.has(t.curso),
-  ).length; // Re-calcula total sin archivados
+    (t) => t.proyectold === proyectoId && !cursosArchivadosNombres.has(t.curso),
+  ).length;
+
   let html = '<div class="tareas-por-prioridad">';
 
   if (tareasPendientes.length > 0) html += '<h4>Tareas Pendientes</h4>';
@@ -183,41 +219,148 @@ function renderizarListasDeTareas(proyectoId) {
       html += `<h5>Prioridad ${prioridad}</h5><ul>`;
       tareas.forEach((t) => {
         const [y, m, d] = t.fecha.split('-');
-        html += `<li><div><span class="prioridad-indicador prioridad-${prioridad.toLowerCase()}"></span><span>${t.titulo}</span></div><span class="fecha-tarea">${d}/${m}/${y}</span></li>`;
+        // --- LÍNEA MODIFICADA ---
+        html += `<li class="detalle-item" data-task-id="${t.id}">
+                    <div>
+                      <span class="prioridad-indicador prioridad-${prioridad.toLowerCase()}"></span>
+                      <span>${t.titulo}</span>
+                    </div>
+                    <span class="fecha-tarea">${d}/${m}/${y}</span>
+                  </li>`;
+        // --- FIN LÍNEA MODIFICADA ---
       });
       html += '</ul>';
     }
   });
 
-  if (
-    tareasPendientes.length === 0 &&
-    state.tareas.filter((t) => t.proyectoId === proyectoId).length > 0
-  ) {
-    html += '<h4>¡Todas las tareas de este proyecto están completadas!</h4>';
+  if (tareasPendientes.length === 0 && totalTareasProyecto > 0) {
+    html +=
+      '<p class="detalle-lista-vacia">¡Todas las tareas de este proyecto están completadas!</p>';
   }
 
   html += '</div>';
   container.innerHTML = html;
 }
+// ================== FIN FUNCIÓN MODIFICADA (FASE 3) ==================
 
+// ================== INICIO NUEVAS FUNCIONES (FASE 2) ==================
+function renderizarListaEventos(proyectoId, container) {
+  if (!container) return;
+
+  const eventosDelProyecto = state.eventos.filter(
+    (e) => String(e.proyectoId) === String(proyectoId), // Usamos String() por seguridad
+  );
+
+  if (eventosDelProyecto.length === 0) {
+    container.innerHTML =
+      '<p class="detalle-lista-vacia">Este proyecto no tiene eventos asociados.</p>';
+    return;
+  }
+
+  // Ordenar por fecha de inicio
+  eventosDelProyecto.sort(
+    (a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio),
+  );
+
+  let html = '<ul class="detalle-lista">';
+  eventosDelProyecto.forEach((evento) => {
+    // Formatear fecha
+    const inicio = new Date(evento.fechaInicio + 'T00:00:00');
+    const fin = new Date(evento.fechaFin + 'T00:00:00');
+    const diaInicio = inicio.getDate().toString().padStart(2, '0');
+    const mesInicio = (inicio.getMonth() + 1).toString().padStart(2, '0');
+    let meta = `${diaInicio}/${mesInicio}`;
+    if (evento.fechaInicio !== evento.fechaFin) {
+      const diaFin = fin.getDate().toString().padStart(2, '0');
+      const mesFin = (fin.getMonth() + 1).toString().padStart(2, '0');
+      meta += ` - ${diaFin}/${mesFin}`;
+    }
+
+    html += `
+      <li class="detalle-item" data-evento-id="${evento.id}">
+        <span class="prioridad-indicador" style="background-color: ${evento.color};"></span>
+        <div class="detalle-item-contenido">
+          <span class="detalle-item-titulo">${evento.titulo}</span>
+          <span class="detalle-item-meta">${meta}</span>
+        </div>
+      </li>
+    `;
+  });
+  html += '</ul>';
+  container.innerHTML = html;
+}
+
+function renderizarListaApuntes(proyectold, container) {
+  if (!container) return;
+
+  const apuntesDelProyecto = state.apuntes.filter(
+    (a) => String(a.proyectoId) === String(proyectold), // 'proyectold'
+  );
+
+  if (apuntesDelProyecto.length === 0) {
+    container.innerHTML =
+      '<p class="detalle-lista-vacia">Este proyecto no tiene apuntes asociados.</p>';
+    return;
+  }
+
+  // Ordenar por fecha de modificación
+  apuntesDelProyecto.sort(
+    (a, b) => new Date(b.fechaModificacion) - new Date(a.fechaModificacion),
+  );
+
+  let html = '<ul class="detalle-lista">';
+  apuntesDelProyecto.forEach((apunte) => {
+    const titulo = apunte.titulo || 'Apunte sin título';
+    const tags =
+      apunte.tags && apunte.tags.length > 0
+        ? apunte.tags.map((tag) => `#${tag}`).join(' ')
+        : 'Sin etiquetas';
+
+    html += `
+      <li class="detalle-item" data-apunte-id="${apunte.id}">
+        <span class="tab-icon">${ICONS.apuntes || ''}</span>
+        <div class="detalle-item-contenido">
+          <span class="detalle-item-titulo">${titulo}</span>
+          <span class="detalle-item-meta">${tags}</span>
+        </div>
+      </li>
+    `;
+  });
+  html += '</ul>';
+  container.innerHTML = html;
+}
+// ================== FIN NUEVAS FUNCIONES (FASE 2) ==================
+
+// ================== INICIO FUNCIÓN MODIFICADA (FASE 2) ==================
 function renderizarDetallesProyecto() {
   const headerInfo = document.getElementById('proyecto-det-header-info');
   const descEl = document.getElementById('proyecto-det-descripcion');
+
+  // --- Contenedores de las pestañas ---
   const statsContainer = document.getElementById(
     'proyecto-det-stats-container',
-  );
+  ); // Tab 1
   const tareasContainer = document.getElementById(
     'proyecto-det-tareas-container',
-  );
+  ); // Tab 1
+  const eventosContainer = document.getElementById('proyectos-tab-eventos'); // Tab 2
+  const apuntesContainer = document.getElementById('proyectos-tab-apuntes'); // Tab 3
 
   if (graficaDeProyecto) {
     graficaDeProyecto.destroy();
     graficaDeProyecto = null;
   }
 
-  if (!headerInfo || !descEl || !statsContainer || !tareasContainer) {
+  if (
+    !headerInfo ||
+    !descEl ||
+    !statsContainer ||
+    !tareasContainer ||
+    !eventosContainer ||
+    !apuntesContainer
+  ) {
     console.error(
-      'Error: Faltan elementos esenciales del DOM en el panel de detalles del proyecto.',
+      'Error: Faltan elementos esenciales del DOM en el panel de detalles del proyecto (quizás las pestañas no se cargaron).',
     );
     return;
   }
@@ -237,32 +380,42 @@ function renderizarDetallesProyecto() {
 
     const stats = calcularEstadisticasProyecto(proyecto.id);
 
+    // --- Renderizar Pestaña 1: Resumen (Tareas + Gráfica) ---
     if (stats.total === 0) {
-      statsContainer.style.display = 'none';
+      statsContainer.style.display = 'none'; // Oculta gráfica
       tareasContainer.innerHTML =
-        '<h4>¡No hay tareas asignadas a este proyecto!</h4>';
+        '<p class="detalle-lista-vacia">¡No hay tareas asignadas a este proyecto!</p>';
     } else {
-      statsContainer.style.display = 'grid';
-      renderizarListasDeTareas(proyecto.id);
+      statsContainer.style.display = 'grid'; // Muestra gráfica
+      renderizarListasDeTareas(proyecto.id); // Función que ya tenías
       setTimeout(() => {
         const canvasEl = document.getElementById('proyecto-grafica-progreso');
         if (canvasEl && document.contains(canvasEl)) {
-          renderizarGraficaProyecto(stats);
-        } else {
-          console.warn(
-            "Canvas 'proyecto-grafica-progreso' no encontrado o listo al intentar renderizar gráfico. ¿Estás seguro de estar en la página de proyectos?",
-          );
+          renderizarGraficaProyecto(stats); // Función que ya tenías
         }
       }, 50);
     }
+
+    // --- Renderizar Pestaña 2: Eventos ---
+    renderizarListaEventos(proyecto.id, eventosContainer);
+
+    // --- Renderizar Pestaña 3: Apuntes ---
+    renderizarListaApuntes(proyecto.id, apuntesContainer);
   } else {
+    // Estado vacío (cuando no hay proyecto seleccionado)
     headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
     descEl.textContent = '';
     statsContainer.style.display = 'none';
     tareasContainer.innerHTML = '';
+    eventosContainer.innerHTML =
+      '<p class="detalle-lista-vacia">Selecciona un proyecto para ver sus eventos.</p>';
+    apuntesContainer.innerHTML =
+      '<p class="detalle-lista-vacia">Selecciona un proyecto para ver sus apuntes.</p>';
   }
 }
+// ================== FIN FUNCIÓN MODIFICADA (FASE 2) ==================
 
+// ... (agregarOEditarProyecto, iniciarEdicionProyecto, eliminarProyecto, abrirModalQuickAdd, agregarTareaDesdeModal se mantienen iguales) ...
 function agregarOEditarProyecto() {
   const idInput = document.getElementById('input-proyecto-id');
   const id = idInput ? parseInt(idInput.value) : null;
@@ -301,30 +454,15 @@ function iniciarEdicionProyecto(id) {
   const form = document.getElementById('form-nuevo-proyecto');
   if (form) form.reset();
 
-  // ======================================================
-  // ==           INICIO DE LA MODIFICACIÓN              ==
-  // ======================================================
-
-  // 1. Obtenemos el selector
   const selectorCurso = document.getElementById('select-curso-proyecto');
   if (selectorCurso) {
-    // 2. Usamos la función reutilizable de ui.js
-    //    Le pasamos 'true' para omitir "General", que coincide con la lógica anterior.
     popularSelectorDeCursos(selectorCurso, true);
-
-    // 3. Añadimos manualmente la opción "Ninguno" al principio
-    //    (popularSelectorDeCursos borra el contenido, por eso lo hacemos después)
     const opcionNinguno = document.createElement('option');
-    opcionNinguno.value = ''; // Usamos "" como valor para "Ninguno"
+    opcionNinguno.value = '';
     opcionNinguno.textContent = 'Ninguno';
-    selectorCurso.prepend(opcionNinguno); // Añade al inicio de la lista
-
-    // 4. Asignamos el valor que tenía el proyecto
+    selectorCurso.prepend(opcionNinguno);
     selectorCurso.value = proyecto?.curso || '';
   }
-  // ======================================================
-  // ==             FIN DE LA MODIFICACIÓN               ==
-  // ======================================================
 
   document.getElementById('modal-proyecto-titulo').textContent = proyecto
     ? 'Editar Proyecto'
@@ -342,7 +480,6 @@ function iniciarEdicionProyecto(id) {
 }
 
 function eliminarProyecto(id) {
-  // ... (función sin cambios)
   const proyecto = state.proyectos.find((p) => p.id === id);
   if (!proyecto) return;
   mostrarConfirmacion(
@@ -353,6 +490,14 @@ function eliminarProyecto(id) {
       state.tareas.forEach((t) => {
         if (t.proyectoId === id) t.proyectoId = null;
       });
+      // --- MODIFICACIÓN: Desvincular Eventos y Apuntes también ---
+      state.eventos.forEach((e) => {
+        if (String(e.proyectoId) === String(id)) e.proyectoId = null;
+      });
+      state.apuntes.forEach((a) => {
+        if (String(a.proyectoId) === String(id)) a.proyectoId = null;
+      });
+      // --- FIN MODIFICACIÓN ---
       if (state.proyectoSeleccionadoId === id) {
         state.proyectoSeleccionadoId = null;
         document
@@ -367,7 +512,6 @@ function eliminarProyecto(id) {
 }
 
 function abrirModalQuickAdd() {
-  // ... (función sin cambios, ya usa popularSelectorDeCursos)
   const proyecto = state.proyectos.find(
     (p) => p.id === state.proyectoSeleccionadoId,
   );
@@ -383,7 +527,6 @@ function abrirModalQuickAdd() {
     if (proyecto.curso) {
       selectorCurso.value = proyecto.curso;
     } else {
-      // REFACTOR: Buscar el primer curso *objeto*
       const primerCurso = state.cursos.find(
         (c) => c.nombre !== 'General' && !c.isArchivado,
       );
@@ -398,7 +541,6 @@ function abrirModalQuickAdd() {
 }
 
 function agregarTareaDesdeModal() {
-  // ... (función sin cambios)
   const nuevaTarea = {
     id: Date.now(),
     curso: document.getElementById('quick-add-curso-tarea').value,
@@ -423,8 +565,8 @@ function agregarTareaDesdeModal() {
   cerrarModal('modal-quick-add-tarea');
 }
 
+// ================== INICIO FUNCIÓN MODIFICADA (FASE 1, 2 y 3) ==================
 export function inicializarProyectos() {
-  // ... (función sin cambios)
   const btnCerrarDetalles = document.getElementById(
     'btn-cerrar-detalles-proyecto',
   );
@@ -435,6 +577,40 @@ export function inicializarProyectos() {
   if (btnMenuProyecto) {
     btnMenuProyecto.innerHTML = ICONS.dots_vertical;
   }
+
+  // --- INICIO CÓDIGO AÑADIDO (FASE 2) ---
+  // Cargar iconos en las pestañas
+  const iconResumen = document.getElementById('proyectos-tab-icon-resumen');
+  const iconEventos = document.getElementById('proyectos-tab-icon-eventos');
+  const iconApuntes = document.getElementById('proyectos-tab-icon-apuntes');
+  if (iconResumen) iconResumen.innerHTML = ICONS.tareas;
+  if (iconEventos) iconEventos.innerHTML = ICONS.calendario;
+  if (iconApuntes) iconApuntes.innerHTML = ICONS.apuntes;
+
+  // Listener para el cambio de pestañas
+  const tabsNav = document.getElementById('proyectos-tabs-nav');
+  if (tabsNav) {
+    tabsNav.addEventListener('click', (e) => {
+      const tabButton = e.target.closest('.tab-item');
+      if (!tabButton) return;
+
+      const tabId = tabButton.dataset.tab;
+      if (!tabId) return;
+
+      document
+        .querySelectorAll('#panel-proyecto-detalles .tab-pane')
+        .forEach((pane) => {
+          pane.classList.remove('active');
+        });
+      tabsNav.querySelectorAll('.tab-item').forEach((btn) => {
+        btn.classList.remove('active');
+      });
+
+      document.getElementById(tabId)?.classList.add('active');
+      tabButton.classList.add('active');
+    });
+  }
+  // --- FIN CÓDIGO AÑADIDO (FASE 2) ---
 
   renderizarProyectos();
   renderizarDetallesProyecto();
@@ -536,4 +712,60 @@ export function inicializarProyectos() {
       eliminarProyecto(state.proyectoSeleccionadoId);
       if (menuDropdown) menuDropdown.classList.remove('visible');
     });
+
+  // --- INICIO CÓDIGO AÑADIDO (FASE 1) ---
+  const inputBusqueda = document.getElementById('input-buscar-proyectos');
+  if (inputBusqueda) {
+    inputBusqueda.value = searchTermProyectos;
+    inputBusqueda.addEventListener('input', (e) => {
+      searchTermProyectos = e.target.value;
+      renderizarProyectos();
+    });
+  }
+  // --- FIN CÓDIGO AÑADIDO (FASE 1) ---
+
+  // --- INICIO CÓDIGO AÑADIDO (FASE 3) ---
+  const panelDetalles = document.getElementById('panel-proyecto-detalles');
+  if (panelDetalles) {
+    panelDetalles.addEventListener('click', (e) => {
+      // 1. Clic en una TAREA
+      const tareaItem = e.target.closest('li[data-task-id]');
+      if (tareaItem) {
+        const tareaId = tareaItem.dataset.taskId;
+        if (tareaId) {
+          state.tareaSeleccionadald = parseInt(tareaId);
+          guardarDatos();
+          cambiarPagina('tareas');
+          return;
+        }
+      }
+
+      // 2. Clic en un APUNTE
+      const apunteItem = e.target.closest('li[data-apunte-id]');
+      if (apunteItem) {
+        const apunteId = apunteItem.dataset.apunteId;
+        if (apunteId) {
+          state.apunteActivoId = parseInt(apunteId);
+          guardarDatos();
+          cambiarPagina('apuntes');
+          return;
+        }
+      }
+
+      // 3. Clic en un EVENTO
+      const eventoItem = e.target.closest('li[data-evento-id]');
+      if (eventoItem) {
+        const eventoId = eventoItem.dataset.eventoId;
+        const evento = state.eventos.find(
+          (e) => String(e.id) === String(eventoId),
+        );
+        if (evento) {
+          iniciarEdicionEvento(evento);
+          return;
+        }
+      }
+    });
+  }
+  // --- FIN CÓDIGO AÑADIDO (FASE 3) ---
 }
+// ================== FIN FUNCIÓN MODIFICADA (FASE 1, 2 y 3) ==================

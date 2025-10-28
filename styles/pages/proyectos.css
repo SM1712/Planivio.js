@@ -1,45 +1,63 @@
 /* --- ESTILOS PÁGINA DE PROYECTOS --- */
 
-/* --- Layout Principal --- */
+/* --- Layout Principal (Modificado FASE 4) --- */
 .panel-proyectos-lista {
-  flex: 1;
-  min-width: 0;
+  flex: 0 0 350px; /* No crece, no encoge, tamaño fijo inicial */
+  max-width: 400px; /* Tamaño máximo para la lista de proyectos */
+  min-width: 300px; /* Tamaño mínimo para la lista de proyectos */
   overflow-y: auto;
 }
 #lista-proyectos-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
-  margin-top: 20px;
-}
-#panel-proyecto-detalles {
-  display: none;
+  padding: 20px; /* Padding para la lista de tarjetas */
 }
 
-/* --- Estado con Detalle Visible --- */
+/* ESTILO BASE PARA EL PANEL DE DETALLES (ESCRITORIO - FASE 4) */
+#panel-proyecto-detalles {
+  flex: 1; /* Crece para ocupar el espacio restante */
+  min-width: 450px; /* Asegura un tamaño mínimo para los detalles */
+  border-left: 1px solid var(--border-color); /* Separador visual */
+  padding: 0; /* Aseguramos que no tenga padding global, lo controlamos por dentro */
+
+  /* --- Propiedades clave añadidas --- */
+  display: none; /* Modificado: Inicia oculto */
+  flex-direction: column;
+  overflow-y: hidden; /* El scroll lo maneja .tab-content */
+}
+
+/* --- Estado con Detalle Visible (Modificado FASE 4) --- */
 #page-proyectos.detalle-visible .panel-proyectos-lista {
-  flex: 0 0 390px;
-  min-width: 0;
+  /* En escritorio, el tamaño se mantiene fijo */
+  flex: 0 0 350px;
+  max-width: 400px;
+  min-width: 300px;
 }
 #page-proyectos.detalle-visible #lista-proyectos-container {
   grid-template-columns: 1fr;
 }
 #page-proyectos.detalle-visible #panel-proyecto-detalles {
-  display: flex;
+  display: flex; /* Se hace visible */
   flex: 1;
-  min-width: 0;
-  overflow-y: auto;
+  min-width: 450px;
+  overflow-y: hidden; /* Aseguramos que el scroll esté en .tab-content */
 }
 
-/* --- Panel de Detalles --- */
-.panel-header-flex {
+/* --- Panel de Detalles (Modificado FASE 4) --- */
+/* HIJOS DEL PANEL DE DETALLES (ESCRITORIO) */
+#panel-proyecto-detalles .panel-header-flex {
+  padding: 20px 30px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0; /* <-- NO SE ENCOGE */
+  gap: 10px;
+  align-items: center; /* Centra verticalmente título e iconos */
+
+  /* Añadido FASE 4 (Móvil Fix) */
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 15px;
-  border-bottom: 2px solid var(--accent-color);
-  padding-bottom: 10px;
 }
+
 .panel-header-flex #proyecto-det-header-info {
   display: flex;
   flex-direction: column;
@@ -60,19 +78,21 @@
   gap: 8px;
   flex-shrink: 0;
 }
-#proyecto-det-descripcion {
-  font-size: 1rem;
-  color: var(--text-base);
-  white-space: pre-wrap;
-  line-height: 1.6;
-  margin-top: 10px;
+p#proyecto-det-descripcion {
+  padding: 20px 30px; /* Padding para la descripción */
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border-bottom: 1px solid var(--border-color);
+  margin: 0; /* Quitamos margen por defecto de <p> */
+  flex-shrink: 0; /* <-- NO SE ENCOGE */
 }
 
-/* --- Tarjetas de Proyecto --- */
+/* --- Tarjetas de Proyecto (Modificado FASE 1) --- */
 .proyecto-card {
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  padding: 20px;
+  padding: 15px; /* Ajustado de 20px a 15px */
   background-color: var(--bg-content);
   box-shadow: 0 2px 4px var(--shadow-color);
   display: flex;
@@ -120,7 +140,7 @@
   gap: 8px;
 }
 
-/* --- Gráfica y Estadísticas --- */
+/* --- Gráfica y Estadísticas (Sin cambios) --- */
 .proyecto-stats {
   margin-top: 5px;
 }
@@ -200,13 +220,12 @@
   top: auto;
   right: auto;
 }
-/* ... dentro de la sección de Gráfica y Estadísticas ... */
 
 .proyecto-stats-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px; /* Pequeño espacio antes de la barra */
+  margin-bottom: 4px;
 }
 
 .proyecto-stats-porcentaje {
@@ -214,3 +233,259 @@
   font-weight: 600;
   color: var(--accent-color);
 }
+
+/* --- Barra de Herramientas (Añadido FASE 1) --- */
+.proyectos-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border-color);
+  gap: 15px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  background-color: var(--bg-content);
+}
+.input-buscar {
+  flex-grow: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-input);
+  color: var(--text-base);
+  font-size: 0.9rem;
+}
+.input-buscar:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--accent-color-hover);
+}
+
+/* ================== INICIO ESTILOS PESTAÑAS (FASE 2) ================== */
+.tabs-nav {
+  display: flex;
+  padding: 0 20px; /* Padding ajustado FASE 4 */
+  flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  background-color: var(--bg-content);
+  z-index: 1;
+  border-bottom: 1px solid var(--border-color); /* Añadido FASE 4 */
+}
+.tabs-nav::-webkit-scrollbar {
+  height: 4px;
+}
+.tabs-nav::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 2px;
+}
+.tab-item {
+  flex-grow: 1;
+  flex-basis: 0;
+  padding: 12px 15px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+  white-space: nowrap;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+}
+.tab-item .tab-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+  vertical-align: middle;
+}
+.tab-item:hover {
+  color: var(--text-base);
+  background-color: var(--bg-hover);
+}
+.tab-item.active {
+  color: var(--accent-color);
+  background-color: var(--bg-hover);
+}
+.tab-item.active .tab-icon svg {
+  fill: var(--accent-color);
+}
+
+.tab-content {
+  overflow-y: auto; /* IMPORTANTE: El scroll va aquí */
+  flex: 1; /* Ocupa el espacio restante */
+  min-height: 0; /* Necesario para que flexbox calcule bien el scroll */
+}
+.tab-pane {
+  display: none;
+  padding: 25px 30px; /* Padding ajustado FASE 4 */
+  flex-direction: column;
+  gap: 25px;
+}
+.tab-pane.active {
+  display: flex;
+}
+p.detalle-lista-vacia {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 10px 0;
+  text-align: center;
+}
+
+/* --- Estilos de Listas (Copiados de cursos.css - FASE 2) --- */
+ul.detalle-lista {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  /* gap: 10px; <-- Reemplazado por margin-bottom */
+}
+li.detalle-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 15px; /* Padding ajustado FASE 4 */
+  border-radius: 6px;
+  background-color: rgba(var(--text-base-rgb, 0, 0, 0), 0.04);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-bottom: 10px; /* <-- Añadido FASE 4 (Ajuste 2) */
+}
+li.detalle-item:last-child {
+  margin-bottom: 0; /* <-- Añadido FASE 4 (Ajuste 2) */
+}
+li.detalle-item:hover {
+  background-color: rgba(var(--text-base-rgb, 0, 0, 0), 0.08);
+}
+.detalle-item-contenido {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+}
+.detalle-item-titulo {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-base);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detalle-item-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+/* =================== FIN ESTILOS PESTAÑAS (FASE 2) ================== */
+
+/* ================== INICIO ADAPTACIÓN MÓVIL (FASE 4) ================== */
+@media (max-width: 900px) {
+  #page-proyectos {
+    flex-direction: column;
+  }
+
+  .panel-proyectos-lista {
+    flex: 1;
+    height: 100%;
+    /* Reseteamos los tamaños de escritorio */
+    max-width: none;
+    min-width: 0;
+  }
+
+  /* Panel de detalles (overlay) */
+  #panel-proyecto-detalles {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1200;
+    background-color: var(--bg-content);
+    border-left: none;
+    border-radius: 0;
+    display: flex; /* Aseguramos flex */
+    flex-direction: column; /* Aseguramos columna */
+    overflow-y: hidden; /* Ocultamos scroll aquí */
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    /* Reseteamos tamaños de escritorio */
+    min-width: 0;
+  }
+
+  #page-proyectos.detalle-visible #panel-proyecto-detalles {
+    transform: translateX(0);
+  }
+
+  /* Hacemos visible el botón de cerrar (ya está en el DOM, solo aseguramos display) */
+  #panel-proyecto-detalles .btn-cerrar-panel {
+    display: flex;
+  }
+
+  /* Hacemos que las tarjetas se apilen en una columna */
+  #lista-proyectos-container {
+    grid-template-columns: 1fr;
+    padding: 15px;
+    gap: 15px;
+  }
+
+  /* Ajustes de padding en el header y toolbar */
+  .panel-proyectos-lista > .panel-header {
+    padding: 15px;
+  }
+  .proyectos-toolbar {
+    padding: 15px;
+    flex-direction: column; /* Ajuste FASE 1 */
+    align-items: stretch; /* Ajuste FASE 1 */
+  }
+  .input-buscar {
+    min-width: unset; /* Ajuste FASE 1 */
+  }
+
+  /* --- INICIO DE AJUSTES DEL HEADER MÓVIL (FASE 4) --- */
+  #panel-proyecto-detalles .panel-header-flex {
+    padding: 10px 15px;
+    padding-top: calc(15px + env(safe-area-inset-top, 0px));
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #panel-proyecto-detalles .panel-header-actions {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  #proyecto-det-header-info h3 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Ajustamos padding de descripción y pestañas para móvil */
+  p#proyecto-det-descripcion {
+    padding: 15px;
+    font-size: 0.9rem;
+  }
+  .tabs-nav {
+    padding: 0 15px;
+  }
+  .tab-pane {
+    padding: 20px 15px; /* Menos padding lateral en móvil */
+  }
+  /* --- FIN DE AJUSTES DEL HEADER MÓVIL (FASE 4) --- */
+}
+/* =================== FIN ADAPTACIÓN MÓVIL (FASE 4) =================== */

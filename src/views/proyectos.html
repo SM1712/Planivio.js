@@ -6,6 +6,14 @@
         + Nuevo Proyecto
       </button>
     </div>
+    <div class="proyectos-toolbar">
+      <input
+        type="search"
+        id="input-buscar-proyectos"
+        placeholder="Buscar proyectos..."
+        class="input-buscar"
+      />
+    </div>
     <div id="lista-proyectos-container"></div>
   </main>
   <section id="panel-proyecto-detalles" class="panel">
@@ -33,12 +41,38 @@
         ></button>
       </div>
     </div>
+
     <p id="proyecto-det-descripcion"></p>
-    <div id="proyecto-det-stats-container">
-      <div class="proyecto-stats-grafica">
-        <canvas id="proyecto-grafica-progreso"></canvas>
+
+    <div class="tabs-nav" id="proyectos-tabs-nav">
+      <button class="tab-item active" data-tab="proyectos-tab-resumen">
+        <span class="tab-icon" id="proyectos-tab-icon-resumen"></span> Resumen
+      </button>
+      <button class="tab-item" data-tab="proyectos-tab-eventos">
+        <span class="tab-icon" id="proyectos-tab-icon-eventos"></span> Eventos
+      </button>
+      <button class="tab-item" data-tab="proyectos-tab-apuntes">
+        <span class="tab-icon" id="proyectos-tab-icon-apuntes"></span> Apuntes
+      </button>
+    </div>
+
+    <div class="tab-content">
+      <div class="tab-pane active" id="proyectos-tab-resumen">
+        <div id="proyecto-det-stats-container">
+          <div class="proyecto-stats-grafica">
+            <canvas id="proyecto-grafica-progreso"></canvas>
+          </div>
+          <div id="proyecto-det-tareas-container"></div>
+        </div>
       </div>
-      <div id="proyecto-det-tareas-container"></div>
+
+      <div class="tab-pane" id="proyectos-tab-eventos">
+        <p class="detalle-lista-vacia">Cargando eventos...</p>
+      </div>
+
+      <div class="tab-pane" id="proyectos-tab-apuntes">
+        <p class="detalle-lista-vacia">Cargando apuntes...</p>
+      </div>
     </div>
   </section>
 </div>
