@@ -44,7 +44,6 @@
 #page-proyectos.detalle-visible #panel-proyecto-detalles {
   display: flex; /* Se hace visible */
   flex: 1;
-  min-width: 450px;
   overflow-y: hidden; /* Aseguramos que el scroll esté en .tab-content */
 }
 
