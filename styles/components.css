@@ -899,3 +899,34 @@ button:disabled {
     padding-right: 50px; /* Mantenemos espacio para el switch */
   }
 }
+
+/* AÑADE ESTO para el perfil de usuario en Configuración */
+.perfil-usuario-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+.perfil-usuario-container img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+}
+.perfil-usuario-info {
+  display: flex;
+  flex-direction: column;
+}
+.perfil-usuario-info strong {
+  font-size: 1.1em;
+}
+.perfil-usuario-info span {
+  font-size: 0.9em;
+  opacity: 0.7;
+}
+.btn-peligro {
+  background-color: #e74c3c;
+  color: white;
+}
+.btn-peligro:hover {
+  background-color: #c0392b;
+}

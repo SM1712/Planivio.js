@@ -10,8 +10,8 @@ import {
 } from './ui.js';
 import {
   updateRgbVariables,
-  cargarDatos,
-  guardarDatos,
+  cargarDatos, // <-- Se mantiene
+  guardarDatos, // <-- Se mantiene
   hexToRgb,
   getTextColorForBg,
   darkenColor,
@@ -27,13 +27,13 @@ import {
   inicializarDashboard,
   abrirModalNuevaTarea,
   agregarTareaDesdeDashboard,
-} from './pages/dashboard.js'; // Necesitamos abrirModalNuevaTarea aquí
+} from './pages/dashboard.js';
 import { inicializarTareas } from './pages/tareas.js';
 import { inicializarCursos } from './pages/cursos.js';
 import {
   inicializarCalendario,
   iniciarEdicionEvento,
-} from './pages/calendario.js'; // Necesitamos iniciarEdicionEvento aquí
+} from './pages/calendario.js';
 import { inicializarApuntes } from './pages/apuntes.js';
 import { inicializarProyectos } from './pages/proyectos.js';
 
@@ -46,7 +46,7 @@ const pageInitializers = {
   proyectos: inicializarProyectos,
 };
 
-// ... (cambiarPagina, cambiarTemaBase, cambiarColorAcento, aplicarTema, inicializarModalConfiguraciones SIN CAMBIOS) ...
+// ... (Tu código existente: cambiarPagina, cambiarTemaBase, cambiarColorAcento, aplicarTema, inicializarModalConfiguraciones - SIN CAMBIOS) ...
 export async function cambiarPagina(idPagina) {
   state.paginaActual = idPagina;
   const appContent = document.getElementById('app-content');
@@ -87,7 +87,7 @@ export async function cambiarPagina(idPagina) {
 function cambiarTemaBase() {
   state.config.theme = state.config.theme === 'light' ? 'dark' : 'light';
   aplicarTema();
-  guardarDatos();
+  guardarDatos(); // <-- SE MANTIENE
 }
 function cambiarColorAcento(color) {
   state.config.accent_color = color;
@@ -105,7 +105,7 @@ function cambiarColorAcento(color) {
     );
     root.style.setProperty('--accent-color-rgb', rgb.join(', '));
   }
-  guardarDatos();
+  guardarDatos(); // <-- SE MANTIENE
 }
 function aplicarTema() {
   document.body.classList.toggle('dark-theme', state.config.theme === 'dark');
@@ -113,10 +113,11 @@ function aplicarTema() {
   updateRgbVariables();
 }
 function inicializarModalConfiguraciones() {
-  const inputNombre = document.getElementById('input-nombre-usuario');
+  const inputNombre = document.getElementById('input-nombre-usuario'); // Este ID ya no existe en el nuevo HTML
   if (inputNombre) {
     inputNombre.value = state.config.userName || '';
   }
+
   const widgetToggles = document.querySelectorAll(
     '.widget-toggle-item input[type="checkbox"]',
   );
@@ -206,16 +207,133 @@ function inicializarModalConfiguraciones() {
   }
 }
 
+// ===============================================
+// == R1.4: INICIO LÓGICA DE AUTENTICACIÓN FIREBASE ==
+// ===============================================
+
+// Traemos los servicios que publicamos en index.html
+const {
+  auth,
+  db,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} = window.firebaseServices;
+
+// Referencias a la UI de Login y App
+const appHeader = document.querySelector('.app-header'); // <-- AÑADIDO
+const loginContainer = document.getElementById('login-container');
+const appContainer = document.getElementById('app-container');
+const btnGoogleLogin = document.getElementById('btn-google-login');
+const btnLogout = document.getElementById('btn-logout');
+
+/**
+ * Función principal de autenticación.
+ * Se ejecuta CADA VEZ que el estado de login cambia.
+ */
+async function manejarEstadoDeAutenticacion() {
+  onAuthStateChanged(auth, async (user) => {
+    // <-- Marcado como async
+    if (user) {
+      // --- 1. USUARIO ESTÁ LOGUEADO ---
+      console.log('Usuario detectado:', user.uid);
+
+      // Ocultar login, mostrar app Y HEADER
+      if (appHeader) appHeader.style.visibility = 'visible'; // <-- MODIFICADO
+      loginContainer.style.display = 'none'; // <-- MODIFICADO
+      appContainer.style.visibility = 'visible'; // <-- MODIFICADO
+
+      // Poblar el panel de usuario en Configuración
+      if (document.getElementById('user-photo'))
+        document.getElementById('user-photo').src = user.photoURL;
+      if (document.getElementById('user-name'))
+        document.getElementById('user-name').textContent = user.displayName;
+      if (document.getElementById('user-email'))
+        document.getElementById('user-email').textContent = user.email;
+
+      // ¡IMPORTANTE! Llamamos a cargarDatos() (tu función original)
+      // En la Fase R2, esta función será la que sincronice con la nube.
+      await cargarDatos(); // <-- AÑADIDO await porque la haremos async en R2
+
+      // Aplicar tema y cargar iconos (tu lógica original)
+      aplicarTema();
+      aplicarColoresMuescas();
+      aplicarColorFondoVencida();
+      cargarIconos();
+      updateRgbVariables();
+
+      // Lógica de Onboarding (tu lógica original)
+      if (!state.config.userName) {
+        const nombre = await mostrarModalOnboarding();
+        state.config.userName = nombre;
+        guardarDatos(); // <-- SE MANTIENE
+        mostrarAlerta(
+          `¡Hola, ${nombre}!`,
+          'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
+          () => {
+            cambiarPagina('cursos');
+          },
+        );
+      } else {
+        await cambiarPagina(state.paginaActual || 'dashboard');
+      }
+    } else {
+      // --- 2. USUARIO NO ESTÁ LOGUEADO ---
+      console.log('No hay usuario.');
+
+      // Mostrar login, ocultar app Y HEADER
+      if (appHeader) appHeader.style.visibility = 'hidden'; // <-- MODIFICADO
+      loginContainer.style.display = 'flex'; // <-- MODIFICADO
+      appContainer.style.visibility = 'hidden'; // <-- MODIFICADO
+    }
+  });
+}
+
+/**
+ * Inicia el pop-up de login con Google
+ */
+async function handleGoogleLogin() {
+  const provider = new GoogleAuthProvider();
+  try {
+    const result = await signInWithPopup(auth, provider);
+    // onAuthStateChanged se disparará solo y manejará el resto
+    console.log('Inicio de sesión exitoso:', result.user.displayName);
+  } catch (error) {
+    console.error('Error al iniciar sesión con Google:', error);
+    alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
+  }
+}
+
+/**
+ * Cierra la sesión del usuario
+ */
+async function handleLogout() {
+  try {
+    await signOut(auth);
+    // onAuthStateChanged se disparará solo y mostrará la pantalla de login
+    console.log('Cierre de sesión exitoso.');
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+  }
+}
+
+// ===============================================
+// ==     FIN LÓGICA DE AUTENTICACIÓN FIREBASE    ==
+// ===============================================
+
 function agregarEventListenersGlobales() {
-  // ... (Listeners de navegación, sidebar, modal configuraciones SIN CAMBIOS) ...
+  // ... (Listeners de navegación, sidebar, modal configuraciones - SIN CAMBIOS) ...
+  // Todas las llamadas a guardarDatos() dentro de estos listeners SE MANTIENEN.
+
   document.getElementById('main-nav').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && navItem.dataset.page) {
       const idPagina = navItem.dataset.page;
       if (idPagina === 'proyectos') state.proyectoSeleccionadoId = null;
-      if (idPagina === 'tareas') state.tareaSeleccionadaId = null;
-      if (idPagina === 'apuntes') state.apunteActivold = null;
-      guardarDatos();
+      if (idPagina === 'tareas') state.tareaSeleccionadald = null; // Mantenemos tu typo
+      if (idPagina === 'apuntes') state.apunteActivoId = null; // Nombre de tu state
+      guardarDatos(); // <-- SE MANTIENE
       cambiarPagina(idPagina);
       document
         .getElementById('app-container')
@@ -253,12 +371,16 @@ function agregarEventListenersGlobales() {
       navItem.classList.add('active');
       document.getElementById(`settings-${tabId}`)?.classList.add('active');
     });
+
+  // Este listener para 'input-nombre-usuario' ya no es necesario
+  // porque ese input fue reemplazado, pero no causa daño.
   document
     .getElementById('input-nombre-usuario')
     ?.addEventListener('change', (e) => {
       state.config.userName = e.target.value.trim();
       guardarDatos();
     });
+
   document
     .querySelector('.widget-toggle-list')
     ?.addEventListener('change', (e) => {
@@ -269,7 +391,7 @@ function agregarEventListenersGlobales() {
           state.config.widgetsVisibles.hasOwnProperty(key)
         ) {
           state.config.widgetsVisibles[key] = e.target.checked;
-          guardarDatos();
+          guardarDatos(); // <-- SE MANTIENE
           if (state.paginaActual === 'dashboard') {
             cambiarPagina('dashboard');
           }
@@ -281,27 +403,21 @@ function agregarEventListenersGlobales() {
     'form-dashboard-nueva-tarea',
   );
   if (formQuickAddTask) {
-    // Limpiar listener previo si existe (buena práctica por si acaso)
     if (formQuickAddTask._submitHandler) {
       formQuickAddTask.removeEventListener(
         'submit',
         formQuickAddTask._submitHandler,
       );
     }
-    // Definir el handler (llama a la función importada de dashboard.js)
     const quickAddTaskSubmitHandler = (event) => {
-      agregarTareaDesdeDashboard(event); // Llama a la función original
+      agregarTareaDesdeDashboard(event);
     };
-    // Añadir el listener
     formQuickAddTask.addEventListener('submit', quickAddTaskSubmitHandler);
-    // Guardar referencia para limpieza futura (si fuera necesario)
     formQuickAddTask._submitHandler = quickAddTaskSubmitHandler;
   } else {
-    // Este error no debería ocurrir si tu index.html está bien
     console.error(
       'Error Crítico: No se encontró el formulario #form-dashboard-nueva-tarea en index.html',
     );
-    alert('Error: No se puede configurar el guardado rápido de tareas.');
   }
   const settingsNavList = document.getElementById('settings-nav-list');
   if (settingsNavList) {
@@ -343,7 +459,7 @@ function agregarEventListenersGlobales() {
     ?.addEventListener('click', () => {
       mostrarConfirmacion(
         'Importar Datos',
-        '¿Estás seguro? Esta acción sobreescribirá todos tus datos actuales. Se recomienda exportar primero.',
+        '¿Estás seguro? Esta acción sobreescribirá todos tus datos locales actuales. Se recomienda exportar primero.',
         () => {
           document.getElementById('input-importar-datos').click();
         },
@@ -374,52 +490,37 @@ function agregarEventListenersGlobales() {
     ?.addEventListener('click', () => cerrarModal('modal-confirmacion'));
   document
     .getElementById('btn-prompt-cancelar')
-    ?.addEventListener('click', () => cerrarModal('modal-prompt')); // Añadido por si acaso
+    ?.addEventListener('click', () => cerrarModal('modal-prompt'));
 
-  // ======================================================
-  // ==        INICIO MODIFICACIÓN MODAL CHOOSER         ==
-  // ======================================================
   const modalChooser = document.getElementById('modal-chooser-crear');
   if (modalChooser) {
-    // Botón para Nuevo Evento
     document
       .getElementById('btn-chooser-evento')
       ?.addEventListener('click', () => {
         const fecha = modalChooser.dataset.fechaSeleccionada;
-        const curso = modalChooser.dataset.cursoPreseleccionado; // Leemos el curso
+        const curso = modalChooser.dataset.cursoPreseleccionado;
         if (fecha) {
           cerrarModal('modal-chooser-crear');
-          // Pasamos la fecha Y el curso a iniciarEdicionEvento
-          // (Necesitamos modificar iniciarEdicionEvento en calendario.js)
           iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha }, curso);
         }
-        // Limpiamos los datasets después de usarlos
         delete modalChooser.dataset.fechaSeleccionada;
         delete modalChooser.dataset.cursoPreseleccionado;
       });
 
-    // Botón para Nueva Tarea
     document
       .getElementById('btn-chooser-tarea')
       ?.addEventListener('click', () => {
         const fecha = modalChooser.dataset.fechaSeleccionada;
-        const curso = modalChooser.dataset.cursoPreseleccionado; // Leemos el curso
+        const curso = modalChooser.dataset.cursoPreseleccionado;
         if (fecha) {
           cerrarModal('modal-chooser-crear');
-          // Pasamos la fecha Y el curso a abrirModalNuevaTarea
-          // (Ya modificamos abrirModalNuevaTarea en dashboard.js)
           abrirModalNuevaTarea(fecha, curso);
         }
-        // Limpiamos los datasets después de usarlos
         delete modalChooser.dataset.fechaSeleccionada;
         delete modalChooser.dataset.cursoPreseleccionado;
       });
   }
-  // ======================================================
-  // ==          FIN MODIFICACIÓN MODAL CHOOSER          ==
-  // ======================================================
 
-  // --- Listener colores muescas (SIN CAMBIOS) ---
   const panelTareasSettings = document.getElementById('settings-tareas');
   if (panelTareasSettings) {
     const actualizarVisualizacionColor = (key, nuevoColor, isFondo = false) => {
@@ -458,7 +559,7 @@ function agregarEventListenersGlobales() {
         if (key && nuevoColor && state.config.muescasColores) {
           if (state.config.muescasColores.hasOwnProperty(key)) {
             state.config.muescasColores[key] = nuevoColor;
-            guardarDatos();
+            guardarDatos(); // <-- SE MANTIENE
             if (isFondo) {
               aplicarColorFondoVencida();
             } else {
@@ -504,7 +605,7 @@ function agregarEventListenersGlobales() {
       if (key && nuevoValor !== null && state.config.muescasColores) {
         if (state.config.muescasColores.hasOwnProperty(key)) {
           state.config.muescasColores[key] = nuevoValor;
-          guardarDatos();
+          guardarDatos(); // <-- SE MANTIENE
           if (isMuescaColor) {
             aplicarColoresMuescas();
             actualizarVisualizacionColor(key, nuevoValor, false);
@@ -524,28 +625,31 @@ function agregarEventListenersGlobales() {
   }
 }
 
-// ... (Punto de entrada DOMContentLoaded SIN CAMBIOS) ...
+// R1.4: NUEVO DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Cargamos datos de localStorage PRIMERO.
+  // Esto trae state.config (con tu tema) a la memoria.
   cargarDatos();
+
+  // 2. Aplicamos el tema visual INMEDIATAMENTE.
+  // Esto corregirá el look "feo" de la pantalla de login.
   aplicarTema();
   aplicarColoresMuescas();
   aplicarColorFondoVencida();
-  cargarIconos();
   updateRgbVariables();
+
+  // 3. Conecta todos los listeners de siempre (modales, sidebar, etc.)
   agregarEventListenersGlobales();
 
-  if (!state.config.userName) {
-    const nombre = await mostrarModalOnboarding();
-    state.config.userName = nombre;
-    guardarDatos();
-    mostrarAlerta(
-      `¡Hola, ${nombre}!`,
-      'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
-      () => {
-        cambiarPagina('cursos');
-      },
-    );
-  } else {
-    await cambiarPagina(state.paginaActual || 'dashboard');
-  }
+  // 4. Conecta los NUEVOS botones de login/logout
+  btnGoogleLogin.addEventListener('click', handleGoogleLogin);
+  // btnLogout puede no existir al inicio, pero el listener de agregarEventListenersGlobales
+  // ya debería haber fallado silenciosamente. Este es más robusto:
+  document
+    .getElementById('btn-logout')
+    ?.addEventListener('click', handleLogout);
+
+  // 5. ¡Inicia el cerebro de autenticación!
+  // Esta función leerá el login y decidirá si mostrar la app o el login.
+  manejarEstadoDeAutenticacion();
 });

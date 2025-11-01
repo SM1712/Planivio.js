@@ -22,6 +22,14 @@
       </div>
     </header>
 
+    <div id="login-container" class="login-container">
+      <div class="login-box">
+        <h2>Bienvenido a Planivio</h2>
+        <p>Inicia sesión para sincronizar tus datos en la nube.</p>
+        <button id="btn-google-login">Iniciar Sesión con Google</button>
+      </div>
+    </div>
+
     <div class="app-container" id="app-container">
       <div class="sidebar-overlay"></div>
       <aside id="panel-lateral" class="panel">
@@ -561,16 +569,24 @@
               class="settings-pane active"
               data-tab="usuario"
             >
-              <h3>Perfil de Usuario</h3>
-              <div class="config-option">
-                <label for="input-nombre-usuario">Nombre:</label
-                ><input
-                  type="text"
-                  id="input-nombre-usuario"
-                  placeholder="Tu nombre..."
-                />
+              <h3>Mi Cuenta</h3>
+              <div class="perfil-usuario-container">
+                <img id="user-photo" src="" alt="Foto de perfil" />
+                <div class="perfil-usuario-info">
+                  <strong id="user-name">Cargando...</strong>
+                  <span id="user-email">Cargando...</span>
+                </div>
               </div>
-              <h3>Portabilidad de Datos</h3>
+
+              <button id="btn-logout" class="btn-full-width btn-peligro">
+                Cerrar Sesión
+              </button>
+
+              <h3 style="margin-top: 20px">Portabilidad (localStorage)</h3>
+              <p style="font-size: 0.9em; opacity: 0.8">
+                Exporta tus datos locales o importa un archivo .json para
+                sobrescribir tu estado local.
+              </p>
               <div class="data-actions-container">
                 <button id="btn-exportar-datos" class="btn-full-width">
                   Exportar Datos (.json)
@@ -589,6 +605,7 @@
                 />
               </div>
             </div>
+
             <div
               id="settings-personalizacion"
               class="settings-pane"
@@ -1034,6 +1051,61 @@
       </div>
     </div>
     <emoji-picker class="light emoji-picker-popup"></emoji-picker>
+
+    <script type="module">
+      // Importar App (necesario siempre)
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
+
+      // Importar Auth (para Fase R1)
+      import {
+        getAuth,
+        GoogleAuthProvider,
+        onAuthStateChanged,
+        signInWithPopup,
+        signOut,
+      } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
+
+      // Importar Firestore (para Fase R2)
+      import {
+        getFirestore,
+        doc,
+        setDoc,
+        getDoc,
+      } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
+
+      // Tu configuración
+      const firebaseConfig = {
+        apiKey: 'AIzaSyAly1xHo24aPUp5bbYm33cKImWPhbsXK-4',
+        authDomain: 'planivio-app.firebaseapp.com',
+        projectId: 'planivio-app',
+        storageBucket: 'planivio-app.firebasestorage.app',
+        messagingSenderId: '270320639557',
+        appId: '1:270320639557:web:41b9daba1f5e851b8e0d2c',
+        measurementId: 'G-NCMHSSZM47',
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+
+      // Publicar servicios para main.js y utils.js
+      window.firebaseServices = {
+        app: app,
+        auth: getAuth(app),
+        db: getFirestore(app),
+
+        // Funciones de Auth
+        GoogleAuthProvider: GoogleAuthProvider,
+        onAuthStateChanged: onAuthStateChanged,
+        signInWithPopup: signInWithPopup,
+        signOut: signOut,
+
+        // Funciones de Firestore
+        doc: doc,
+        setDoc: setDoc,
+        getDoc: getDoc,
+      };
+    </script>
+
     <script
       type="module"
       src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"
