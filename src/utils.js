@@ -1,15 +1,9 @@
 import { state, state as defaultState } from './state.js';
 
-// --- INICIO NUEVAS IMPORTACIONES FIREBASE ---
-// Traemos los servicios que publicamos en index.html
-const {
-  auth, // Necesitamos auth para saber QUIÉN es el usuario
-  db, // La base de datos
-  doc, // Función para referenciar un documento
-  getDoc, // Función para LEER un documento
-  setDoc, // Función para ESCRIBIR un documento
-} = window.firebaseServices;
-// --- FIN NUEVAS IMPORTACIONES FIREBASE ---
+// NOTA: 'cargarDatos' y 'guardarDatos' han sido eliminados.
+// La lógica de carga está en main.js (manejarEstadoDeAutenticacion)
+// La lógica de sincronización está en state.js (iniciarSincronizacion)
+// La lógica de guardado está en firebase.js (guardarConfig, agregarDocumento, etc.)
 
 export function updateRgbVariables() {
   const computedStyle = getComputedStyle(document.body);
@@ -19,173 +13,6 @@ export function updateRgbVariables() {
     document.body.style.setProperty('--text-base-rgb', rgbArray.join(', '));
   }
 }
-
-// ======================================================
-// ==        INICIO FUNCIÓN cargarDatos (NUEVA LÓGICA) ==
-// ======================================================
-export async function cargarDatos() {
-  // <-- Sigue siendo async
-  console.log('[Sync] Iniciando carga de datos (Nube primero)...');
-  const estadoInicialCompleto = JSON.parse(JSON.stringify(defaultState));
-  let estadoFinal = null;
-
-  const userId = auth.currentUser ? auth.currentUser.uid : null;
-
-  if (userId) {
-    // --- USUARIO LOGUEADO: NUBE MANDA ---
-    try {
-      const docRef = doc(db, 'usuarios', userId, 'backup', 'full_state');
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        // 1. HAY DATOS EN LA NUBE
-        console.log(
-          '[Sync] Backup de la nube encontrado. Descargando y aplicando...',
-        );
-        estadoFinal = docSnap.data();
-        // Sincronizamos localStorage para que coincida con la nube
-        localStorage.setItem('planivioData', JSON.stringify(estadoFinal));
-      } else {
-        // 2. NO HAY DATOS EN LA NUBE (Primer login o nube borrada)
-        console.log(
-          '[Sync] No hay backup en la nube. Verificando localStorage...',
-        );
-        const datosGuardados = localStorage.getItem('planivioData');
-
-        if (datosGuardados) {
-          // 2a. Hay datos locales antiguos (pre-login)
-          console.log(
-            '[Sync] Datos locales pre-existentes encontrados. Subiendo como primer backup...',
-          );
-          estadoFinal = JSON.parse(datosGuardados);
-          // Forzamos la subida de estos datos locales a la nube
-          await guardarDatos();
-        } else {
-          // 2b. No hay NADA (Usuario 100% nuevo)
-          console.log(
-            '[Sync] Sin datos locales ni en la nube. Creando primer backup desde estado inicial...',
-          );
-          estadoFinal = JSON.parse(JSON.stringify(estadoInicialCompleto));
-          // Subimos el estado inicial a la nube
-          await guardarDatos();
-        }
-      }
-    } catch (error) {
-      // 3. FALLO DE RED (No se pudo conectar a Firebase)
-      console.error(
-        '[Sync] Error al leer de Firebase. Cargando desde localStorage (modo offline)...',
-        error,
-      );
-      const datosGuardados = localStorage.getItem('planivioData');
-      if (datosGuardados) {
-        console.log('[Sync] Cargando backup local.');
-        estadoFinal = JSON.parse(datosGuardados);
-      } else {
-        console.log(
-          '[Sync] Sin conexión y sin backup local. Usando estado inicial.',
-        );
-        estadoFinal = JSON.parse(JSON.stringify(estadoInicialCompleto));
-      }
-    }
-  } else {
-    // --- USUARIO NO LOGUEADO (No debería pasar si la lógica de main.js es correcta) ---
-    console.warn(
-      '[Sync] No hay usuario. Cargando desde localStorage (modo invitado).',
-    );
-    const datosGuardados = localStorage.getItem('planivioData');
-    if (datosGuardados) {
-      estadoFinal = JSON.parse(datosGuardados);
-    } else {
-      estadoFinal = JSON.parse(JSON.stringify(estadoInicialCompleto));
-    }
-  }
-
-  // --- LÓGICA DE FUSIÓN Y MIGRACIÓN (Se aplica al estado 'estadoFinal' cargado) ---
-
-  // Tu lógica de migración de Cursos (importante mantenerla)
-  if (
-    estadoFinal.cursos &&
-    Array.isArray(estadoFinal.cursos) &&
-    typeof estadoFinal.cursos[0] === 'string'
-  ) {
-    console.warn('[Sync] Detectada estructura de Cursos antigua. Migrando...');
-    const cursosAntiguos = estadoFinal.cursos;
-    estadoFinal.cursos = cursosAntiguos.map((nombreCurso, index) => ({
-      id: nombreCurso === 'General' ? 1 : Date.now() + index,
-      nombre: nombreCurso,
-      emoji: null,
-      isArchivado: false,
-    }));
-  }
-
-  // Tu lógica de fusión de Config (importante mantenerla)
-  const estadoDefinitivo = {
-    ...estadoInicialCompleto,
-    ...estadoFinal,
-    config: {
-      ...estadoInicialCompleto.config,
-      ...(estadoFinal.config || {}),
-      widgetsVisibles: {
-        ...estadoInicialCompleto.config.widgetsVisibles,
-        ...(estadoFinal.config?.widgetsVisibles || {}),
-      },
-      muescasColores: {
-        ...estadoInicialCompleto.config.muescasColores,
-        ...(estadoFinal.config?.muescasColores || {}),
-        vencidaFondoColor:
-          estadoFinal.config?.muescasColores?.vencidaFondoColor ??
-          estadoInicialCompleto.config.muescasColores.vencidaFondoColor,
-        vencidaFondoOpacidad:
-          estadoFinal.config?.muescasColores?.vencidaFondoOpacidad ??
-          estadoInicialCompleto.config.muescasColores.vencidaFondoOpacidad,
-      },
-    },
-  };
-
-  // 5. Aplicar estado final al 'state' global
-  Object.keys(state).forEach((key) => delete state[key]);
-  Object.assign(state, estadoDefinitivo);
-  console.log('[Sync] Carga de datos finalizada.');
-}
-// ======================================================
-// ==         FIN FUNCIÓN cargarDatos (NUEVA LÓGICA)   ==
-// ======================================================
-
-// ======================================================
-// ==        INICIO FUNCIÓN guardarDatos (MODIFICADA)  ==
-// ======================================================
-export async function guardarDatos() {
-  // <-- Convertida a async
-
-  // 1. Añadir Timestamp
-  state.lastUpdated = Date.now();
-  console.log(`[Sync] Guardando datos... Timestamp: ${state.lastUpdated}`);
-
-  // 2. Guardar en localStorage (como antes, para offline)
-  localStorage.setItem('planivioData', JSON.stringify(state));
-
-  // 3. Guardar en Firebase (NUEVO)
-  const userId = auth.currentUser ? auth.currentUser.uid : null;
-  if (userId) {
-    try {
-      const docRef = doc(db, 'usuarios', userId, 'backup', 'full_state');
-      // setDoc sobrescribe el documento completo con el state actual
-      await setDoc(docRef, state);
-      console.log('[Sync] Backup en Firebase completado.');
-    } catch (error) {
-      console.error('[Sync] Error al guardar backup en Firebase:', error);
-      // No bloqueamos al usuario, la app sigue funcionando con localStorage
-    }
-  } else {
-    // Esto no debería pasar si la app requiere login, pero es un buen seguro
-    console.warn(
-      '[Sync] No hay usuario logueado, guardando solo en localStorage.',
-    );
-  }
-}
-// ======================================================
-// ==         FIN FUNCIÓN guardarDatos (MODIFICADA)    ==
-// ======================================================
 
 export function hexToRgb(hex) {
   let r = 0,
@@ -223,7 +50,15 @@ export function darkenColor(hex, percent) {
   return `#${newRgb.map((c) => c.toString(16).padStart(2, '0')).join('')}`;
 }
 
+// ==========================================================================
+// ==    IMPORTAR/EXPORTAR (Funcionalidad limitada temporalmente)        ==
+// ==========================================================================
+
+// REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN ASÍNCRONA
 export async function exportarDatosJSON(mostrarPrompt) {
+  // ADVERTENCIA: Esto ahora solo exporta el ESTADO LOCAL,
+  // que puede no estar 100% sincronizado si la nube está actualizando.
+  // Lo refactorizaremos en Fase P3 para leer de Firebase.
   const fecha = new Date().toISOString().split('T')[0];
   const nombrePorDefecto = `planivio-backup-${fecha}`;
 
@@ -234,11 +69,15 @@ export async function exportarDatosJSON(mostrarPrompt) {
       nombrePorDefecto,
     );
 
-    if (!nombreArchivo) return;
+    if (!nombreArchivo) return; // Si el usuario no escribe nada, no exportar
 
     const estadoParaExportar = { ...state };
+    // Limpiamos datos temporales que no deben exportarse
     delete estadoParaExportar.apuntesEnModoSeleccion;
     delete estadoParaExportar.apuntesSeleccionadosIds;
+    delete estadoParaExportar.tareasEnModoSeleccion;
+    delete estadoParaExportar.tareasSeleccionadasIds;
+    delete estadoParaExportar.currentUserId;
 
     const jsonString = JSON.stringify(estadoParaExportar, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
@@ -256,11 +95,15 @@ export async function exportarDatosJSON(mostrarPrompt) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   } catch (error) {
+    // El usuario presionó "Cancelar", no hacemos nada.
     console.log('Exportación cancelada por el usuario.');
   }
 }
 
+// REEMPLAZA LA FUNCIÓN ANTERIOR
 export function importarDatosJSON(event, callback) {
+  // ADVERTENCIA: Esta función está temporalmente deshabilitada
+  // en main.js. Requerirá refactorización en Fase P3.
   const file = event.target.files[0];
   if (!file) return;
 
@@ -272,16 +115,19 @@ export function importarDatosJSON(event, callback) {
       Object.keys(state).forEach((key) => delete state[key]);
       Object.assign(state, nuevoEstado);
 
-      // ¡Importante! Ahora que guardarDatos es async, debemos manejarlo
-      // Lo llamamos sin 'await' (fire-and-forget) para que la UI no se bloquee
-      guardarDatos();
+      // guardarDatos(); // <-- ELIMINADO. Esta función ya no existe.
+      console.warn(
+        'Importación completada, pero el guardado en Firebase debe hacerse manualmente.',
+      );
 
+      // Llama al callback indicando éxito
       callback(
         null,
-        '¡Datos importados con éxito! La aplicación se recargará.',
+        '¡Datos importados localmente! La aplicación se recargará. (El guardado en la nube está deshabilitado temporalmente).',
       );
     } catch (error) {
       console.error('Error al importar el archivo JSON:', error);
+      // Llama al callback indicando error
       callback(
         error,
         'Error: El archivo seleccionado no es un archivo de respaldo de Planivio válido.',
@@ -290,6 +136,10 @@ export function importarDatosJSON(event, callback) {
   };
   reader.readAsText(file);
 }
+
+// ==========================================================================
+// ==    FUNCIONES DE ESTILO (Sin cambios)                                 ==
+// ==========================================================================
 
 export function aplicarColorFondoVencida() {
   const root = document.documentElement;
@@ -303,7 +153,6 @@ export function aplicarColorFondoVencida() {
     if (rgbArray) {
       const rgbaColor = `rgba(${rgbArray.join(', ')}, ${opacidad})`;
       root.style.setProperty('--color-fondo-vencida', rgbaColor);
-      // console.log(`[aplicarColorFondoVencida] Variable --color-fondo-vencida actualizada a: ${rgbaColor}`);
     } else {
       root.style.setProperty(
         '--color-fondo-vencida',
@@ -343,7 +192,6 @@ export function aplicarColoresMuescas() {
       '--color-muesca-lejana',
       colores.lejana || 'rgba(128, 128, 128, 0.3)',
     );
-    // console.log('[aplicarColoresMuescas] Variables CSS de muescas actualizadas.');
   } else {
     console.warn(
       '[aplicarColoresMuescas] No se encontraron colores de muescas en state.config. Aplicando defaults.',

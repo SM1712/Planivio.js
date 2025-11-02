@@ -1,4 +1,24 @@
+// ==========================================================================
+// ==                          src/main.js                               ==
+// ==========================================================================
+//
+// Este es el "Controlador" principal, modificado para "Pulso".
+//
+// 1. Escucha a Firebase Auth para el login.
+// 2. Inicia la sincronización en state.js.
+// 3. Escucha eventos del EventBus (como 'navegarA' o 'configActualizada')
+//    y reacciona a ellos.
+//
+// ==========================================================================
+
 import { state } from './state.js';
+import { EventBus } from './eventBus.js'; // <-- P1.1
+import {
+  setFirebaseUserId,
+  guardarConfig,
+  migrarDatosDesdeLocalStorage,
+} from './firebase.js'; // <-- P1.2
+import { iniciarSincronizacion, detenerSincronizacion } from './state.js'; // <-- P1.3
 import {
   cargarIconos,
   mostrarConfirmacion,
@@ -10,13 +30,13 @@ import {
 } from './ui.js';
 import {
   updateRgbVariables,
-  cargarDatos, // <-- Se mantiene
-  guardarDatos, // <-- Se mantiene
+  // cargarDatos, // <-- P1.5 ELIMINADO
+  // guardarDatos, // <-- P1.5 ELIMINADO
   hexToRgb,
   getTextColorForBg,
   darkenColor,
-  exportarDatosJSON,
-  importarDatosJSON,
+  exportarDatosJSON, // Roto temporalmente
+  importarDatosJSON, // Roto temporalmente
   aplicarColorFondoVencida,
   aplicarColoresMuescas,
 } from './utils.js';
@@ -37,6 +57,7 @@ import {
 import { inicializarApuntes } from './pages/apuntes.js';
 import { inicializarProyectos } from './pages/proyectos.js';
 
+// Esto se usará para la carga inicial de páginas
 const pageInitializers = {
   dashboard: inicializarDashboard,
   tareas: inicializarTareas,
@@ -46,12 +67,23 @@ const pageInitializers = {
   proyectos: inicializarProyectos,
 };
 
-// ... (Tu código existente: cambiarPagina, cambiarTemaBase, cambiarColorAcento, aplicarTema, inicializarModalConfiguraciones - SIN CAMBIOS) ...
+/**
+ * MODIFICADO: Carga el HTML de la página y emite un evento
+ * cuando la página está lista para ser inicializada.
+ * @param {string} idPagina - El ID de la página a cargar (ej: 'tareas').
+ */
 export async function cambiarPagina(idPagina) {
+  // 1. Actualizar estado local (para highlight de nav)
   state.paginaActual = idPagina;
+  document.querySelectorAll('.nav-item').forEach((item) => {
+    item.classList.toggle('active', item.dataset.page === idPagina);
+  });
+
   const appContent = document.getElementById('app-content');
   if (!appContent) return;
+
   try {
+    // 2. Cargar el HTML de la vista
     const response = await fetch(`./src/views/${idPagina}.html`);
     if (!response.ok) {
       throw new Error(
@@ -60,36 +92,42 @@ export async function cambiarPagina(idPagina) {
     }
     appContent.innerHTML = await response.text();
     const newPage = appContent.querySelector('.page');
+
     if (newPage) {
+      // 3. (Animación) Añadir clase 'visible'
       setTimeout(() => {
         newPage.classList.add('visible');
-        if (pageInitializers[idPagina]) {
-          pageInitializers[idPagina](newPage);
-        } else {
-          console.warn(
-            `No se encontró una función de inicialización para la página: ${idPagina}`,
-          );
-        }
-      }, 0);
+      }, 0); // 0ms para que ocurra en el siguiente 'tick'
+
+      // 4. ¡EMITIR EVENTO! Avisar al módulo JS correspondiente que su HTML está listo.
+      EventBus.emit('paginaCargada:' + idPagina);
+      // También emitimos un evento genérico por si algún módulo (como dashboard)
+      // necesita refrescarse cada vez que se carga.
+      EventBus.emit('paginaCargada');
     } else {
       console.error(
         `La página ${idPagina} se cargó pero no se encontró el elemento .page`,
       );
     }
-    document.querySelectorAll('.nav-item').forEach((item) => {
-      item.classList.toggle('active', item.dataset.page === idPagina);
-    });
   } catch (error) {
     console.error('Error al cargar la página:', error);
     appContent.innerHTML = `<div class="panel"><h2>Error al cargar la página</h2><p>${error.message}. Revisa la consola para más detalles.</p></div>`;
   }
 }
-function cambiarTemaBase() {
+
+/**
+ * MODIFICADO: Ahora llama a guardarConfig (async) en lugar de guardarDatos.
+ */
+async function cambiarTemaBase() {
   state.config.theme = state.config.theme === 'light' ? 'dark' : 'light';
-  aplicarTema();
-  guardarDatos(); // <-- SE MANTIENE
+  aplicarTema(); // Aplica visualmente
+  await guardarConfig({ theme: state.config.theme }); // Guarda solo este cambio en Firebase
 }
-function cambiarColorAcento(color) {
+
+/**
+ * MODIFICADO: Ahora llama a guardarConfig (async) en lugar de guardarDatos.
+ */
+async function cambiarColorAcento(color) {
   state.config.accent_color = color;
   const root = document.documentElement;
   root.style.setProperty('--accent-color', color);
@@ -105,19 +143,26 @@ function cambiarColorAcento(color) {
     );
     root.style.setProperty('--accent-color-rgb', rgb.join(', '));
   }
-  guardarDatos(); // <-- SE MANTIENE
+  await guardarConfig({ accent_color: state.config.accent_color }); // Guarda solo este cambio
 }
+
+/**
+ * (Aplica estilos basados en el state.config actual)
+ */
 function aplicarTema() {
   document.body.classList.toggle('dark-theme', state.config.theme === 'dark');
   cambiarColorAcento(state.config.accent_color);
   updateRgbVariables();
+  // Aplicamos colores de muescas y fondo que dependen del tema (oscuro/claro)
+  aplicarColoresMuescas();
+  aplicarColorFondoVencida();
 }
-function inicializarModalConfiguraciones() {
-  const inputNombre = document.getElementById('input-nombre-usuario'); // Este ID ya no existe en el nuevo HTML
-  if (inputNombre) {
-    inputNombre.value = state.config.userName || '';
-  }
 
+/**
+ * (Lee el state local y rellena el modal de config)
+ */
+function inicializarModalConfiguraciones() {
+  // Rellenar widgets
   const widgetToggles = document.querySelectorAll(
     '.widget-toggle-item input[type="checkbox"]',
   );
@@ -129,6 +174,7 @@ function inicializarModalConfiguraciones() {
       }
     });
   }
+  // Rellenar colores de muescas
   const coloresMuescas = state.config?.muescasColores;
   if (coloresMuescas) {
     Object.keys(coloresMuescas).forEach((key) => {
@@ -159,7 +205,7 @@ function inicializarModalConfiguraciones() {
         }
       }
     });
-    const inputColorFondo = document.getElementById('color-fondo-vencida');
+    // const inputColorFondo = document.getElementById('color-fondo-vencida'); // Esta variable no se usa
     const inputOpacidad = document.getElementById('opacidad-fondo-vencida');
     const opacidadLabel = inputOpacidad?.nextElementSibling;
     const savedFondoColor = coloresMuescas.vencidaFondoColor || '#e74c3c';
@@ -208,13 +254,12 @@ function inicializarModalConfiguraciones() {
 }
 
 // ===============================================
-// == R1.4: INICIO LÓGICA DE AUTENTICACIÓN FIREBASE ==
+// == R1.4: LÓGICA DE AUTENTICACIÓN (MODIFICADA)  ==
 // ===============================================
 
 // Traemos los servicios que publicamos en index.html
 const {
   auth,
-  db,
   GoogleAuthProvider,
   onAuthStateChanged,
   signInWithPopup,
@@ -222,27 +267,25 @@ const {
 } = window.firebaseServices;
 
 // Referencias a la UI de Login y App
-const appHeader = document.querySelector('.app-header'); // <-- AÑADIDO
+const appHeader = document.querySelector('.app-header');
 const loginContainer = document.getElementById('login-container');
 const appContainer = document.getElementById('app-container');
 const btnGoogleLogin = document.getElementById('btn-google-login');
-const btnLogout = document.getElementById('btn-logout');
+// btnLogout se obtiene en agregarEventListenersGlobales porque está en un modal
 
 /**
  * Función principal de autenticación.
- * Se ejecuta CADA VEZ que el estado de login cambia.
  */
 async function manejarEstadoDeAutenticacion() {
   onAuthStateChanged(auth, async (user) => {
-    // <-- Marcado como async
     if (user) {
       // --- 1. USUARIO ESTÁ LOGUEADO ---
       console.log('Usuario detectado:', user.uid);
 
-      // Ocultar login, mostrar app Y HEADER
-      if (appHeader) appHeader.style.visibility = 'visible'; // <-- MODIFICADO
-      loginContainer.style.display = 'none'; // <-- MODIFICADO
-      appContainer.style.visibility = 'visible'; // <-- MODIFICADO
+      // Mostrar app y header, ocultar login
+      if (appHeader) appHeader.style.visibility = 'visible';
+      loginContainer.style.display = 'none';
+      if (appContainer) appContainer.style.visibility = 'visible';
 
       // Poblar el panel de usuario en Configuración
       if (document.getElementById('user-photo'))
@@ -252,52 +295,101 @@ async function manejarEstadoDeAutenticacion() {
       if (document.getElementById('user-email'))
         document.getElementById('user-email').textContent = user.email;
 
-      // ¡IMPORTANTE! Llamamos a cargarDatos() (tu función original)
-      // En la Fase R2, esta función será la que sincronice con la nube.
-      await cargarDatos(); // <-- AÑADIDO await porque la haremos async en R2
+      // ¡IMPORTANTE! Guardar User ID e iniciar sincronización
+      setFirebaseUserId(user.uid);
 
-      // Aplicar tema y cargar iconos (tu lógica original)
-      aplicarTema();
-      aplicarColoresMuescas();
-      aplicarColorFondoVencida();
-      cargarIconos();
-      updateRgbVariables();
+      // --- P3.1: Lógica de Migración/Onboarding ---
+      const configRef = doc(
+        window.firebaseServices.db,
+        'usuarios',
+        user.uid,
+        'config',
+        'userConfig',
+      );
+      const configSnap = await window.firebaseServices.getDoc(configRef);
+      // Usamos 'planivioData' (la key de tu utils.js original)
+      const datosLocalesString = localStorage.getItem('planivioData');
 
-      // Lógica de Onboarding (tu lógica original)
-      if (!state.config.userName) {
+      if (!configSnap.exists() && datosLocalesString) {
+        // Usuario nuevo (sin config en la nube) PERO con datos locales
+        console.log(
+          '[Main] Usuario nuevo con datos locales. Preguntando para migrar...',
+        );
+        // Asumimos que mostrarConfirmacion fue adaptado para devolver Promise<boolean>
+        const quiereMigrar = await mostrarConfirmacion(
+          'Importar Datos Locales',
+          '¡Bienvenido! Hemos encontrado datos locales en este navegador. ¿Quieres importarlos a tu nueva cuenta en la nube?',
+          null,
+          'Sí, Importar',
+          'No, Empezar de Cero',
+        );
+
+        if (quiereMigrar) {
+          try {
+            const estadoLocal = JSON.parse(datosLocalesString);
+            await migrarDatosDesdeLocalStorage(estadoLocal); // Sube todo a Firebase
+            localStorage.removeItem('planivioData'); // Limpia local
+            mostrarAlerta(
+              'Migración Exitosa',
+              'Tus datos locales se han importado a la nube.',
+            );
+          } catch (error) {
+            console.error('[Main] Error durante la migración:', error);
+            mostrarAlerta(
+              'Error de Migración',
+              'Hubo un problema al importar tus datos.',
+            );
+          }
+        } else {
+          // No quiso migrar, borrar local
+          localStorage.removeItem('planivioData');
+        }
+      } else if (!configSnap.exists() && !datosLocalesString) {
+        // Usuario 100% nuevo, ejecutar onboarding
         const nombre = await mostrarModalOnboarding();
+        // Guardamos el nombre en el state local temporalmente
         state.config.userName = nombre;
-        guardarDatos(); // <-- SE MANTIENE
+        // Y lo subimos a Firebase
+        await guardarConfig({ userName: nombre });
+
         mostrarAlerta(
           `¡Hola, ${nombre}!`,
           'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
           () => {
-            cambiarPagina('cursos');
+            EventBus.emit('navegarA', { pagina: 'cursos' }); // Usar EventBus para navegar
           },
         );
-      } else {
-        await cambiarPagina(state.paginaActual || 'dashboard');
       }
+
+      // ¡INICIAR SINCRONIZACIÓN! (Cargará config, cursos, tareas, etc.)
+      iniciarSincronizacion(user.uid);
+
+      // Cargamos la página guardada o el dashboard
+      // El listener 'configActualizada' aplicará el tema
+      // El state.paginaActual se cargará desde la config si existe
+      await cambiarPagina(state.paginaActual || 'dashboard');
     } else {
       // --- 2. USUARIO NO ESTÁ LOGUEADO ---
       console.log('No hay usuario.');
 
-      // Mostrar login, ocultar app Y HEADER
-      if (appHeader) appHeader.style.visibility = 'hidden'; // <-- MODIFICADO
-      loginContainer.style.display = 'flex'; // <-- MODIFICADO
-      appContainer.style.visibility = 'hidden'; // <-- MODIFICADO
+      // Ocultar app y header, mostrar login
+      if (appHeader) appHeader.style.visibility = 'hidden';
+      loginContainer.style.display = 'flex';
+      if (appContainer) appContainer.style.visibility = 'hidden';
+
+      // Detener todos los listeners de Firebase
+      detenerSincronizacion();
     }
   });
 }
 
 /**
- * Inicia el pop-up de login con Google
+ * Inicia el pop-up de login con Google (Sin cambios)
  */
 async function handleGoogleLogin() {
   const provider = new GoogleAuthProvider();
   try {
     const result = await signInWithPopup(auth, provider);
-    // onAuthStateChanged se disparará solo y manejará el resto
     console.log('Inicio de sesión exitoso:', result.user.displayName);
   } catch (error) {
     console.error('Error al iniciar sesión con Google:', error);
@@ -306,13 +398,14 @@ async function handleGoogleLogin() {
 }
 
 /**
- * Cierra la sesión del usuario
+ * MODIFICADO: Cierra la sesión y llama a detenerSincronizacion
  */
 async function handleLogout() {
   try {
     await signOut(auth);
-    // onAuthStateChanged se disparará solo y mostrará la pantalla de login
+    detenerSincronizacion(); // <-- Detiene listeners y resetea el state
     console.log('Cierre de sesión exitoso.');
+    // onAuthStateChanged se encargará de mostrar la pantalla de login
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
   }
@@ -322,24 +415,33 @@ async function handleLogout() {
 // ==     FIN LÓGICA DE AUTENTICACIÓN FIREBASE    ==
 // ===============================================
 
+/**
+ * MODIFICADO: Conecta los listeners globales al EventBus o a guardarConfig
+ */
 function agregarEventListenersGlobales() {
-  // ... (Listeners de navegación, sidebar, modal configuraciones - SIN CAMBIOS) ...
-  // Todas las llamadas a guardarDatos() dentro de estos listeners SE MANTIENEN.
-
+  // --- Navegación (AHORA EMITE EVENTOS) ---
   document.getElementById('main-nav').addEventListener('click', (e) => {
     const navItem = e.target.closest('.nav-item');
     if (navItem && navItem.dataset.page) {
       const idPagina = navItem.dataset.page;
+
+      // Limpiamos IDs de selección (estado local, no se guarda)
       if (idPagina === 'proyectos') state.proyectoSeleccionadoId = null;
       if (idPagina === 'tareas') state.tareaSeleccionadald = null; // Mantenemos tu typo
       if (idPagina === 'apuntes') state.apunteActivoId = null; // Nombre de tu state
-      guardarDatos(); // <-- SE MANTIENE
-      cambiarPagina(idPagina);
+
+      // guardarDatos(); // <-- ELIMINADO
+
+      // ¡NUEVA FORMA DE NAVEGAR!
+      EventBus.emit('navegarA', { pagina: idPagina });
+
       document
         .getElementById('app-container')
         .classList.remove('sidebar-visible');
     }
   });
+
+  // --- Sidebar (Sin cambios, es solo UI local) ---
   document
     .getElementById('btn-toggle-sidebar')
     ?.addEventListener('click', () => {
@@ -352,11 +454,31 @@ function agregarEventListenersGlobales() {
       .getElementById('app-container')
       .classList.remove('sidebar-visible');
   });
+
+  // --- Modal Configuraciones (MODIFICADO para guardarConfig) ---
   const configBtn = document.getElementById('btn-config-dropdown');
   configBtn?.addEventListener('click', () => {
-    inicializarModalConfiguraciones();
+    // Poblar el modal con los datos del state ACTUAL
+    // (incluyendo perfil de Firebase si ya se cargó)
+    if (auth.currentUser) {
+      if (document.getElementById('user-photo'))
+        document.getElementById('user-photo').src = auth.currentUser.photoURL;
+      if (document.getElementById('user-name'))
+        document.getElementById('user-name').textContent =
+          auth.currentUser.displayName;
+      if (document.getElementById('user-email'))
+        document.getElementById('user-email').textContent =
+          auth.currentUser.email;
+    }
+    inicializarModalConfiguraciones(); // Rellena widgets, muescas, etc.
     mostrarModal('modal-configuraciones');
   });
+
+  // Listener del botón Logout (que está dentro del modal)
+  document
+    .getElementById('btn-logout')
+    ?.addEventListener('click', handleLogout);
+
   document
     .getElementById('settings-nav-list')
     ?.addEventListener('click', (e) => {
@@ -372,18 +494,11 @@ function agregarEventListenersGlobales() {
       document.getElementById(`settings-${tabId}`)?.classList.add('active');
     });
 
-  // Este listener para 'input-nombre-usuario' ya no es necesario
-  // porque ese input fue reemplazado, pero no causa daño.
-  document
-    .getElementById('input-nombre-usuario')
-    ?.addEventListener('change', (e) => {
-      state.config.userName = e.target.value.trim();
-      guardarDatos();
-    });
-
+  // Listener de Widgets (MODIFICADO)
   document
     .querySelector('.widget-toggle-list')
-    ?.addEventListener('change', (e) => {
+    ?.addEventListener('change', async (e) => {
+      // <-- async
       if (e.target.type === 'checkbox') {
         const key = e.target.dataset.widgetKey;
         if (
@@ -391,14 +506,20 @@ function agregarEventListenersGlobales() {
           state.config.widgetsVisibles.hasOwnProperty(key)
         ) {
           state.config.widgetsVisibles[key] = e.target.checked;
-          guardarDatos(); // <-- SE MANTIENE
+          // guardarDatos(); // <-- ELIMINADO
+          await guardarConfig({
+            widgetsVisibles: state.config.widgetsVisibles,
+          }); // <-- AÑADIDO
+
           if (state.paginaActual === 'dashboard') {
-            cambiarPagina('dashboard');
+            // Forzar recarga del dashboard para mostrar/ocultar widget
+            EventBus.emit('navegarA', { pagina: 'dashboard' });
           }
         }
       }
     });
 
+  // Listener de Formulario Quick-Add (Sin cambios, dashboard.js lo maneja)
   const formQuickAddTask = document.getElementById(
     'form-dashboard-nueva-tarea',
   );
@@ -410,15 +531,15 @@ function agregarEventListenersGlobales() {
       );
     }
     const quickAddTaskSubmitHandler = (event) => {
+      // Esta función (importada de dashboard.js) DEBE ser modificada
+      // en la Fase P2 para usar Firebase (addDoc) en lugar de guardarDatos
       agregarTareaDesdeDashboard(event);
     };
     formQuickAddTask.addEventListener('submit', quickAddTaskSubmitHandler);
     formQuickAddTask._submitHandler = quickAddTaskSubmitHandler;
-  } else {
-    console.error(
-      'Error Crítico: No se encontró el formulario #form-dashboard-nueva-tarea en index.html',
-    );
   }
+
+  // Carga de iconos en Config (Sin cambios)
   const settingsNavList = document.getElementById('settings-nav-list');
   if (settingsNavList) {
     settingsNavList.querySelector('[data-tab="usuario"] .nav-icon').innerHTML =
@@ -438,44 +559,46 @@ function agregarEventListenersGlobales() {
   if (btnCerrarModalConfig) {
     btnCerrarModalConfig.innerHTML = ICONS.close;
   }
+
+  // Listeners de Personalización (MODIFICADO)
   document
     .getElementById('btn-cambiar-tema')
-    ?.addEventListener('click', cambiarTemaBase);
+    ?.addEventListener('click', cambiarTemaBase); // cambiarTemaBase ya es async
   document.getElementById('color-palette')?.addEventListener('click', (e) => {
     if (e.target.matches('.color-swatch[data-color]')) {
-      cambiarColorAcento(e.target.dataset.color);
+      cambiarColorAcento(e.target.dataset.color); // cambiarColorAcento ya es async
     }
   });
   document
     .getElementById('input-color-custom')
-    ?.addEventListener('input', (e) => cambiarColorAcento(e.target.value));
+    ?.addEventListener('input', (e) => cambiarColorAcento(e.target.value)); // cambiarColorAcento ya es async
+
+  // Listeners de Importar/Exportar (Deshabilitados temporalmente)
   document
     .getElementById('btn-exportar-datos')
     ?.addEventListener('click', () => {
-      exportarDatosJSON(mostrarPrompt);
+      // exportarDatosJSON(mostrarPrompt); // TODO: Refactorizar en Fase P3.4
+      mostrarAlerta(
+        'Función Deshabilitada',
+        'La exportación se está actualizando para la nube. Tus datos están seguros en tu cuenta.',
+      );
     });
   document
     .getElementById('btn-importar-datos')
     ?.addEventListener('click', () => {
-      mostrarConfirmacion(
-        'Importar Datos',
-        '¿Estás seguro? Esta acción sobreescribirá todos tus datos locales actuales. Se recomienda exportar primero.',
-        () => {
-          document.getElementById('input-importar-datos').click();
-        },
+      // mostrarConfirmacion( ... ) // TODO: Refactorizar en Fase P3.4
+      mostrarAlerta(
+        'Función Deshabilitada',
+        'La importación se está actualizando para la nube.',
       );
     });
   document
     .getElementById('input-importar-datos')
     ?.addEventListener('change', (event) => {
-      importarDatosJSON(event, (error, message) => {
-        if (error) {
-          mostrarAlerta('Error de Importación', message);
-        } else {
-          mostrarAlerta('Éxito', message, () => location.reload());
-        }
-      });
+      // importarDatosJSON(event, ...); // TODO: Refactorizar en Fase P3.4
     });
+
+  // Listener Cierre de Modales (Sin cambios)
   document.body.addEventListener('click', (e) => {
     const closeButton = e.target.closest('[data-action="cerrar-modal"]');
     if (closeButton) {
@@ -492,6 +615,7 @@ function agregarEventListenersGlobales() {
     .getElementById('btn-prompt-cancelar')
     ?.addEventListener('click', () => cerrarModal('modal-prompt'));
 
+  // Listener Modal Chooser (Sin cambios)
   const modalChooser = document.getElementById('modal-chooser-crear');
   if (modalChooser) {
     document
@@ -501,6 +625,7 @@ function agregarEventListenersGlobales() {
         const curso = modalChooser.dataset.cursoPreseleccionado;
         if (fecha) {
           cerrarModal('modal-chooser-crear');
+          // Esta función (de calendario.js) DEBE ser modificada en Fase P2
           iniciarEdicionEvento({ fechaInicio: fecha, fechaFin: fecha }, curso);
         }
         delete modalChooser.dataset.fechaSeleccionada;
@@ -514,6 +639,7 @@ function agregarEventListenersGlobales() {
         const curso = modalChooser.dataset.cursoPreseleccionado;
         if (fecha) {
           cerrarModal('modal-chooser-crear');
+          // Esta función (de dashboard.js) DEBE ser modificada en Fase P2
           abrirModalNuevaTarea(fecha, curso);
         }
         delete modalChooser.dataset.fechaSeleccionada;
@@ -521,6 +647,7 @@ function agregarEventListenersGlobales() {
       });
   }
 
+  // Listeners Colores Muescas (MODIFICADO)
   const panelTareasSettings = document.getElementById('settings-tareas');
   if (panelTareasSettings) {
     const actualizarVisualizacionColor = (key, nuevoColor, isFondo = false) => {
@@ -549,7 +676,9 @@ function agregarEventListenersGlobales() {
         }
       }
     };
-    panelTareasSettings.addEventListener('click', (e) => {
+
+    panelTareasSettings.addEventListener('click', async (e) => {
+      // <-- async
       if (e.target.matches('.color-choices .color-swatch[data-color]')) {
         const button = e.target;
         const container = button.closest('.color-choices');
@@ -559,7 +688,10 @@ function agregarEventListenersGlobales() {
         if (key && nuevoColor && state.config.muescasColores) {
           if (state.config.muescasColores.hasOwnProperty(key)) {
             state.config.muescasColores[key] = nuevoColor;
-            guardarDatos(); // <-- SE MANTIENE
+            // guardarDatos(); // <-- ELIMINADO
+            await guardarConfig({
+              muescasColores: state.config.muescasColores,
+            }); // <-- AÑADIDO
             if (isFondo) {
               aplicarColorFondoVencida();
             } else {
@@ -570,7 +702,8 @@ function agregarEventListenersGlobales() {
         }
       }
     });
-    panelTareasSettings.addEventListener('input', (e) => {
+    panelTareasSettings.addEventListener('input', async (e) => {
+      // <-- async
       const target = e.target;
       let key = null;
       let nuevoValor = null;
@@ -605,7 +738,9 @@ function agregarEventListenersGlobales() {
       if (key && nuevoValor !== null && state.config.muescasColores) {
         if (state.config.muescasColores.hasOwnProperty(key)) {
           state.config.muescasColores[key] = nuevoValor;
-          guardarDatos(); // <-- SE MANTIENE
+          // guardarDatos(); // <-- ELIMINADO
+          await guardarConfig({ muescasColores: state.config.muescasColores }); // <-- AÑADIDO
+
           if (isMuescaColor) {
             aplicarColoresMuescas();
             actualizarVisualizacionColor(key, nuevoValor, false);
@@ -625,31 +760,63 @@ function agregarEventListenersGlobales() {
   }
 }
 
-// R1.4: NUEVO DOMContentLoaded
+// ===============================================
+// ==        INICIO DE LA APLICACIÓN (NUEVO)    ==
+// ===============================================
+
+// 1. Suscribirse a eventos globales del EventBus
+EventBus.on('configActualizada', () => {
+  console.log('[Main] Evento: configActualizada recibido.');
+  aplicarTema(); // Aplica el tema/colores cuando la config llegue de Firebase
+});
+
+EventBus.on('navegarA', (data) => {
+  console.log('[Main] Evento: navegarA recibido:', data);
+  if (data.pagina) {
+    // Guardar el ID de selección en el estado local (temporal)
+    if (data.id !== undefined && data.pagina === 'tareas')
+      state.tareaSeleccionadald = data.id; // Mantenemos typo
+    if (data.id !== undefined && data.pagina === 'apuntes')
+      state.apunteActivoId = data.id;
+    if (data.id !== undefined && data.pagina === 'proyectos')
+      state.proyectoSeleccionadoId = data.id;
+
+    cambiarPagina(data.pagina); // Carga el HTML y emite 'paginaCargada:...'
+  }
+});
+
+// 2. Iniciar la aplicación en DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Cargamos datos de localStorage PRIMERO.
-  // Esto trae state.config (con tu tema) a la memoria.
-  cargarDatos();
+  console.log('[Main] DOMContentLoaded. Inicializando módulos...');
 
-  // 2. Aplicamos el tema visual INMEDIATAMENTE.
-  // Esto corregirá el look "feo" de la pantalla de login.
-  aplicarTema();
-  aplicarColoresMuescas();
-  aplicarColorFondoVencida();
-  updateRgbVariables();
-
-  // 3. Conecta todos los listeners de siempre (modales, sidebar, etc.)
+  // Conecta todos los listeners (botones de modales, inputs, etc.)
   agregarEventListenersGlobales();
 
-  // 4. Conecta los NUEVOS botones de login/logout
+  // Conecta los botones de login/logout
   btnGoogleLogin.addEventListener('click', handleGoogleLogin);
-  // btnLogout puede no existir al inicio, pero el listener de agregarEventListenersGlobales
-  // ya debería haber fallado silenciosamente. Este es más robusto:
-  document
-    .getElementById('btn-logout')
-    ?.addEventListener('click', handleLogout);
+  // (El listener de btn-logout se añade en agregarEventListenersGlobales)
 
-  // 5. ¡Inicia el cerebro de autenticación!
-  // Esta función leerá el login y decidirá si mostrar la app o el login.
+  // Cargar el tema desde localStorage INMEDIATAMENTE para evitar flash blanco
+  // (utils.js aún tiene cargarDatos() por ahora)
+  try {
+    cargarDatos(); // Carga síncrona inicial de localStorage
+    aplicarTema(); // Aplica tema local
+  } catch (e) {
+    console.error('Error en carga inicial de localStorage:', e);
+    aplicarTema(); // Aplica tema por defecto
+  }
+
+  // ¡Inicia el cerebro de autenticación!
+  // Esto revisará si el usuario está logueado y disparará
+  // la carga de datos o mostrará la pantalla de login.
   manejarEstadoDeAutenticacion();
+
+  // Les decimos a los módulos que se preparen para escuchar los eventos 'paginaCargada'
+  // Ahora es seguro llamarlos, porque el DOM está cargado.
+  inicializarDashboard();
+  inicializarTareas();
+  inicializarCursos();
+  inicializarCalendario();
+  inicializarApuntes();
+  inicializarProyectos();
 });
