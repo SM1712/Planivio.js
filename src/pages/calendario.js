@@ -15,9 +15,10 @@ import {
   popularSelectorDeCursos, // Ya estaba aquí
   popularSelectorDeProyectos,
   cargarIconos,
+  mostrarAlerta, // <-- AÑADIDO PARA MANEJO DE ERRORES
 } from '../ui.js';
 import { ICONS } from '../icons.js';
-import { abrirModalNuevaTarea } from './dashboard.js'; // <-- Esto fallará hasta migrar dashboard.js
+import { abrirModalNuevaTarea } from './dashboard.js';
 // import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
 
 // ... (generarEventosRecurrentes y otras funciones SIN CAMBIOS) ...
@@ -510,12 +511,21 @@ function mostrarResumenDia(fecha) {
   const eventosDelDia = eventosExpandidos.filter(
     (e) => fechaStr >= e.fechaInicio && fechaStr <= e.fechaFin,
   );
+
+  // ==========================================================
+  // ==                ¡INICIO DE LA CORRECCIÓN!               ==
+  // ==========================================================
+  // Faltaba la comilla de cierre (`) aquí.
   resumenTitulo.innerHTML = `
     <span>Detalles del ${diaFormateado}</span>
       <div class="resumen-dia-acciones">
         <button id="btn-agregar-rapido-dia" class="btn-accent-ghost">+</button>
       </div>
   `;
+  // ==========================================================
+  // ==                  ¡FIN DE LA CORRECCIÓN!                ==
+  // ==========================================================
+
   let btnCerrar = resumenTitulo.querySelector('#btn-cerrar-resumen-dia');
   if (!btnCerrar) {
     btnCerrar = document.createElement('button');
@@ -679,6 +689,7 @@ export function iniciarEdicionEvento(evento, cursoPreseleccionado = null) {
 
 /**
  * MODIFICADO: Usa eliminarDocumento y es async.
+ * ¡AQUÍ ESTÁ LA CORRECCIÓN PARA EL BORRADO!
  */
 function mostrarDetallesEvento(evento) {
   const titulo = document.getElementById('evento-detalles-titulo');
@@ -711,27 +722,38 @@ function mostrarDetallesEvento(evento) {
         (e) => String(e.id) === String(idParaAccion),
       );
       const titulo = eventoOriginal ? eventoOriginal.titulo : evento.titulo;
-      setTimeout(() => {
-        mostrarConfirmacion(
+
+      // ==========================================================
+      // ==                ¡INICIO DE LA CORRECCIÓN!               ==
+      // ==========================================================
+      // El setTimeout ahora es async para poder usar await dentro.
+      setTimeout(async () => {
+        // Usamos await en mostrarConfirmacion. Pasa los textos de los botones.
+        const quiereEliminar = await mostrarConfirmacion(
           'Eliminar Evento',
           `¿Seguro que quieres eliminar "${titulo}" y todas sus repeticiones? Esta acción eliminará la cadena completa.`,
-          async () => {
-            // <-- AÑADIDO async
-            // state.eventos = state.eventos.filter((e) => e.id !== idParaAccion); // <-- ELIMINADO
-            try {
-              await eliminarDocumento('eventos', String(idParaAccion)); // <-- AÑADIDO
-              console.log(
-                `[Calendario] Evento ${idParaAccion} eliminado de Firestore.`,
-              );
-            } catch (error) {
-              console.error('[Calendario] Error al eliminar evento:', error);
-              mostrarAlerta('Error', 'No se pudo eliminar el evento.');
-            }
-            // guardarDatos(); // <-- ELIMINADO
-            // renderizarCalendario(); // <-- ELIMINADO (El listener lo hará)
-          },
+          'Eliminar', // Texto del botón Aceptar
+          'Cancelar', // Texto del botón Cancelar
         );
+
+        // Si el usuario hizo clic en "Eliminar" (la promesa resolvió true)
+        if (quiereEliminar) {
+          try {
+            await eliminarDocumento('eventos', String(idParaAccion));
+            console.log(
+              `[Calendario] Evento ${idParaAccion} eliminado de Firestore.`,
+            );
+          } catch (error) {
+            console.error('[Calendario] Error al eliminar evento:', error);
+            mostrarAlerta('Error', 'No se pudo eliminar el evento.');
+          }
+          // No se llama a renderizar, ¡"Pulso" lo hará!
+        }
+        // Si quiereEliminar es false (hizo clic en Cancelar), no se hace nada.
       }, 200);
+      // ==========================================================
+      // ==                  ¡FIN DE LA CORRECCIÓN!                ==
+      // ==========================================================
     };
   mostrarModal('modal-evento-detalles');
 }
@@ -1042,6 +1064,8 @@ function conectarUICalendario() {
             // guardarDatos(); // <-- ELIMINADO
             // renderizarCalendario(); // <-- ELIMINADO (El listener lo hará)
           },
+          'Completar', // Texto del botón Aceptar
+          'Cancelar', // Texto del botón Cancelar
         );
       } else if (tarea && tarea.completada) {
         // Opcional: Permitir desmarcar con doble clic también?

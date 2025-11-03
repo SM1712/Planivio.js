@@ -18,16 +18,17 @@ import {
   setFirebaseUserId,
   guardarConfig,
   migrarDatosDesdeLocalStorage,
+  agregarEventoCumpleaños, // <-- ¡NUEVA IMPORTACIÓN!
 } from './firebase.js'; // <-- P1.2
 import { iniciarSincronizacion, detenerSincronizacion } from './state.js'; // <-- P1.3
 import {
   cargarIconos,
-  mostrarConfirmacion,
-  mostrarAlerta,
+  mostrarConfirmacion, // <-- Usaremos la versión modificada de ui.js
+  mostrarAlerta, // <-- Usaremos la versión modificada de ui.js
   mostrarPrompt,
   cerrarModal,
   mostrarModal,
-  mostrarModalOnboarding,
+  mostrarModalOnboarding, // <-- Usaremos la versión modificada de ui.js
 } from './ui.js';
 import {
   updateRgbVariables,
@@ -287,12 +288,18 @@ async function manejarEstadoDeAutenticacion() {
     if (user) {
       // --- 1. USUARIO ESTÁ LOGUEADO ---
       console.log('Usuario detectado:', user.uid);
-
-      // ¡IMPORTANTE! Guardar User ID e iniciar sincronización
       setFirebaseUserId(user.uid);
 
-      // --- P3.1: Lógica de Migración/Onboarding ---
-      // --- CORREGIDO (Problema 2): Añadido 'window.firebaseServices.' ---
+      // --- CORRECCIÓN DE UI ---
+      // Mostramos la app y ocultamos el login ANTES de cualquier 'await'.
+      if (appHeader) appHeader.style.visibility = 'visible';
+      loginContainer.style.display = 'none';
+      if (appContainer) appContainer.style.visibility = 'visible';
+
+      // ==========================================================
+      // ==      ¡INICIO DE LÓGICA ONBOARDING/MIGRACIÓN (P3.1)!     ==
+      // ==========================================================
+
       const configRef = window.firebaseServices.doc(
         window.firebaseServices.db,
         'usuarios',
@@ -301,66 +308,37 @@ async function manejarEstadoDeAutenticacion() {
         'userConfig',
       );
       const configSnap = await window.firebaseServices.getDoc(configRef);
-      // Usamos 'planivioData' (la key de tu utils.js original)
+      let configData = configSnap.exists() ? configSnap.data() : null;
       const datosLocalesString = localStorage.getItem('planivioData');
 
-      if (!configSnap.exists() && datosLocalesString) {
-        // Usuario nuevo (sin config en la nube) PERO con datos locales
-        console.log(
-          '[Main] Usuario nuevo con datos locales. Preguntando para migrar...',
-        );
-        // Asumimos que mostrarConfirmacion fue adaptado para devolver Promise<boolean>
-        const quiereMigrar = await mostrarConfirmacion(
-          'Importar Datos Locales',
-          '¡Bienvenido! Hemos encontrado datos locales en este navegador. ¿Quieres importarlos a tu nueva cuenta en la nube?',
-          null,
-          'Sí, Importar',
-          'No, Empezar de Cero',
-        );
+      // Definir los 3 tipos de usuario
+      const isMigrationUser = !configData && datosLocalesString;
+      const isNewUser = !configData && !datosLocalesString;
+      const isExistingUserWithMissingInfo =
+        configData && (!configData.userName || !configData.userBirthday);
 
-        if (quiereMigrar) {
-          try {
-            const estadoLocal = JSON.parse(datosLocalesString);
-            await migrarDatosDesdeLocalStorage(estadoLocal); // Sube todo a Firebase
-            localStorage.removeItem('planivioData'); // Limpia local
-            mostrarAlerta(
-              'Migración Exitosa',
-              'Tus datos locales se han importado a la nube.',
-            );
-          } catch (error) {
-            console.error('[Main] Error durante la migración:', error);
-            mostrarAlerta(
-              'Error de Migración',
-              'Hubo un problema al importar tus datos.',
-            );
-          }
-        } else {
-          // No quiso migrar, borrar local
-          localStorage.removeItem('planivioData');
-        }
-      } else if (!configSnap.exists() && !datosLocalesString) {
-        // Usuario 100% nuevo, ejecutar onboarding
-        const nombre = await mostrarModalOnboarding();
-        // Guardamos el nombre en el state local temporalmente
-        state.config.userName = nombre;
-        // Y lo subimos a Firebase
-        await guardarConfig({ userName: nombre });
+      // Prefills (quitando el de Google)
+      let prefillName = configData ? configData.userName : null;
+      let prefillBirthday = configData ? configData.userBirthday : null;
 
-        mostrarAlerta(
-          `¡Hola, ${nombre}!`,
-          'Para empezar a organizarte, el primer paso es crear un curso. Luego, podrás añadir tareas a ese curso.',
-          () => {
-            EventBus.emit('navegarA', { pagina: 'cursos' }); // Usar EventBus para navegar
-          },
-        );
+      if (isMigrationUser) {
+        // --- Caso 1: Migración (Tu idea de "Te conozco") ---
+        await handleMigrationFlow(prefillName, prefillBirthday);
+      } else if (isNewUser) {
+        // --- Caso 2: Usuario 100% Nuevo (Tour de Pulsito) ---
+        await handleNewUserOnboarding();
+      } else if (isExistingUserWithMissingInfo) {
+        // --- Caso 3: Usuario Existente, Info Faltante ---
+        await handleExistingUserUpdate(prefillName, prefillBirthday);
       }
+      // ==========================================================
+      // ==        ¡FIN DE LÓGICA ONBOARDING/MIGRACIÓN (P3.1)!       ==
+      // ==========================================================
 
       // ¡INICIAR SINCRONIZACIÓN! (Cargará config, cursos, tareas, etc.)
       iniciarSincronizacion(user.uid);
 
-      // --- CORREGIDO (Problema 1): Mover inicializadores aquí ---
-      // Ahora que el User ID y la sincronización están listos,
-      // podemos inicializar los módulos de página.
+      // Inicializar todos los módulos de página
       console.log('[Main] Sincronización iniciada. Inicializando módulos...');
       inicializarDashboard();
       inicializarTareas();
@@ -368,11 +346,6 @@ async function manejarEstadoDeAutenticacion() {
       inicializarCalendario();
       inicializarApuntes();
       inicializarProyectos();
-
-      // Mostrar app y header, ocultar login
-      if (appHeader) appHeader.style.visibility = 'visible';
-      loginContainer.style.display = 'none';
-      if (appContainer) appContainer.style.visibility = 'visible';
 
       // Poblar el panel de usuario en Configuración
       if (document.getElementById('user-photo'))
@@ -382,9 +355,7 @@ async function manejarEstadoDeAutenticacion() {
       if (document.getElementById('user-email'))
         document.getElementById('user-email').textContent = user.email;
 
-      // Cargamos la página guardada o el dashboard
-      // El listener 'configActualizada' aplicará el tema
-      // El state.paginaActual se cargará desde la config si existe
+      // Cargar página (después de que el state se sincronice)
       await cambiarPagina(state.paginaActual || 'dashboard');
     } else {
       // --- 2. USUARIO NO ESTÁ LOGUEADO ---
@@ -400,6 +371,197 @@ async function manejarEstadoDeAutenticacion() {
     }
   });
 }
+
+// ==========================================================
+// ==       NUEVAS FUNCIONES DE FLUJO DE BIENVENIDA        ==
+// ==========================================================
+
+/**
+ * Flujo para usuarios con datos en localStorage ("Te conozco")
+ */
+async function handleMigrationFlow(prefillName, prefillBirthday) {
+  console.log('[Main] Iniciando Flujo de Migración...');
+  // Primero, pedir los datos que faltan (nombre/cumple)
+  const { nombre, fechaCumple } = await mostrarModalOnboarding(
+    '¡Bienvenido de nuevo!',
+    prefillName,
+    prefillBirthday,
+  );
+  await guardarDatosOnboarding(nombre, fechaCumple, prefillBirthday);
+
+  // Segundo, preguntar si quiere migrar o saltar
+  const quiereMigrar = await mostrarConfirmacion(
+    `¡Espera, ${nombre}! ¡Creo que te conozco! 🧐`,
+    'Soy Pulsito, el corazón de Planivio. 😊<br><br>Detecté datos locales de una versión anterior. ¿Quieres que los migremos a tu cuenta en la nube para tenerlos en todas partes?',
+    '¡Sí, migrar mis datos!',
+    'Saltar bienvenida',
+  );
+
+  if (quiereMigrar) {
+    try {
+      const datosLocalesString = localStorage.getItem('planivioData');
+      const estadoLocal = JSON.parse(datosLocalesString);
+      await migrarDatosDesdeLocalStorage(estadoLocal);
+      localStorage.removeItem('planivioData');
+      await mostrarAlerta(
+        '¡Migración Completa! ✨',
+        `¡Listo, ${nombre}! Tus datos locales ahora están en la nube. ¡Qué alegría verte de vuelta!`,
+      );
+    } catch (error) {
+      console.error('[Main] Error durante la migración:', error);
+      await mostrarAlerta(
+        'Error de Migración 😥',
+        'Hubo un problema al importar tus datos. Empezarás con una cuenta limpia.',
+      );
+    }
+  } else {
+    // Elige "Saltar bienvenida"
+    localStorage.removeItem('planivioData');
+    await mostrarAlerta(
+      '¡Entendido! 😉',
+      `¡CLARO, ${nombre}! ¡Perdón! 😅 ¡Hace tanto ya! ¡Adelante, esta es tu casa!`,
+    );
+  }
+}
+
+/**
+ * Flujo para usuarios 100% nuevos (Tour de Pulsito)
+ */
+async function handleNewUserOnboarding() {
+  console.log('[Main] Iniciando Flujo de Onboarding para Usuario Nuevo...');
+  // 1. Saludo (Obtener nombre y cumpleaños)
+  const { nombre, fechaCumple } = await mostrarModalOnboarding(
+    '¡HOOOLA! 👋 ¡Soy Pulsito!',
+    null,
+    null,
+  );
+  await guardarDatosOnboarding(nombre, fechaCumple, null);
+
+  // 2. Ofrecer el tour
+  const quiereTour = await mostrarConfirmacion(
+    `¡Un placer, ${nombre}! 🤩`,
+    '¡Estoy súper emocionado de que estés aquí! Mi trabajo es ayudarte a organizarlo TO-DO. ¿Te gustaría un tour súper rápido para mostrarte cómo funciona Planivio?',
+    '¡Sí, vamos! 🚀',
+    'No, gracias. Prefiero explorar.',
+  );
+
+  if (quiereTour) {
+    // 3. Iniciar el tour
+    await runOnboardingTour(nombre);
+  } else {
+    // 4. Saltar el tour
+    await mostrarAlerta(
+      '¡Entendido! 👍',
+      '¡No hay problema! La mejor forma de empezar es creando tu primer **Curso** (o proyecto). ¡Te llevaré allí! ¡Diviértete!',
+    );
+    EventBus.emit('navegarA', { pagina: 'cursos' });
+  }
+}
+
+/**
+ * Flujo para usuarios existentes a los que les falta nombre o cumpleaños
+ */
+async function handleExistingUserUpdate(prefillName, prefillBirthday) {
+  console.log('[Main] Actualizando info de usuario existente...');
+  const { nombre, fechaCumple } = await mostrarModalOnboarding(
+    '¡Hola de nuevo! 👋',
+    prefillName,
+    prefillBirthday,
+  );
+  await guardarDatosOnboarding(nombre, fechaCumple, prefillBirthday);
+  await mostrarAlerta('¡Genial!', '¡Datos de perfil actualizados!');
+}
+
+/**
+ * El tour de 5 pasos de Pulsito
+ */
+async function runOnboardingTour(nombre) {
+  // Paso 1: Dashboard
+  EventBus.emit('navegarA', { pagina: 'dashboard' });
+  await mostrarAlerta(
+    'Paso 1: El Dashboard 🏠',
+    '¡Vamos! 🚀 Esta es tu **Torre de Control**. Aquí verás un resumen de tus tareas urgentes, eventos próximos y tu progreso. ¡Ideal para empezar el día!',
+  );
+
+  // Paso 2: Cursos
+  EventBus.emit('navegarA', { pagina: 'cursos' });
+  await mostrarAlerta(
+    'Paso 2: Los Cursos 🧠',
+    '¡El paso más importante! Todo en Planivio se organiza por **Cursos** (o materias, o proyectos... ¡lo que quieras!).<br><br>Aquí es donde los crearás. ¡Te sugiero crear tu primer curso cuando terminemos!',
+  );
+
+  // Paso 3: Tareas
+  EventBus.emit('navegarA', { pagina: 'tareas' });
+  await mostrarAlerta(
+    'Paso 3: Las Tareas 📝',
+    'Una vez que tengas cursos, aquí añadirás tus tareas. Puedes asignarles fechas, prioridades y ¡hasta subtareas! Es el corazón de tu organización.',
+  );
+
+  // Paso 4: Proyectos
+  EventBus.emit('navegarA', { pagina: 'proyectos' });
+  await mostrarAlerta(
+    'Paso 4: Los Proyectos 🗂️',
+    '¡Esta página es genial! Un **Proyecto** te deja agrupar tareas de *diferentes* cursos. Perfecto para un "Trabajo Final" o "Metas del Mes".',
+  );
+
+  // Paso 5: Apuntes
+  EventBus.emit('navegarA', { pagina: 'apuntes' });
+  await mostrarAlerta(
+    'Paso 5: Los Apuntes ✍️',
+    '¡No más notas perdidas! Aquí puedes escribir apuntes rápidos, vincularlos a tus cursos y proyectos, y tener todo en un solo lugar.',
+  );
+
+  // Paso 6: Calendario
+  EventBus.emit('navegarA', { pagina: 'calendario' });
+  await mostrarAlerta(
+    'Paso 6: El Calendario 🗓️',
+    '¡La vista mágica! ✨ Aquí es donde todo se junta. Verás todas tus tareas y eventos en una vista mensual. ¡Tu cumpleaños ya debería estar aquí! 😉',
+  );
+
+  // Paso 7: Personalización
+  await mostrarAlerta(
+    'Paso 7: ¡Hazlo Tuyo! 🎨',
+    '¡Casi terminamos! Planivio se adapta a ti. Puedes cambiar el tema (claro/oscuro) y tu color de acento favorito. ¡Te mostraré dónde!',
+  );
+  mostrarModal('modal-configuraciones'); // Abrimos el modal de config
+  // Forzamos el clic en la pestaña de personalización
+  document.querySelector('[data-tab="personalizacion"]')?.click();
+
+  // Despedida final
+  await mostrarAlerta(
+    '¡Tour completado! 🥳',
+    `¡Eso es todo, ${nombre}! Ya tienes todo para empezar a conquistar tu día.<br><br>¡Ah! Y un reto: en el Dashboard verás tu **Racha Diaria**. ¡Intenta llegar a los 100 días seguidos! ¡A PULSAR! ❤️`,
+  );
+  EventBus.emit('navegarA', { pagina: 'dashboard' }); // Devolver al dashboard
+}
+
+/**
+ * Función helper para guardar los datos del onboarding
+ */
+async function guardarDatosOnboarding(nombre, fechaCumple, prefillBirthday) {
+  state.config.userName = nombre;
+  const configUpdates = { userName: nombre };
+
+  if (fechaCumple) {
+    state.config.userBirthday = fechaCumple;
+    configUpdates.userBirthday = fechaCumple;
+
+    // Crear evento SÓLO si es la primera vez que se añade el cumpleaños
+    if (!prefillBirthday && fechaCumple) {
+      try {
+        await agregarEventoCumpleaños(fechaCumple);
+        console.log('[Main] Evento de cumpleaños creado exitosamente.');
+      } catch (error) {
+        console.error('[Main] Error al crear evento de cumpleaños:', error);
+      }
+    }
+  }
+  await guardarConfig(configUpdates);
+}
+
+// ==========================================================
+// ==       FIN DE NUEVAS FUNCIONES DE BIENVENIDA          ==
+// ==========================================================
 
 /**
  * Inicia el pop-up de login con Google (Sin cambios)

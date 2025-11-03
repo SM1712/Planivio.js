@@ -51,52 +51,85 @@ export function cerrarModal(idModal) {
   document.getElementById(idModal)?.classList.remove('visible');
 }
 
-export function mostrarConfirmacion(titulo, msg, callback) {
-  const confirmTitle = document.getElementById('confirm-title');
-  const confirmMsg = document.getElementById('confirm-msg');
-  const aceptarBtn = document.getElementById('btn-confirm-aceptar');
+/**
+ * MODIFICADO: Ahora devuelve una Promesa<boolean> y acepta texto de botones.
+ * Resuelve 'true' si se acepta, 'false' si se cancela.
+ */
+export function mostrarConfirmacion(
+  titulo,
+  msg,
+  btnAceptarTexto = 'Aceptar',
+  btnCancelarTexto = 'Cancelar',
+) {
+  return new Promise((resolve) => {
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMsg = document.getElementById('confirm-msg');
+    const aceptarBtn = document.getElementById('btn-confirm-aceptar');
+    const cancelarBtn = document.getElementById('btn-confirm-cancelar');
 
-  if (confirmTitle) confirmTitle.textContent = titulo;
-  if (confirmMsg) confirmMsg.textContent = msg;
+    if (confirmTitle) confirmTitle.textContent = titulo;
+    if (confirmMsg) confirmMsg.innerHTML = msg; // Cambiado a innerHTML por si quieres usar <br>
+    if (aceptarBtn) aceptarBtn.textContent = btnAceptarTexto;
+    if (cancelarBtn) {
+      cancelarBtn.textContent = btnCancelarTexto;
+      cancelarBtn.style.display = 'inline-block'; // Asegurarse de que sea visible
+    }
 
-  const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
-  aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
+    // Clonar botones para limpiar listeners antiguos
+    const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
+    aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
 
-  nuevoAceptarBtn.addEventListener(
-    'click',
-    () => {
-      callback();
+    const nuevoCancelarBtn = cancelarBtn.cloneNode(true);
+    cancelarBtn.parentNode.replaceChild(nuevoCancelarBtn, cancelarBtn);
+
+    const cleanupAndResolve = (valor) => {
       cerrarModal('modal-confirmacion');
-    },
-    { once: true },
-  );
+      resolve(valor);
+    };
 
-  mostrarModal('modal-confirmacion');
+    nuevoAceptarBtn.addEventListener('click', () => cleanupAndResolve(true), {
+      once: true,
+    });
+
+    nuevoCancelarBtn.addEventListener('click', () => cleanupAndResolve(false), {
+      once: true,
+    });
+
+    mostrarModal('modal-confirmacion');
+  });
 }
 
+/**
+ * MODIFICADO: ¡Ahora devuelve una promesa!
+ * Esto es VITAL para que el tour de Pulsito funcione.
+ */
 export function mostrarAlerta(titulo, msg, callback) {
-  const confirmTitle = document.getElementById('confirm-title');
-  const confirmMsg = document.getElementById('confirm-msg');
-  const aceptarBtn = document.getElementById('btn-confirm-aceptar');
-  const cancelarBtn = document.getElementById('btn-confirm-cancelar');
+  return new Promise((resolve) => {
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMsg = document.getElementById('confirm-msg');
+    const aceptarBtn = document.getElementById('btn-confirm-aceptar');
+    const cancelarBtn = document.getElementById('btn-confirm-cancelar');
 
-  if (confirmTitle) confirmTitle.textContent = titulo;
-  if (confirmMsg) confirmMsg.textContent = msg;
-  if (cancelarBtn) cancelarBtn.style.display = 'none';
+    if (confirmTitle) confirmTitle.textContent = titulo;
+    if (confirmMsg) confirmMsg.innerHTML = msg; // Cambiado a innerHTML
+    if (cancelarBtn) cancelarBtn.style.display = 'none'; // Ocultar cancelar en alerta
+    if (aceptarBtn) aceptarBtn.textContent = 'Aceptar'; // Resetear texto
 
-  const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
-  aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
+    const nuevoAceptarBtn = aceptarBtn.cloneNode(true);
+    aceptarBtn.parentNode.replaceChild(nuevoAceptarBtn, aceptarBtn);
 
-  nuevoAceptarBtn.addEventListener(
-    'click',
-    () => {
-      cerrarModal('modal-confirmacion');
-      if (callback) callback();
-    },
-    { once: true },
-  );
+    nuevoAceptarBtn.addEventListener(
+      'click',
+      () => {
+        cerrarModal('modal-confirmacion');
+        if (callback) callback();
+        resolve(true); // Resuelve la promesa cuando se hace clic
+      },
+      { once: true },
+    );
 
-  mostrarModal('modal-confirmacion');
+    mostrarModal('modal-confirmacion');
+  });
 }
 
 export function mostrarPrompt(titulo, msg, defaultValue = '') {
@@ -120,7 +153,7 @@ export function mostrarPrompt(titulo, msg, defaultValue = '') {
 
     const handleCancel = () => {
       cleanup();
-      reject();
+      reject(new Error('Prompt cancelado por el usuario'));
     };
 
     const cleanup = () => {
@@ -272,7 +305,7 @@ export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
   // Llama a la función principal, asegurando excluir archivados
   popularSelectorDeProyectos('edit-select-proyecto-tarea', true);
 
-  // Re-seleccionar el valor (sin cambios aquí)
+  // Re-seleccionar el valor (Sin cambios aquí)
   const selector = document.getElementById('edit-select-proyecto-tarea');
   if (selector && proyectoIdSeleccionado) {
     // Asegurarse de que la opción todavía exista después del filtrado
@@ -284,23 +317,70 @@ export function popularSelectorDeProyectosEdicion(proyectoIdSeleccionado) {
   }
 }
 
-export function mostrarModalOnboarding() {
+/**
+ * MODIFICADO: Ahora maneja el nuevo modal de onboarding con cumpleaños.
+ * Acepta valores predeterminados y un título personalizado.
+ * @param {string} [titulo='¡Bienvenido!'] - El título a mostrar en el modal.
+ * @param {string} [defaultNombre=''] - Valor para pre-rellenar el nombre.
+ * @param {string | null} [defaultCumple=null] - Valor para pre-rellenar la fecha (YYYY-MM-DD).
+ * @returns {Promise<{nombre: string, fechaCumple: string | null}>}
+ */
+export function mostrarModalOnboarding(
+  titulo = '¡Bienvenido!',
+  defaultNombre = '',
+  defaultCumple = null,
+) {
   return new Promise((resolve) => {
     const modal = document.getElementById('modal-onboarding');
     const form = document.getElementById('form-onboarding');
-    const inputEl = document.getElementById('input-onboarding-nombre');
+    const modalTitulo = document.getElementById('onboarding-title'); // Asumiendo que tienes un <h2> o <h3> con este ID
+    const inputNombre = document.getElementById('input-onboarding-nombre');
+    const inputCumple = document.getElementById('input-onboarding-cumple');
+
+    // --- NUEVO ---
+    // Actualizar el título del modal
+    if (modalTitulo) {
+      modalTitulo.textContent = titulo;
+    }
+    // --- FIN NUEVO ---
+
+    // Pre-rellenar valores (CON COMPROBACIÓN)
+    if (inputNombre) {
+      inputNombre.value = defaultNombre || '';
+    } else {
+      console.error('[UI] No se encontró el elemento #input-onboarding-nombre');
+    }
+
+    if (inputCumple) {
+      inputCumple.value = defaultCumple || '';
+    }
+
+    if (!form) {
+      console.error('[UI] No se encontró el elemento #form-onboarding');
+      return resolve({ nombre: 'Error', fechaCumple: null }); // Salir de forma segura
+    }
+    if (!modal) {
+      console.error('[UI] No se encontró el elemento #modal-onboarding');
+      return resolve({ nombre: 'Error', fechaCumple: null }); // Salir de forma segura
+    }
 
     mostrarModal('modal-onboarding');
-    setTimeout(() => inputEl.focus(), 100);
+    if (inputNombre) {
+      setTimeout(() => inputNombre.focus(), 100);
+    }
 
     form.addEventListener(
       'submit',
       (e) => {
         e.preventDefault();
-        const nombre = inputEl.value.trim();
+        const nombre = inputNombre ? inputNombre.value.trim() : 'Usuario';
+        const fechaCumple =
+          inputCumple && inputCumple.value ? inputCumple.value : null;
+
         if (nombre) {
           cerrarModal('modal-onboarding');
-          resolve(nombre);
+          // Resolvemos con un objeto
+          resolve({ nombre, fechaCumple });
         }
       },
       { once: true },

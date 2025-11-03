@@ -237,6 +237,81 @@ export async function eliminarDocumento(nombreColeccion, docId) {
   }
 }
 
+/**
+ * MODIFICADO: Agrega el evento de cumpleaños recurrente.
+ * 1. Calcula la *próxima* fecha de cumpleaños.
+ * 2. Resta un año a esa fecha para crear un "punto de anclaje" para el generador.
+ * 3. Guarda las fechas como strings "YYYY-MM-DD".
+ * @param {string} fechaString - La fecha en formato "YYYY-MM-DD".
+ */
+export async function agregarEventoCumpleaños(fechaString) {
+  if (!userId) {
+    console.warn(
+      '[Firebase] No hay usuario para agregar evento de cumpleaños.',
+    );
+    return;
+  }
+
+  // --- Lógica para calcular la próxima ocurrencia ---
+  const parts = fechaString.split('-');
+  const birthMonth = parseInt(parts[1], 10);
+  const birthDay = parseInt(parts[2], 10);
+
+  const today = new Date();
+  const currentYear = today.getFullYear();
+
+  let proximoCumpleaños = new Date(
+    Date.UTC(currentYear, birthMonth - 1, birthDay, 12, 0, 0),
+  );
+
+  const todayUTC = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+  );
+
+  if (todayUTC > proximoCumpleaños) {
+    proximoCumpleaños.setUTCFullYear(currentYear + 1);
+  }
+
+  // --- Corrección de lógica (de la última vez) ---
+  const fechaAnclaje = new Date(proximoCumpleaños);
+  fechaAnclaje.setUTCFullYear(proximoCumpleaños.getUTCFullYear() - 1);
+
+  // ==========================================================
+  // ==                ¡INICIO DE LA CORRECCIÓN!               ==
+  // ==========================================================
+  // Convertimos la fecha de anclaje a un string "YYYY-MM-DD"
+  // Tu calendario.js (línea 37) espera este formato, no un ISO string completo.
+  const fechaAnclajeString = fechaAnclaje.toISOString().split('T')[0];
+  // ==========================================================
+  // ==                  ¡FIN DE LA CORRECCIÓN!                ==
+  // ==========================================================
+
+  const nuevoEvento = {
+    titulo: 'Cumpleaños!!! 🥳🎉',
+    fechaInicio: fechaAnclajeString, // <-- CORREGIDO A "YYYY-MM-DD"
+    fechaFin: fechaAnclajeString, // <-- CORREGIDO A "YYYY-MM-DD"
+    esDiaCompleto: true,
+    curso: null,
+    proyectoId: null,
+    descripcion: '¡Mi cumpleaños!',
+    color: '#f39c12',
+    recurrencia: {
+      tipo: 'anual',
+      fin: null,
+    },
+  };
+
+  try {
+    await agregarDocumento('eventos', nuevoEvento);
+    console.log(
+      '[Firebase] Evento de cumpleaños agregado con fecha de anclaje:',
+      fechaAnclajeString,
+    );
+  } catch (error) {
+    console.error('[Firebase] Error al crear el evento de cumpleaños:', error);
+  }
+}
+
 // ==========================================================================
 // ==              FUNCIONES AVANZADAS (Batch y Query)                   ==
 // ==========================================================================
