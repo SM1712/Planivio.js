@@ -1,9 +1,26 @@
-import { state, state as defaultState } from './state.js';
+// ==========================================================================
+// ==
+// ==                          src/utils.js
+// ==
+// ==    (MODIFICADO - FASE P3.4: IMPORTAR/EXPORTAR REFACTORIZADO
+// ==     PARA LEER Y ESCRIBIR DIRECTAMENTE DESDE FIREBASE)
+// ==
+// ==========================================================================
 
-// NOTA: 'cargarDatos' y 'guardarDatos' han sido eliminados.
-// La lógica de carga está en main.js (manejarEstadoDeAutenticacion)
-// La lógica de sincronización está en state.js (iniciarSincronizacion)
-// La lógica de guardado está en firebase.js (guardarConfig, agregarDocumento, etc.)
+import { state } from './state.js';
+// --- INICIO FASE P3.4: NUEVAS IMPORTACIONES ---
+import {
+  crearConsulta,
+  ejecutarConsulta,
+  getDocumento,
+  migrarDatosDesdeLocalStorage,
+} from './firebase.js';
+import { mostrarAlerta, mostrarConfirmacion, mostrarPrompt } from './ui.js';
+// --- FIN FASE P3.4: NUEVAS IMPORTACIONES ---
+
+// ==========================================================================
+// ==    FUNCIONES DE COLOR (Sin cambios)
+// ==========================================================================
 
 export function updateRgbVariables() {
   const computedStyle = getComputedStyle(document.body);
@@ -51,14 +68,14 @@ export function darkenColor(hex, percent) {
 }
 
 // ==========================================================================
-// ==    IMPORTAR/EXPORTAR (Funcionalidad limitada temporalmente)        ==
+// ==    IMPORTAR/EXPORTAR (REFACTORIZADO FASE P3.4)
 // ==========================================================================
 
-// REEMPLAZA LA FUNCIÓN ANTERIOR CON ESTA VERSIÓN ASÍNCRONA
-export async function exportarDatosJSON(mostrarPrompt) {
-  // ADVERTENCIA: Esto ahora solo exporta el ESTADO LOCAL,
-  // que puede no estar 100% sincronizado si la nube está actualizando.
-  // Lo refactorizaremos en Fase P3 para leer de Firebase.
+/**
+ * REFACTORIZADO (P3.4): Exporta TODOS los datos del usuario
+ * leyendo directamente desde Firestore para asegurar un backup completo.
+ */
+export async function exportarDatosJSON() {
   const fecha = new Date().toISOString().split('T')[0];
   const nombrePorDefecto = `planivio-backup-${fecha}`;
 
@@ -69,17 +86,46 @@ export async function exportarDatosJSON(mostrarPrompt) {
       nombrePorDefecto,
     );
 
-    if (!nombreArchivo) return; // Si el usuario no escribe nada, no exportar
+    if (!nombreArchivo) {
+      console.log('Exportación cancelada.');
+      return;
+    }
 
-    const estadoParaExportar = { ...state };
-    // Limpiamos datos temporales que no deben exportarse
-    delete estadoParaExportar.apuntesEnModoSeleccion;
-    delete estadoParaExportar.apuntesSeleccionadosIds;
-    delete estadoParaExportar.tareasEnModoSeleccion;
-    delete estadoParaExportar.tareasSeleccionadasIds;
-    delete estadoParaExportar.currentUserId;
+    // 1. Crear el objeto de respaldo
+    const datosParaExportar = {
+      config: {},
+      cursos: [],
+      tareas: [],
+      proyectos: [],
+      apuntes: [],
+      eventos: [],
+    };
 
-    const jsonString = JSON.stringify(estadoParaExportar, null, 2);
+    // 2. Obtener todos los datos de Firebase
+    console.log('[Exportar] Obteniendo datos de Firebase...');
+
+    // Obtenemos todos los documentos y la config en paralelo
+    const [config, cursos, tareas, proyectos, apuntes, eventos] =
+      await Promise.all([
+        getDocumento('config', 'userConfig'),
+        ejecutarConsulta(crearConsulta('cursos')),
+        ejecutarConsulta(crearConsulta('tareas')),
+        ejecutarConsulta(crearConsulta('proyectos')),
+        ejecutarConsulta(crearConsulta('apuntes')),
+        ejecutarConsulta(crearConsulta('eventos')),
+      ]);
+
+    datosParaExportar.config = config || {};
+    datosParaExportar.cursos = cursos;
+    datosParaExportar.tareas = tareas;
+    datosParaExportar.proyectos = proyectos;
+    datosParaExportar.apuntes = apuntes;
+    datosParaExportar.eventos = eventos;
+
+    console.log('[Exportar] Datos listos para descargar.');
+
+    // 3. Crear y descargar el archivo (lógica existente)
+    const jsonString = JSON.stringify(datosParaExportar, null, 2);
     const blob = new Blob([jsonString], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
 
@@ -94,51 +140,103 @@ export async function exportarDatosJSON(mostrarPrompt) {
 
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+
+    await mostrarAlerta(
+      'Exportación Exitosa',
+      'Tu archivo de respaldo se ha descargado.',
+    );
   } catch (error) {
-    // El usuario presionó "Cancelar", no hacemos nada.
-    console.log('Exportación cancelada por el usuario.');
+    if (error.message.includes('cancelado')) {
+      console.log('Exportación cancelada por el usuario.');
+    } else {
+      console.error('[Exportar] Error al exportar datos:', error);
+      await mostrarAlerta(
+        'Error de Exportación',
+        'No se pudieron exportar los datos. Revisa la consola.',
+      );
+    }
   }
 }
 
-// REEMPLAZA LA FUNCIÓN ANTERIOR
-export function importarDatosJSON(event, callback) {
-  // ADVERTENCIA: Esta función está temporalmente deshabilitada
-  // en main.js. Requerirá refactorización en Fase P3.
+/**
+ * REFACTORIZADO (P3.4): Importa datos desde un archivo JSON y
+ * los sube a Firestore usando un WriteBatch, sobrescribiendo
+ * todos los datos en la nube.
+ */
+export async function importarDatosJSON(event) {
   const file = event.target.files[0];
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = (e) => {
+
+  reader.onload = async (e) => {
+    let nuevoEstado;
     try {
-      const nuevoEstado = JSON.parse(e.target.result);
-
-      Object.keys(state).forEach((key) => delete state[key]);
-      Object.assign(state, nuevoEstado);
-
-      // guardarDatos(); // <-- ELIMINADO. Esta función ya no existe.
-      console.warn(
-        'Importación completada, pero el guardado en Firebase debe hacerse manualmente.',
-      );
-
-      // Llama al callback indicando éxito
-      callback(
-        null,
-        '¡Datos importados localmente! La aplicación se recargará. (El guardado en la nube está deshabilitado temporalmente).',
-      );
+      nuevoEstado = JSON.parse(e.target.result);
+      // Validación simple para asegurar que es un archivo de Planivio
+      if (
+        nuevoEstado.config === undefined ||
+        nuevoEstado.cursos === undefined ||
+        nuevoEstado.tareas === undefined
+      ) {
+        throw new Error(
+          'El archivo no parece ser un respaldo de Planivio válido.',
+        );
+      }
     } catch (error) {
-      console.error('Error al importar el archivo JSON:', error);
-      // Llama al callback indicando error
-      callback(
-        error,
-        'Error: El archivo seleccionado no es un archivo de respaldo de Planivio válido.',
+      console.error('Error al parsear el archivo JSON:', error);
+      await mostrarAlerta(
+        'Error de Importación',
+        'El archivo seleccionado no es un archivo de respaldo de Planivio válido.',
+      );
+      return;
+    }
+
+    try {
+      // 1. Advertir al usuario
+      const confirmado = await mostrarConfirmacion(
+        '¡Acción Destructiva!',
+        'Estás a punto de SOBRESCRIBIR todos tus datos en la nube con el contenido de este archivo. Esta acción no se puede deshacer. ¿Continuar?',
+        'Sobrescribir',
+        'Cancelar',
+      );
+
+      if (!confirmado) {
+        console.log('Importación cancelada por el usuario.');
+        return;
+      }
+
+      // 2. Llamar a la función de migración (que usa un batch)
+      console.log('[Importar] Iniciando migración batch...');
+      await migrarDatosDesdeLocalStorage(nuevoEstado);
+
+      // 3. Avisar y recargar
+      await mostrarAlerta(
+        '¡Importación Completa!',
+        'Tus datos han sido restaurados en la nube. La aplicación se recargará ahora para sincronizar los cambios.',
+      );
+      location.reload();
+    } catch (error) {
+      console.error('Error al importar datos a Firebase:', error);
+      await mostrarAlerta(
+        'Error de Importación',
+        'Ocurrió un error al guardar los datos en la nube. Revisa la consola.',
       );
     }
+  }; // fin reader.onload
+
+  reader.onerror = async () => {
+    await mostrarAlerta(
+      'Error de Lectura',
+      'No se pudo leer el archivo seleccionado.',
+    );
   };
+
   reader.readAsText(file);
 }
 
 // ==========================================================================
-// ==    FUNCIONES DE ESTILO (Sin cambios)                                 ==
+// ==    FUNCIONES DE ESTILO (Sin cambios)
 // ==========================================================================
 
 export function aplicarColorFondoVencida() {
@@ -157,9 +255,6 @@ export function aplicarColorFondoVencida() {
       root.style.setProperty(
         '--color-fondo-vencida',
         `rgba(231, 76, 60, ${opacidad})`,
-      );
-      console.warn(
-        `[aplicarColorFondoVencida] No se pudo convertir ${colorBase} a RGB. Usando fallback.`,
       );
     }
   } else {
@@ -196,10 +291,5 @@ export function aplicarColoresMuescas() {
     console.warn(
       '[aplicarColoresMuescas] No se encontraron colores de muescas en state.config. Aplicando defaults.',
     );
-    root.style.setProperty('--color-muesca-vencida', '#333333');
-    root.style.setProperty('--color-muesca-hoy', '#e74c3c');
-    root.style.setProperty('--color-muesca-manana', '#f39c12');
-    root.style.setProperty('--color-muesca-cercana', '#2ecc71');
-    root.style.setProperty('--color-muesca-lejana', 'rgba(128, 128, 128, 0.3)');
   }
 }
