@@ -1,22 +1,24 @@
 // ==========================================================================
-// ==                      src/pages/proyectos.js                        ==
-// ==========================================================================
-//
-// Módulo de Proyectos, modificado para la arquitectura "Pulso".
-// (Versión 3 - Corregido el listener del modal para evitar recarga)
-//
+// ==
+// ==                      src/pages/proyectos.js
+// ==
+// ==    (MODIFICADO - CORREGIDO BUG DE FILTRO DE APUNTES ARCHIVADOS
+// ==     Y APUNTES SIN CURSO)
+// ==
 // ==========================================================================
 
 import { state } from '../state.js';
 import { EventBus } from '../eventBus.js';
-// --- INICIO CORRECCIÓN IMPORTACIONES ---
-// Importamos las funciones de SERVICIO de firebase.js, no las internas de Firebase
 import {
   agregarDocumento,
   actualizarDocumento,
   eliminarDocumento,
-} from '../firebase.js'; // <-- CORREGIDO
-// --- FIN CORRECCIÓN IMPORTACIONES ---
+  crearBatch,
+  crearConsulta,
+  ejecutarConsulta,
+  db,
+  doc,
+} from '../firebase.js';
 import {
   mostrarModal,
   cerrarModal,
@@ -25,22 +27,27 @@ import {
   popularSelectorDeCursos,
 } from '../ui.js';
 import { ICONS } from '../icons.js';
-// import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
-import { iniciarEdicionEvento } from './calendario.js'; // (Este módulo también necesita migración)
+import { iniciarEdicionEvento } from './calendario.js';
 
 let graficaDeProyecto = null;
 let searchTermProyectos = ''; // Variable local para búsqueda
 
-// (calcularEstadisticasProyecto se mantiene igual, lee el 'state' global)
+/**
+ * Lee 'proyectoId' O 'proyectold'
+ */
 export function calcularEstadisticasProyecto(proyectoId) {
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
+  const strId = String(proyectoId);
+
+  // CORRECCIÓN: Comprueba ambos campos para ser robusto con datos antiguos
   const tareasDelProyecto = state.tareas.filter(
     (t) =>
-      String(t.proyectoId) === String(proyectoId) &&
+      (String(t.proyectoId) === strId || String(t.proyectold) === strId) &&
       !cursosArchivadosNombres.has(t.curso),
   );
+
   const totalTareas = tareasDelProyecto.length;
   if (totalTareas === 0) {
     return {
@@ -71,7 +78,7 @@ export function calcularEstadisticasProyecto(proyectoId) {
  */
 export function renderizarProyectos() {
   const container = document.getElementById('lista-proyectos-container');
-  if (!container) return; // Si la página no está cargada, no hace nada
+  if (!container) return;
   container.innerHTML = '';
 
   const cursosArchivadosNombres = new Set(
@@ -99,7 +106,7 @@ export function renderizarProyectos() {
     return;
   }
 
-  // Ordenar (Aseguramos que 'General' no esté aquí, pero si lo estuviera, lo maneja)
+  // Ordenar
   proyectosMostrables.sort((a, b) => {
     if (a.isArchivado !== b.isArchivado) {
       return a.isArchivado ? 1 : -1;
@@ -154,7 +161,7 @@ export function renderizarProyectos() {
 }
 
 /**
- * Renderiza la gráfica (Sin cambios internos)
+ * Renderiza la gráfica
  */
 function renderizarGraficaProyecto(stats) {
   const ctx = document
@@ -202,24 +209,27 @@ function renderizarGraficaProyecto(stats) {
 }
 
 /**
- * Renderiza la lista de tareas (Sin cambios internos, lee 'state' global)
+ * Lee 'proyectoId' O 'proyectold' y filtra archivados
  */
 function renderizarListasDeTareas(proyectoId) {
   const container = document.getElementById('proyecto-det-tareas-container');
   if (!container) return;
 
+  const strId = String(proyectoId);
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
+
   const tareasPendientes = state.tareas.filter(
     (t) =>
-      String(t.proyectoId) === String(proyectoId) &&
+      (String(t.proyectoId) === strId || String(t.proyectold) === strId) &&
       !t.completada &&
       !cursosArchivadosNombres.has(t.curso),
   );
+
   const totalTareasProyecto = state.tareas.filter(
     (t) =>
-      String(t.proyectoId) === String(proyectoId) &&
+      (String(t.proyectoId) === strId || String(t.proyectold) === strId) &&
       !cursosArchivadosNombres.has(t.curso),
   ).length;
 
@@ -257,13 +267,36 @@ function renderizarListasDeTareas(proyectoId) {
 }
 
 /**
- * Renderiza la lista de eventos (Sin cambios internos, lee 'state' global)
+ * Lee 'proyectoId' O 'proyectold' y filtra archivados
  */
 function renderizarListaEventos(proyectoId, container) {
   if (!container) return;
-  const eventosDelProyecto = state.eventos.filter(
-    (e) => String(e.proyectoId) === String(proyectoId),
+  const strId = String(proyectoId);
+
+  // ==========================================================
+  // ==           INICIO CORRECCIÓN LÓGICA APUNTES           ==
+  // ==========================================================
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
+
+  const eventosDelProyecto = state.eventos.filter((e) => {
+    const coincideProyecto =
+      String(e.proyectoId) === strId || String(e.proyectold) === strId;
+    if (!coincideProyecto) return false;
+
+    // Si tiene curso, verificar que no esté archivado.
+    if (e.curso) {
+      return !cursosArchivadosNombres.has(e.curso);
+    }
+
+    // Si no tiene curso, mostrarlo (es un evento de proyecto general)
+    return true;
+  });
+  // ==========================================================
+  // ==             FIN CORRECCIÓN LÓGICA APUNTES            ==
+  // ==========================================================
+
   if (eventosDelProyecto.length === 0) {
     container.innerHTML =
       '<p class="detalle-lista-vacia">Este proyecto no tiene eventos asociados.</p>';
@@ -299,18 +332,42 @@ function renderizarListaEventos(proyectoId, container) {
 }
 
 /**
- * Renderiza la lista de apuntes (Sin cambios internos, lee 'state' global)
+ * =========================================================================
+ * ==        MODIFICADO (BUG CORREGIDO): Filtra apuntes archivados      ==
+ * ==        y permite apuntes sin curso asignado.                    ==
+ * =========================================================================
  */
 function renderizarListaApuntes(proyectoId, container) {
   if (!container) return;
-  const apuntesDelProyecto = state.apuntes.filter(
-    (a) => String(a.proyectoId) === String(proyectoId),
+  const strId = String(proyectoId);
+
+  // 1. Obtener cursos archivados
+  const cursosArchivadosNombres = new Set(
+    state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
+
+  // 2. Filtrar apuntes
+  const apuntesDelProyecto = state.apuntes.filter((a) => {
+    // 2a. Comprobar que pertenece al proyecto (con robustez)
+    const coincideProyecto =
+      String(a.proyectoId) === strId || String(a.proyectold) === strId;
+    if (!coincideProyecto) return false;
+
+    // 2b. Comprobar que su curso (si tiene) no esté archivado
+    if (a.curso) {
+      return !cursosArchivadosNombres.has(a.curso);
+    }
+
+    // 2c. Si no tiene curso, es un apunte "general" del proyecto. Mostrarlo.
+    return true;
+  });
+
   if (apuntesDelProyecto.length === 0) {
     container.innerHTML =
       '<p class="detalle-lista-vacia">Este proyecto no tiene apuntes asociados.</p>';
     return;
   }
+
   apuntesDelProyecto.sort(
     (a, b) => new Date(b.fechaModificacion) - new Date(a.fechaModificacion),
   );
@@ -378,7 +435,7 @@ export function renderizarDetallesProyecto() {
     descEl.textContent =
       proyecto.descripcion || 'Este proyecto no tiene una descripción.';
 
-    const stats = calcularEstadisticasProyecto(proyecto.id);
+    const stats = calcularEstadisticasProyecto(proyecto.id); // ¡Ahora usa la lógica corregida!
 
     // Pestaña 1: Resumen (Tareas + Gráfica)
     if (stats.total === 0) {
@@ -386,7 +443,7 @@ export function renderizarDetallesProyecto() {
       renderizarListasDeTareas(proyecto.id); // Llama para mostrar mensaje de "sin tareas"
     } else {
       statsContainer.style.display = 'grid';
-      renderizarListasDeTareas(proyecto.id);
+      renderizarListasDeTareas(proyecto.id); // ¡Ahora usa la lógica corregida!
       setTimeout(() => {
         const canvasEl = document.getElementById('proyecto-grafica-progreso');
         if (canvasEl && document.contains(canvasEl)) {
@@ -396,10 +453,10 @@ export function renderizarDetallesProyecto() {
     }
 
     // Pestaña 2: Eventos
-    renderizarListaEventos(proyecto.id, eventosContainer);
+    renderizarListaEventos(proyecto.id, eventosContainer); // ¡Ahora usa la lógica corregida!
 
     // Pestaña 3: Apuntes
-    renderizarListaApuntes(proyecto.id, apuntesContainer);
+    renderizarListaApuntes(proyecto.id, apuntesContainer); // ¡Ahora usa la lógica corregida!
   } else {
     // Estado vacío
     headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
@@ -415,11 +472,11 @@ export function renderizarDetallesProyecto() {
 }
 
 /**
- * MODIFICADO: Agrega o edita un proyecto en Firestore.
+ * Agrega o edita un proyecto en Firestore.
  */
 async function agregarOEditarProyecto() {
   const idInput = document.getElementById('input-proyecto-id');
-  const id = idInput ? idInput.value : null; // ID es string (o null)
+  const id = idInput ? idInput.value : null;
   const nombre = document.getElementById('input-nombre-proyecto').value.trim();
   const descripcion = document
     .getElementById('input-desc-proyecto')
@@ -441,20 +498,17 @@ async function agregarOEditarProyecto() {
 
   try {
     if (id) {
-      // --- CORREGIDO ---
-      // Editar (Actualizar)
+      // Editar
       await actualizarDocumento('proyectos', String(id), datosProyecto);
       console.log(`[Proyectos] Proyecto ${id} actualizado en Firestore.`);
     } else {
-      // --- CORREGIDO ---
-      // Nuevo (Crear con ID auto)
+      // Nuevo
       const nuevoId = await agregarDocumento('proyectos', datosProyecto);
       console.log(
         `[Proyectos] Proyecto nuevo guardado en Firestore con ID: ${nuevoId}`,
       );
     }
     cerrarModal('modal-nuevo-proyecto');
-    // Ya NO llamamos a renderizar...()
   } catch (error) {
     console.error('[Proyectos] Error al guardar proyecto:', error);
     mostrarAlerta('Error', 'No se pudo guardar el proyecto.');
@@ -462,7 +516,7 @@ async function agregarOEditarProyecto() {
 }
 
 /**
- * Carga datos en el modal de edición (Sin cambios internos)
+ * Carga datos en el modal de edición
  */
 function iniciarEdicionProyecto(id) {
   const proyecto = id
@@ -497,41 +551,143 @@ function iniciarEdicionProyecto(id) {
 }
 
 /**
- * MODIFICADO: Elimina un proyecto de Firestore.
+ * (P3.2 Robusto y Corregido con 'await'): Elimina un proyecto
  */
 async function eliminarProyecto(id) {
   const proyecto = state.proyectos.find((p) => String(p.id) === String(id));
   if (!proyecto) return;
 
-  mostrarConfirmacion(
+  const confirmado = await mostrarConfirmacion(
     'Eliminar Proyecto',
     `¿Estás seguro de que quieres eliminar el proyecto "${proyecto.nombre}"? Las tareas, eventos y apuntes asociados NO se borrarán, solo se desvincularán.`,
-    async () => {
-      try {
-        // Fase P3.2 - TODO: Implementar batch para desvincular tareas, eventos, apuntes
-        console.warn(
-          `[Proyectos] TODO: Desvincular tareas/eventos/apuntes del proyecto ${id} (Fase P3)`,
-        );
-
-        // --- CORREGIDO ---
-        // Fase P2 - Eliminación simple del proyecto
-        await eliminarDocumento('proyectos', String(id));
-        console.log(`[Proyectos] Proyecto ${id} eliminado de Firestore.`);
-
-        if (String(state.proyectoSeleccionadoId) === String(id)) {
-          state.proyectoSeleccionadoId = null;
-          // El listener de 'proyectosActualizados' llamará a renderizarDetallesProyecto()
-        }
-      } catch (error) {
-        console.error('[Proyectos] Error al eliminar proyecto:', error);
-        mostrarAlerta('Error', 'No se pudo eliminar el proyecto.');
-      }
-    },
   );
+
+  if (!confirmado) return;
+
+  console.log(
+    `[Proyectos-P3.2] Iniciando desvinculación y eliminación de ${proyecto.nombre}...`,
+  );
+  try {
+    const batch = crearBatch();
+    const strId = String(id);
+    let contador = { tareas: 0, eventos: 0, apuntes: 0 };
+
+    // --- Tareas (Busca en 'proyectoId' y 'proyectold') ---
+    const consultaTareasId = crearConsulta('tareas', [
+      'proyectoId',
+      '==',
+      strId,
+    ]);
+    const tareasId = await ejecutarConsulta(consultaTareasId);
+    const consultaTareasLd = crearConsulta('tareas', [
+      'proyectold',
+      '==',
+      strId,
+    ]);
+    const tareasLd = await ejecutarConsulta(consultaTareasLd);
+
+    const tareasUnicas = new Map();
+    [...tareasId, ...tareasLd].forEach((t) => tareasUnicas.set(t.id, t));
+
+    tareasUnicas.forEach((t) => {
+      const tareaRef = doc(db, 'usuarios', state.currentUserId, 'tareas', t.id);
+      batch.update(tareaRef, { proyectoId: null, proyectold: null });
+      contador.tareas++;
+    });
+
+    // --- Eventos (Busca en 'proyectoId' y 'proyectold') ---
+    const consultaEventosId = crearConsulta('eventos', [
+      'proyectoId',
+      '==',
+      strId,
+    ]);
+    const eventosId = await ejecutarConsulta(consultaEventosId);
+    const consultaEventosLd = crearConsulta('eventos', [
+      'proyectold',
+      '==',
+      strId,
+    ]);
+    const eventosLd = await ejecutarConsulta(consultaEventosLd);
+
+    const eventosUnicos = new Map();
+    [...eventosId, ...eventosLd].forEach((e) => eventosUnicos.set(e.id, e));
+
+    eventosUnicos.forEach((e) => {
+      const eventoRef = doc(
+        db,
+        'usuarios',
+        state.currentUserId,
+        'eventos',
+        e.id,
+      );
+      batch.update(eventoRef, { proyectoId: null, proyectold: null });
+      contador.eventos++;
+    });
+
+    // --- Apuntes (Busca en 'proyectoId' y 'proyectold') ---
+    const consultaApuntesId = crearConsulta('apuntes', [
+      'proyectoId',
+      '==',
+      strId,
+    ]);
+    const apuntesId = await ejecutarConsulta(consultaApuntesId);
+    const consultaApuntesLd = crearConsulta('apuntes', [
+      'proyectold',
+      '==',
+      strId,
+    ]);
+    const apuntesLd = await ejecutarConsulta(consultaApuntesLd);
+
+    const apuntesUnicos = new Map();
+    [...apuntesId, ...apuntesLd].forEach((a) => apuntesUnicos.set(a.id, a));
+
+    apuntesUnicos.forEach((a) => {
+      const apunteRef = doc(
+        db,
+        'usuarios',
+        state.currentUserId,
+        'apuntes',
+        a.id,
+      );
+      batch.update(apunteRef, { proyectoId: null, proyectold: null });
+      contador.apuntes++;
+    });
+
+    // 4. Eliminar el documento del PROYECTO
+    const proyectoRef = doc(
+      db,
+      'usuarios',
+      state.currentUserId,
+      'proyectos',
+      strId,
+    );
+    batch.delete(proyectoRef);
+
+    console.log(
+      `[Proyectos-P3.2] Batch listo para eliminar 1 proyecto y desvincular ${contador.tareas} tareas, ${contador.eventos} eventos, ${contador.apuntes} apuntes.`,
+    );
+
+    // 5. Ejecutar el batch
+    await batch.commit();
+
+    console.log(
+      `[Proyectos] Proyecto ${id} eliminado y desvinculado (Consistencia aplicada).`,
+    );
+
+    if (String(state.proyectoSeleccionadoId) === String(id)) {
+      state.proyectoSeleccionadoId = null;
+    }
+  } catch (error) {
+    console.error('[Proyectos] Error al eliminar proyecto (P3.2):', error);
+    mostrarAlerta(
+      'Error',
+      'No se pudo eliminar el proyecto y desvincular sus tareas.',
+    );
+  }
 }
 
 /**
- * Carga datos en el modal Quick Add (Sin cambios internos)
+ * Carga datos en el modal Quick Add
  */
 function abrirModalQuickAdd() {
   const proyecto = state.proyectos.find(
@@ -562,14 +718,13 @@ function abrirModalQuickAdd() {
 }
 
 /**
- * MODIFICADO: Agrega una tarea desde el modal Quick Add a Firestore.
+ * Agrega una tarea desde el modal Quick Add a Firestore.
  */
 async function agregarTareaDesdeModal() {
   const nuevaTarea = {
-    // id: Date.now(), // <-- ELIMINADO
     curso: document.getElementById('quick-add-curso-tarea').value,
-    proyectoId: state.proyectoSeleccionadoId, // <-- CORREGIDO a proyectoId (deberías revisar tu state.js)
-    proyectold: state.proyectoSeleccionadoId, // <-- Mantenemos tu typo por si acaso
+    proyectoId: state.proyectoSeleccionadoId, // <-- Correcto
+    // proyectold: null, // <-- ELIMINADO (Typo)
     titulo: document.getElementById('quick-add-titulo-tarea').value.trim(),
     descripcion: document.getElementById('quick-add-desc-tarea').value.trim(),
     fecha: document.getElementById('quick-add-fecha-tarea').value,
@@ -579,14 +734,12 @@ async function agregarTareaDesdeModal() {
   };
   if (!nuevaTarea.titulo || !nuevaTarea.fecha) {
     return mostrarAlerta(
-      'Campos Requeridos',
+      'Campos Requerido',
       'El título y la fecha son obligatorios.',
     );
   }
 
   try {
-    // --- CORREGIDO ---
-    // (proyectos.js puede agregar 'tareas')
     const nuevoId = await agregarDocumento('tareas', nuevaTarea);
     console.log(
       `[Proyectos] Tarea rápida agregada a Firestore con ID: ${nuevoId}`,
@@ -599,19 +752,17 @@ async function agregarTareaDesdeModal() {
 }
 
 /**
- * MODIFICADO: Inicializa la página de Proyectos, suscribiéndose a eventos.
+ * Inicializa la página de Proyectos, suscribiéndose a eventos.
  */
 export function inicializarProyectos() {
   console.log('[Proyectos] Inicializando y suscribiendo a eventos...');
 
   // --- Listeners de Modales (se adjuntan una sola vez al inicio) ---
-  // (Estos modales están en index.html, por eso se adjuntan aquí)
   const formNuevoProyecto = document.getElementById('form-nuevo-proyecto');
   if (formNuevoProyecto && !formNuevoProyecto.dataset.listenerAttached) {
     formNuevoProyecto.addEventListener('submit', async (e) => {
-      // <-- async
-      e.preventDefault(); // <-- ¡CLAVE PARA EVITAR RECARGA!
-      await agregarOEditarProyecto(); // <-- await
+      e.preventDefault();
+      await agregarOEditarProyecto();
     });
     formNuevoProyecto.dataset.listenerAttached = 'true';
   }
@@ -619,9 +770,8 @@ export function inicializarProyectos() {
   const formQuickAdd = document.getElementById('form-quick-add-tarea');
   if (formQuickAdd && !formQuickAdd.dataset.listenerAttached) {
     formQuickAdd.addEventListener('submit', async (e) => {
-      // <-- async
-      e.preventDefault(); // <-- ¡CLAVE PARA EVITAR RECARGA!
-      await agregarTareaDesdeModal(); // <-- await
+      e.preventDefault();
+      await agregarTareaDesdeModal();
     });
     formQuickAdd.dataset.listenerAttached = 'true';
   }
@@ -637,9 +787,9 @@ export function inicializarProyectos() {
     const pageElement = document.getElementById('page-proyectos');
     if (!pageElement) return;
 
-    // Renderizado inicial (muestra lo que 'state' tenga en este momento)
+    // Renderizado inicial
     renderizarProyectos();
-    renderizarDetallesProyecto(); // Renderiza el panel vacío
+    renderizarDetallesProyecto(); // Renderiza el panel (vacío o con datos)
 
     if (state.proyectoSeleccionadoId !== null) {
       pageElement.classList.add('detalle-visible');
@@ -665,18 +815,16 @@ export function inicializarProyectos() {
     const inputBusqueda = document.getElementById('input-buscar-proyectos');
     if (inputBusqueda) {
       inputBusqueda.value = searchTermProyectos;
-      // Adjuntar listener de input (solo si no existe)
       if (inputBusqueda.dataset.listenerAttached !== 'true') {
         inputBusqueda.dataset.listenerAttached = 'true';
         inputBusqueda.addEventListener('input', (e) => {
           searchTermProyectos = e.target.value;
-          renderizarProyectos(); // Búsqueda es local, SÍ renderiza manual
+          renderizarProyectos();
         });
       }
     }
 
     // --- Listeners de UI (se conectan cada vez que se carga la página) ---
-    // (Usamos el patrón de un solo listener de clic por página)
     if (pageElement.dataset.clickHandlerAttached !== 'true') {
       pageElement.dataset.clickHandlerAttached = 'true';
 
@@ -709,13 +857,13 @@ export function inicializarProyectos() {
           }
           if (e.target.closest('.btn-eliminar-proyecto')) {
             e.stopPropagation();
-            eliminarProyecto(proyectoId); // ya es async
+            eliminarProyecto(proyectoId);
             return;
           }
           state.proyectoSeleccionadoId = proyectoId;
           pageElement.classList.add('detalle-visible');
-          renderizarProyectos(); // Re-render lista para highlight
-          renderizarDetallesProyecto(); // Carga detalles
+          renderizarProyectos();
+          renderizarDetallesProyecto();
           return;
         }
 
@@ -731,7 +879,7 @@ export function inicializarProyectos() {
             if (tareaId) {
               EventBus.emit('navegarA', {
                 pagina: 'tareas',
-                id: tareaId, // ID ya es string (o debería serlo)
+                id: tareaId,
               });
               return;
             }
@@ -756,23 +904,22 @@ export function inicializarProyectos() {
               (e) => String(e.id) === String(eventoId),
             );
             if (evento) {
-              // Asumiendo que calendario.js está migrado o desactivado
-              if (window.iniciarEdicionEvento) {
-                window.iniciarEdicionEvento(evento);
-              } else {
-                console.warn(
-                  'iniciarEdicionEvento no está disponible globalmente.',
+              try {
+                iniciarEdicionEvento(evento);
+              } catch (e) {
+                console.error(
+                  '[Proyectos] Error al llamar a iniciarEdicionEvento:',
+                  e,
                 );
-                // Mantenemos tu import original por si acaso
-                try {
-                  iniciarEdicionEvento(evento);
-                } catch (e) {
-                  /* no hacer nada si falla */
-                }
+                mostrarAlerta(
+                  'Error',
+                  'No se pudo abrir la edición del evento.',
+                );
               }
             }
             return;
           }
+
           // Clic en botón "Cerrar"
           if (e.target.closest('#btn-cerrar-detalles-proyecto')) {
             state.proyectoSeleccionadoId = null;
@@ -802,7 +949,7 @@ export function inicializarProyectos() {
             return;
           }
           if (e.target.closest('#btn-detalles-eliminar-proyecto')) {
-            eliminarProyecto(state.proyectoSeleccionadoId); // ya es async
+            eliminarProyecto(state.proyectoSeleccionadoId);
             if (menuDropdown) menuDropdown.classList.remove('visible');
             return;
           }
@@ -814,15 +961,13 @@ export function inicializarProyectos() {
           return;
         }
       }); // Fin clickHandler
-
-      pageElement.addEventListener('click', clickHandler);
     } // Fin if(dataset.clickHandlerAttached)
 
     // Listener para cerrar menú dropdown si se hace clic fuera
     if (!document.body.dataset.proyectoMenuListener) {
       document.body.dataset.proyectoMenuListener = 'true';
       document.addEventListener('click', (e) => {
-        if (state.paginaActual !== 'proyectos') return; // Solo actuar si estamos en la pág
+        if (state.paginaActual !== 'proyectos') return;
         const menu = document.getElementById('proyecto-menu-dropdown');
         const btn = document.getElementById('btn-proyecto-menu');
         if (
@@ -843,7 +988,7 @@ export function inicializarProyectos() {
     if (state.paginaActual === 'proyectos') {
       console.log('[Proyectos] Evento: proyectosActualizados. Renderizando...');
       renderizarProyectos();
-      renderizarDetallesProyecto(); // Refrescar detalles también
+      renderizarDetallesProyecto();
     }
   });
 
@@ -852,9 +997,9 @@ export function inicializarProyectos() {
       console.log(
         '[Proyectos] Evento: dependencias (tareas, etc) actualizadas. Renderizando...',
       );
-      renderizarProyectos(); // Para actualizar contadores
+      renderizarProyectos();
       if (state.proyectoSeleccionadoId) {
-        renderizarDetallesProyecto(); // Para actualizar listas en pestañas
+        renderizarDetallesProyecto();
       }
     }
   };
@@ -862,5 +1007,5 @@ export function inicializarProyectos() {
   EventBus.on('tareasActualizadas', refrescarDependencias);
   EventBus.on('eventosActualizados', refrescarDependencias);
   EventBus.on('apuntesActualizados', refrescarDependencias);
-  EventBus.on('cursosActualizados', refrescarDependencias); // Para actualizar nombre de curso
+  EventBus.on('cursosActualizados', refrescarDependencias);
 } // Fin de inicializarProyectos

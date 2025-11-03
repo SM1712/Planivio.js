@@ -1,18 +1,24 @@
+// ==========================================================================
+// ==
+// ==                          src/pages/cursos.js
+// ==
+// ==    (MODIFICADO - CORREGIDO BUG DE CONSISTENCIA EN 'renombrarCurso'
+// ==     QUE OLVIDÓ ACTUALIZAR LOS PROYECTOS)
+// ==
+// ==========================================================================
+
 import { state } from '../state.js';
-import { EventBus } from '../eventBus.js'; // <-- P1.1
-// --- INICIO CORRECCIÓN IMPORTACIONES ---
-// Importamos las funciones de SERVICIO de firebase.js, no las internas
+import { EventBus } from '../eventBus.js';
 import {
-  db, // Necesario para P3.2
-  doc, // Necesario para P3.2
+  db,
+  doc,
   agregarDocumento,
   actualizarDocumento,
   eliminarDocumento,
-  crearConsulta, // Necesario para P3.2
-  ejecutarConsulta, // Necesario para P3.2
-  crearBatch, // Necesario para P3.2
+  crearConsulta,
+  ejecutarConsulta,
+  crearBatch,
 } from '../firebase.js';
-// --- FIN CORRECCIÓN IMPORTACIONES ---
 import {
   mostrarConfirmacion,
   mostrarModal,
@@ -21,7 +27,6 @@ import {
 } from '../ui.js';
 import { generarEventosRecurrentes } from './calendario.js';
 import { ICONS } from '../icons.js';
-// import { cambiarPagina } from '../main.js'; // <-- ELIMINADO: Usamos EventBus
 
 // ===== Variables locales para búsqueda y filtro =====
 let searchTerm = '';
@@ -60,7 +65,6 @@ function getEstadoTarea(tarea) {
 }
 
 /**
- * MODIFICADO: Exportado para ser llamado globalmente
  * Renderiza las tarjetas de curso basándose en el 'state' actual.
  */
 export function renderizarCursos() {
@@ -103,7 +107,6 @@ export function renderizarCursos() {
   });
 
   cursosFiltrados.forEach((curso) => {
-    // Cálculo de estadísticas (Ahora lee state.tareas y state.proyectos actualizados por listeners)
     const tareasDelCurso = state.tareas.filter((t) => t.curso === curso.nombre);
     const tareasCompletadas = tareasDelCurso.filter((t) => t.completada).length;
     const totalTareas = tareasDelCurso.length;
@@ -134,7 +137,7 @@ export function renderizarCursos() {
 
     const card = document.createElement('div');
     card.className = 'curso-card';
-    card.dataset.cursoId = curso.id; // ID de Firestore
+    card.dataset.cursoId = curso.id;
     if (curso.isArchivado) card.classList.add('archivado');
 
     let actionButtons = '';
@@ -166,7 +169,7 @@ export function renderizarCursos() {
 }
 
 /**
- * Helper para actualizar la apariencia del botón emoji (Sin cambios)
+ * Helper para actualizar la apariencia del botón emoji
  */
 function actualizarBotonEmoji(buttonEl, emoji) {
   if (!buttonEl) return;
@@ -180,7 +183,7 @@ function actualizarBotonEmoji(buttonEl, emoji) {
 }
 
 /**
- * MODIFICADO: Guarda un nuevo curso en Firestore.
+ * Guarda un nuevo curso en Firestore.
  */
 async function agregarCurso(nombre, emoji) {
   if (!state.currentUserId) {
@@ -190,7 +193,7 @@ async function agregarCurso(nombre, emoji) {
   }
   if (
     !nombre ||
-    state.cursos // Validación usa state (actualizado por listener)
+    state.cursos
       .map((c) => c.nombre.toLowerCase())
       .includes(nombre.toLowerCase())
   ) {
@@ -202,17 +205,14 @@ async function agregarCurso(nombre, emoji) {
     document.getElementById('input-emoji-curso-hidden')?.value || null;
 
   const nuevoCurso = {
-    // El ID ahora lo genera Firestore
     nombre: nombre,
     emoji: emojiSeleccionado,
     isArchivado: false,
   };
 
   try {
-    // Usamos agregarDocumento para que Firestore genere el ID
     const nuevoId = await agregarDocumento('cursos', nuevoCurso);
     console.log('[Cursos] Nuevo curso guardado en Firestore con ID:', nuevoId);
-    // Ya NO llamamos a renderizarCursos()
   } catch (error) {
     console.error('[Cursos] Error al agregar curso a Firestore:', error);
     mostrarAlerta('Error', 'No se pudo guardar el nuevo curso.');
@@ -220,7 +220,7 @@ async function agregarCurso(nombre, emoji) {
 }
 
 /**
- * Carga datos en el modal de renombrar (Sin cambios)
+ * Carga datos en el modal de renombrar
  */
 function iniciarRenombrarCurso(cursoId) {
   const curso = state.cursos.find((c) => String(c.id) === String(cursoId));
@@ -243,7 +243,7 @@ function iniciarRenombrarCurso(cursoId) {
 }
 
 /**
- * MODIFICADO: Renombra un curso y actualiza su emoji en Firestore.
+ * (P3.2): Renombra un curso y aplica consistencia.
  */
 async function renombrarCurso(cursoId, nuevoNombre) {
   if (!state.currentUserId) return mostrarAlerta('Error', 'No autenticado.');
@@ -267,21 +267,108 @@ async function renombrarCurso(cursoId, nuevoNombre) {
     document.getElementById('input-renombrar-emoji-curso-hidden')?.value ||
     null;
 
-  try {
-    // Lógica de Fase P3.2 (Consistencia)
-    // TODO: Implementar query y writeBatch para actualizar tareas, apuntes, etc.
-    console.warn(
-      `[Cursos] TODO: Implementar actualización de consistencia al renombrar ${nombreOriginal}.`,
-    );
+  const necesitaConsistencia =
+    nuevoNombre.toLowerCase() !== nombreOriginal.toLowerCase();
 
-    // Actualización simple del curso (Fase P2)
-    await actualizarDocumento('cursos', String(cursoId), {
+  try {
+    const batch = crearBatch();
+    const cursoRef = doc(
+      db,
+      'usuarios',
+      state.currentUserId,
+      'cursos',
+      String(cursoId),
+    );
+    batch.update(cursoRef, {
       nombre: nuevoNombre,
       emoji: emojiSeleccionado,
     });
 
+    if (necesitaConsistencia) {
+      console.log(
+        `[Cursos-P3.2] Aplicando consistencia para renombrar: ${nombreOriginal} -> ${nuevoNombre}`,
+      );
+      const consultaTareas = crearConsulta('tareas', [
+        'curso',
+        '==',
+        nombreOriginal,
+      ]);
+      const tareas = await ejecutarConsulta(consultaTareas);
+      tareas.forEach((t) => {
+        const tareaRef = doc(
+          db,
+          'usuarios',
+          state.currentUserId,
+          'tareas',
+          t.id,
+        );
+        batch.update(tareaRef, { curso: nuevoNombre });
+      });
+
+      const consultaApuntes = crearConsulta('apuntes', [
+        'curso',
+        '==',
+        nombreOriginal,
+      ]);
+      const apuntes = await ejecutarConsulta(consultaApuntes);
+      apuntes.forEach((a) => {
+        const apunteRef = doc(
+          db,
+          'usuarios',
+          state.currentUserId,
+          'apuntes',
+          a.id,
+        );
+        batch.update(apunteRef, { curso: nuevoNombre });
+      });
+
+      const consultaEventos = crearConsulta('eventos', [
+        'curso',
+        '==',
+        nombreOriginal,
+      ]);
+      const eventos = await ejecutarConsulta(consultaEventos);
+      eventos.forEach((e) => {
+        const eventoRef = doc(
+          db,
+          'usuarios',
+          state.currentUserId,
+          'eventos',
+          e.id,
+        );
+        batch.update(eventoRef, { curso: nuevoNombre });
+      });
+
+      // ==========================================================
+      // ==           INICIO CORRECCIÓN PROYECTOS              ==
+      // ==========================================================
+      const consultaProyectos = crearConsulta('proyectos', [
+        'curso',
+        '==',
+        nombreOriginal,
+      ]);
+      const proyectos = await ejecutarConsulta(consultaProyectos);
+      proyectos.forEach((p) => {
+        const proyectoRef = doc(
+          db,
+          'usuarios',
+          state.currentUserId,
+          'proyectos',
+          p.id,
+        );
+        batch.update(proyectoRef, { curso: nuevoNombre });
+      });
+      // ==========================================================
+      // ==             FIN CORRECCIÓN PROYECTOS               ==
+      // ==========================================================
+
+      console.log(
+        `[Cursos-P3.2] Batch listo para actualizar: ${tareas.length} tareas, ${apuntes.length} apuntes, ${eventos.length} eventos y ${proyectos.length} proyectos.`,
+      );
+    }
+    await batch.commit();
     console.log(
-      `[Cursos] Curso ${nombreOriginal} renombrado a ${nuevoNombre} en Firestore.`,
+      `[Cursos] Curso ${nombreOriginal} renombrado a ${nuevoNombre} en Firestore (Consistencia aplicada).`,
     );
   } catch (error) {
     console.error('[Cursos] Error al renombrar curso en Firestore:', error);
@@ -290,7 +377,7 @@ async function renombrarCurso(cursoId, nuevoNombre) {
 }
 
 /**
- * MODIFICADO: Marca un curso como archivado en Firestore.
+ * Archiva un curso
  */
 async function archivarCurso(cursoId) {
   if (!state.currentUserId) return mostrarAlerta('Error', 'No autenticado.');
@@ -298,29 +385,30 @@ async function archivarCurso(cursoId) {
   const curso = state.cursos.find((c) => String(c.id) === String(cursoId));
   if (!curso || curso.nombre === 'General') return;
 
-  mostrarConfirmacion(
+  const confirmado = await mostrarConfirmacion(
     'Archivar Curso',
     `¿Archivar "${curso.nombre}"? El curso se ocultará, pero sus tareas y apuntes no se borrarán. Podrás verlo activando "Mostrar archivados".`,
-    async () => {
-      try {
-        await actualizarDocumento('cursos', String(cursoId), {
-          isArchivado: true,
-        });
-        console.log(`[Cursos] Curso ${curso.nombre} archivado en Firestore.`);
-
-        if (String(state.cursoSeleccionadoId) === String(cursoId)) {
-          cerrarPanelDetalles();
-        }
-      } catch (error) {
-        console.error('[Cursos] Error al archivar curso:', error);
-        mostrarAlerta('Error', 'No se pudo archivar el curso.');
-      }
-    },
   );
+
+  if (!confirmado) return;
+
+  try {
+    await actualizarDocumento('cursos', String(cursoId), {
+      isArchivado: true,
+    });
+    console.log(`[Cursos] Curso ${curso.nombre} archivado en Firestore.`);
+
+    if (String(state.cursoSeleccionadoId) === String(cursoId)) {
+      cerrarPanelDetalles();
+    }
+  } catch (error) {
+    console.error('[Cursos] Error al archivar curso:', error);
+    mostrarAlerta('Error', 'No se pudo archivar el curso.');
+  }
 }
 
 /**
- * MODIFICADO: Marca un curso como no archivado en Firestore.
+ * Marca un curso como no archivado en Firestore.
  */
 async function desarchivarCurso(cursoId) {
   if (!state.currentUserId) return mostrarAlerta('Error', 'No autenticado.');
@@ -340,7 +428,7 @@ async function desarchivarCurso(cursoId) {
 }
 
 /**
- * MODIFICADO: Elimina un curso de Firestore.
+ * (P3.2): Elimina un curso y aplica consistencia (BORRADO).
  */
 async function eliminarCurso(cursoId) {
   if (!state.currentUserId) return mostrarAlerta('Error', 'No autenticado.');
@@ -349,39 +437,116 @@ async function eliminarCurso(cursoId) {
   if (!curso || curso.nombre === 'General') return;
   const nombreCurso = curso.nombre;
 
-  mostrarConfirmacion(
+  const confirmado = await mostrarConfirmacion(
     'Eliminar Curso Permanentemente',
     `¡ACCIÓN PERMANENTE! ¿Eliminar "${curso.nombre}"? Se borrarán el curso, todas sus tareas y todos sus apuntes asociados. Esta acción NO se puede deshacer.`,
-    async () => {
-      console.log(
-        `[Cursos] Iniciando eliminación permanente de ${nombreCurso}...`,
-      );
-      try {
-        // Lógica de Fase P3.2 (Consistencia)
-        // TODO: Implementar query y writeBatch para eliminar tareas, apuntes, etc.
-        console.warn(
-          `[Cursos] TODO: Implementar eliminación de consistencia al eliminar ${nombreCurso}.`,
-        );
-
-        // Eliminación simple del curso (Fase P2)
-        await eliminarDocumento('cursos', String(cursoId));
-
-        console.log(
-          `[Cursos] Eliminación de ${nombreCurso} completada en Firestore.`,
-        );
-
-        if (String(state.cursoSeleccionadoId) === String(cursoId)) {
-          cerrarPanelDetalles();
-        }
-      } catch (error) {
-        console.error('[Cursos] Error al eliminar curso en Firestore:', error);
-        mostrarAlerta('Error', 'No se pudo eliminar el curso.');
-      }
-    },
   );
+
+  if (!confirmado) return;
+
+  console.log(
+    `[Cursos-P3.2] Iniciando eliminación permanente de ${nombreCurso}...`,
+  );
+  try {
+    const batch = crearBatch();
+
+    // 1. Buscar y eliminar TAREAS relacionadas
+    const consultaTareas = crearConsulta('tareas', [
+      'curso',
+      '==',
+      nombreCurso,
+    ]);
+    const tareas = await ejecutarConsulta(consultaTareas);
+    tareas.forEach((t) => {
+      const tareaRef = doc(db, 'usuarios', state.currentUserId, 'tareas', t.id);
+      batch.delete(tareaRef);
+    });
+
+    // 2. Buscar y eliminar APUNTES relacionados
+    const consultaApuntes = crearConsulta('apuntes', [
+      'curso',
+      '==',
+      nombreCurso,
+    ]);
+    const apuntes = await ejecutarConsulta(consultaApuntes);
+    apuntes.forEach((a) => {
+      const apunteRef = doc(
+        db,
+        'usuarios',
+        state.currentUserId,
+        'apuntes',
+        a.id,
+      );
+      batch.delete(apunteRef);
+    });
+
+    // 3. Buscar y eliminar EVENTOS relacionados
+    const consultaEventos = crearConsulta('eventos', [
+      'curso',
+      '==',
+      nombreCurso,
+    ]);
+    const eventos = await ejecutarConsulta(consultaEventos);
+    eventos.forEach((e) => {
+      const eventoRef = doc(
+        db,
+        'usuarios',
+        state.currentUserId,
+        'eventos',
+        e.id,
+      );
+      batch.delete(eventoRef);
+    });
+
+    // 4. Buscar y *DESVINCULAR* PROYECTOS (no borrarlos)
+    const consultaProyectos = crearConsulta('proyectos', [
+      'curso',
+      '==',
+      nombreCurso,
+    ]);
+    const proyectos = await ejecutarConsulta(consultaProyectos);
+    proyectos.forEach((p) => {
+      const proyectoRef = doc(
+        db,
+        'usuarios',
+        state.currentUserId,
+        'proyectos',
+        p.id,
+      );
+      batch.update(proyectoRef, { curso: null }); // Desvincular, no borrar
+    });
+
+    // 5. Eliminar el documento del CURSO
+    const cursoRef = doc(
+      db,
+      'usuarios',
+      state.currentUserId,
+      'cursos',
+      String(cursoId),
+    );
+    batch.delete(cursoRef);
+
+    console.log(
+      `[Cursos-P3.2] Batch listo para eliminar: 1 curso, ${tareas.length} tareas, ${apuntes.length} apuntes, ${eventos.length} eventos y desvincular ${proyectos.length} proyectos.`,
+    );
+
+    // 6. Ejecutar el batch
+    await batch.commit();
+
+    console.log(
+      `[Cursos] Eliminación de ${nombreCurso} completada en Firestore (Consistencia aplicada).`,
+    );
+
+    if (String(state.cursoSeleccionadoId) === String(cursoId)) {
+      cerrarPanelDetalles();
+    }
+  } catch (error) {
+    console.error('[Cursos] Error al eliminar curso en Firestore:', error);
+    mostrarAlerta('Error', 'No se pudo eliminar el curso.');
+  }
 }
 
-// ... (Lógica del Emoji Picker: showEmojiPicker, hideEmojiPicker, handleClickOutsidePicker sin cambios) ...
+// ... (Lógica del Emoji Picker: sin cambios) ...
 function showEmojiPicker(buttonElement, inputHiddenElement) {
   if (!emojiPicker) {
     emojiPicker = document.querySelector('emoji-picker');
@@ -430,10 +595,7 @@ function handleClickOutsidePicker(event) {
   }
 }
 
-// ... (Funciones de renderizado del panel de detalles: abrirPanelDetalles, cerrarPanelDetalles,
-//     renderizarPanelDetalles, renderizarTabGeneral, renderizarTabApuntes,
-//     renderizarItemTarea, renderizarItemEvento - SIN CAMBIOS INTERNOS,
-//     seguirán leyendo el 'state' global que ahora es actualizado por los listeners) ...
+// ... (Funciones de renderizado del panel de detalles: sin cambios) ...
 function abrirPanelDetalles(cursoId) {
   if (!cursoId) return;
   const curso = state.cursos.find((c) => String(c.id) === String(cursoId));
@@ -504,7 +666,6 @@ function renderizarPanelDetalles() {
         <button id="btn-agregar-rapido-curso" class="btn-accent btn-icon">${ICONS.add || '+'}</button>
       </div>
     `;
-  // Retrasar renderizado de tabs para asegurar que el DOM esté listo
   setTimeout(() => {
     renderizarTabGeneral(curso);
     renderizarTabApuntes(curso);
@@ -566,7 +727,7 @@ function renderizarTabGeneral(curso) {
     html +=
       '<h5 class="detalle-lista-titulo">Eventos Próximos</h5><ul class="detalle-lista">';
     eventosDelCurso
-      .sort((a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio))
+      .sort((a, b) => new Date(a.fechaInicio) - new Date(a.fechaInicio))
       .forEach((e) => (html += renderizarItemEvento(e)));
     html += '</ul>';
   }
@@ -620,7 +781,11 @@ function renderizarTabApuntes(curso) {
 }
 function renderizarItemTarea(tarea) {
   const proyecto = tarea.proyectoId
-    ? state.proyectos.find((p) => String(p.id) === String(tarea.proyectoId))
+    ? state.proyectos.find(
+        (p) =>
+          String(p.id) === String(tarea.proyectoId) ||
+          String(p.id) === String(tarea.proyectold),
+      ) // Robustez por typo
     : null;
   const estado = getEstadoTarea(tarea);
   return `
@@ -637,7 +802,11 @@ function renderizarItemTarea(tarea) {
 }
 function renderizarItemEvento(evento) {
   const proyecto = evento.proyectoId
-    ? state.proyectos.find((p) => String(p.id) === String(evento.proyectoId))
+    ? state.proyectos.find(
+        (p) =>
+          String(p.id) === String(evento.proyectoId) ||
+          String(p.id) === String(evento.proyectold),
+      ) // Robustez por typo
     : null;
   const fechaStr =
     evento.fechaInicio === evento.fechaFin
@@ -657,26 +826,21 @@ function renderizarItemEvento(evento) {
 }
 
 /**
- * MODIFICADO: Navega a la página correspondiente emitiendo un evento.
+ * Navega a la página correspondiente emitiendo un evento.
  */
 function navegarAItem(tipo, id) {
   if (tipo === 'tarea') {
-    // state.tareaSeleccionadald = id; // main.js se encargará de esto
     EventBus.emit('navegarA', { pagina: 'tareas', id: id });
   } else if (tipo === 'apunte') {
-    // state.apunteSeleccionadoId = id; // main.js se encargará de esto
     EventBus.emit('navegarA', { pagina: 'apuntes', id: id });
   }
 }
 
 /**
- * MODIFICADO: Inicializa la página de Cursos, suscribiéndose a eventos.
+ * Inicializa la página de Cursos, suscribiéndose a eventos.
  */
 export function inicializarCursos() {
   console.log('[Cursos] Inicializando y suscribiendo a eventos...');
-
-  // --- SUSCRIPCIÓN A EVENTOS ---
-  // Estos listeners se configuran UNA VEZ y viven mientras la app esté abierta.
 
   // 1. Escuchar cuándo el HTML de esta página se carga en el DOM
   EventBus.on('paginaCargada:cursos', () => {
@@ -684,11 +848,9 @@ export function inicializarCursos() {
       '[Cursos] Evento: paginaCargada:cursos recibido. Conectando listeners de UI...',
     );
 
-    // Renderizado inicial (muestra lo que 'state' tenga en este momento)
     renderizarCursos();
     cerrarPanelDetalles();
 
-    // Sincronizar UI de búsqueda/filtro (esto es estado local)
     const inputBuscar = document.getElementById('input-buscar-cursos');
     const toggleArchivados = document.getElementById(
       'toggle-mostrar-archivados',
@@ -696,7 +858,6 @@ export function inicializarCursos() {
     if (inputBuscar) inputBuscar.value = searchTerm;
     if (toggleArchivados) {
       toggleArchivados.checked = mostrarArchivados;
-      // Añadir icono si falta
       if (!toggleArchivados.nextElementSibling?.querySelector('svg')) {
         const label = toggleArchivados.nextElementSibling;
         if (label) {
@@ -708,11 +869,8 @@ export function inicializarCursos() {
       }
     }
 
-    // Configuración de Listeners Principales (Click, Input, Change)
-    // Se adjuntan CADA VEZ que se carga la página para asegurar que se conecten al nuevo HTML
     const pageCursos = document.getElementById('page-cursos');
     if (pageCursos) {
-      // (Limpieza de listeners previos por si acaso, aunque cambiarPagina destruye el HTML)
       const oldListener = pageCursos._clickHandler;
       if (oldListener) pageCursos.removeEventListener('click', oldListener);
       const oldInputListener = pageCursos._inputHandler;
@@ -796,7 +954,6 @@ export function inicializarCursos() {
           }
           if (e.target.closest('#btn-nuevo-apunte-curso')) {
             if (state.cursoSeleccionadoId) {
-              // Emitir evento para navegar Y pasar el ID del curso
               EventBus.emit('navegarA', {
                 pagina: 'apuntes',
                 id: null,
@@ -809,14 +966,14 @@ export function inicializarCursos() {
             '.detalle-item.item-tarea[data-tarea-id]',
           );
           if (itemTarea) {
-            navegarAItem('tarea', itemTarea.dataset.tareaId); // ID ya es string
+            navegarAItem('tarea', itemTarea.dataset.tareaId);
             return;
           }
           const itemApunte = e.target.closest(
             '.detalle-item.item-apunte[data-apunte-id]',
           );
           if (itemApunte) {
-            navegarAItem('apunte', itemApunte.dataset.apunteId); // ID ya es string
+            navegarAItem('apunte', itemApunte.dataset.apunteId);
             return;
           }
           return;
@@ -827,7 +984,7 @@ export function inicializarCursos() {
           const cursoId = card.dataset.cursoId;
           const btnArchivar = e.target.closest('.btn-archivar-curso');
           if (btnArchivar) {
-            archivarCurso(cursoId);
+            archivarCurso(cursoId); // CORREGIDO con await
             return;
           }
           const btnDesarchivar = e.target.closest('.btn-desarchivar-curso');
@@ -842,7 +999,7 @@ export function inicializarCursos() {
           }
           const btnEliminar = e.target.closest('.btn-eliminar-curso');
           if (btnEliminar) {
-            eliminarCurso(cursoId);
+            eliminarCurso(cursoId); // CORREGIDO con await
             return;
           }
           abrirPanelDetalles(cursoId);
@@ -873,14 +1030,13 @@ export function inicializarCursos() {
     }
 
     // --- Listeners para Modales (se adjuntan una sola vez) ---
-    // (Asegurarse de que el HTML del modal esté siempre en index.html)
     const formNuevoCurso = document.getElementById('form-nuevo-curso');
     if (formNuevoCurso && !formNuevoCurso.dataset.listenerAttached) {
       formNuevoCurso.addEventListener('submit', async (e) => {
         e.preventDefault();
         const inputNombre = document.getElementById('input-nombre-curso');
         if (inputNombre) {
-          await agregarCurso(inputNombre.value.trim()); // Llama a la nueva función async
+          await agregarCurso(inputNombre.value.trim());
         }
         cerrarModal('modal-nuevo-curso');
       });
@@ -903,12 +1059,12 @@ export function inicializarCursos() {
         e.preventDefault();
         const cursoId = document.getElementById(
           'input-renombrar-curso-id',
-        ).value; // ID es string
+        ).value;
         const nuevoNombre = document
           .getElementById('input-renombrar-curso-nombre')
           .value.trim();
         if (cursoId) {
-          await renombrarCurso(cursoId, nuevoNombre); // Llama a la nueva función async
+          await renombrarCurso(cursoId, nuevoNombre);
         }
         cerrarModal('modal-renombrar-curso');
       });
@@ -930,15 +1086,12 @@ export function inicializarCursos() {
 
   // 2. Escuchar cuándo cambian los datos de cursos
   EventBus.on('cursosActualizados', () => {
-    // Si la página de cursos está visible, re-renderiza
     if (state.paginaActual === 'cursos') {
       console.log(
         '[Cursos] Evento: cursosActualizados recibido. Renderizando...',
       );
       renderizarCursos();
-      // También refrescar el panel de detalles si está abierto
       if (state.cursoSeleccionadoId) {
-        // Asegurarse que el curso no fue eliminado
         if (
           !state.cursos.find(
             (c) => String(c.id) === String(state.cursoSeleccionadoId),
@@ -946,6 +1099,13 @@ export function inicializarCursos() {
         ) {
           cerrarPanelDetalles();
         } else {
+          const curso = state.cursos.find(
+            (c) => String(c.id) === String(state.cursoSeleccionadoId),
+          );
+          const tituloEl = document.getElementById('curso-detalle-titulo');
+          if (tituloEl && curso) {
+            tituloEl.innerHTML = `${curso.emoji ? `<span class="curso-emoji">${curso.emoji}</span> ` : ''}${curso.nombre}`;
+          }
           renderizarPanelDetalles();
         }
       }
@@ -982,6 +1142,4 @@ export function inicializarCursos() {
   });
 } // Fin de inicializarCursos
 
-// --- Publicamos renderizarCursos para que state.js pueda llamarla ---
-// (Esto es un fallback, pero la nueva arquitectura usa EventBus)
 window.renderizarCursosGlobal = renderizarCursos;

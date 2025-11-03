@@ -439,7 +439,7 @@ async function handleNewUserOnboarding() {
 
   // 2. Ofrecer el tour
   const quiereTour = await mostrarConfirmacion(
-    `¡Un placer, ${nombre}! 🤩`,
+    `¡Un placer, ${nombre}, SOY PULSITO! 🤩`,
     '¡Estoy súper emocionado de que estés aquí! Mi trabajo es ayudarte a organizarlo TO-DO. ¿Te gustaría un tour súper rápido para mostrarte cómo funciona Planivio?',
     '¡Sí, vamos! 🚀',
     'No, gracias. Prefiero explorar.',
