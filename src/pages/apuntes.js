@@ -1,5 +1,25 @@
+// ==========================================================================
+// ==                      src/pages/apuntes.js                          ==
+// ==========================================================================
+//
+// Módulo de Apuntes, migrado a la arquitectura "Pulso".
+// (Versión 3 - Corregido "race condition" de autoguardado y error de selección)
+//
+// ==========================================================================
+
 import { state } from '../state.js';
-import { guardarDatos } from '../utils.js';
+// import { guardarDatos } from '../utils.js'; // <-- ELIMINADO
+import { EventBus } from '../eventBus.js'; // <-- AÑADIDO
+// --- INICIO NUEVAS IMPORTACIONES FIREBASE ---
+import {
+  db,
+  doc,
+  agregarDocumento,
+  actualizarDocumento,
+  eliminarDocumento,
+  crearBatch,
+} from '../firebase.js';
+// --- FIN NUEVAS IMPORTACIONES FIREBASE ---
 import {
   mostrarConfirmacion,
   cerrarModal,
@@ -370,7 +390,9 @@ function renderizarListaApuntes() {
       });
       const curso = apunte.curso || 'General';
       const proyecto = apunte.proyectoId
-        ? state.proyectos.find((p) => p.id === apunte.proyectoId)?.nombre
+        ? state.proyectos.find(
+            (p) => String(p.id) === String(apunte.proyectoId),
+          )?.nombre // Comparamos string
         : null;
 
       let tagsHtml = '';
@@ -389,8 +411,11 @@ function renderizarListaApuntes() {
       const li = document.createElement('li');
       li.className = 'apunte-item';
       li.dataset.id = apunte.id;
-      const isSelected = state.apuntesSeleccionadosIds.includes(apunte.id);
-      if (apunte.id === apunteActivoId) li.classList.add('active');
+      const isSelected = state.apuntesSeleccionadosIds.some(
+        (id) => String(id) === String(apunte.id),
+      ); // Comparamos string
+      if (String(apunte.id) === String(apunteActivoId))
+        li.classList.add('active');
       if (apunte.fijado) li.classList.add('fijado');
       if (isSelected) li.classList.add('seleccionado');
       if (apunte.isFavorito) li.classList.add('favorito');
@@ -432,7 +457,9 @@ function renderizarListaApuntes() {
 
 // ===== INICIO DE CAMBIOS (renderizarEditor) =====
 function renderizarEditor() {
-  const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
+  const apunte = state.apuntes.find(
+    (a) => String(a.id) === String(apunteActivoId),
+  );
   const inputTituloEl = document.getElementById('input-titulo-apunte');
   const selectCursoEl = document.getElementById('select-curso-apunte');
   // Se elimina btnEliminarApunteEl del footer
@@ -464,7 +491,7 @@ function renderizarEditor() {
       }
 
       selectCursoEl.value = apunte.curso || 'General';
-      // --- VISIBILIDAD BOTÓN ELIMINAR ---
+      // --- VISIBILILIDAD BOTÓN ELIMINAR ---
       btnEliminarEditorEl.style.display = 'inline-flex'; // Mostrar como icono flex
       // ---------------------------------
 
@@ -531,106 +558,112 @@ function renderizarPaginaApuntes() {
   renderizarListaApuntes();
   renderizarBarraAcciones();
 }
+
+/**
+ * MODIFICADO: Esta función ahora solo dispara el autoguardado (debounced).
+ */
 function handleInput() {
-  if (apunteActivoId === null) {
-    const titulo = document.getElementById('input-titulo-apunte')?.value.trim();
-    const contenido = tinymce.get('editor-tinymce')?.getContent().trim() || '';
-
-    if (titulo === '' && contenido === '') return;
-    crearNuevoApunte();
-  }
-  handleAutoSave();
-}
-function crearNuevoApunte() {
-  const tagsInput = document.getElementById('input-tags-apunte');
-  const tagsArray = tagsInput
-    ? tagsInput.value
-        .split(',')
-        .map((tag) => tag.trim())
-        .filter((tag) => tag !== '')
-        .filter((tag, index, self) => self.indexOf(tag) === index)
-    : [];
-
-  const nuevoApunte = {
-    id: Date.now(),
-    titulo: document.getElementById('input-titulo-apunte').value.trim(),
-    contenido: tinymce.get('editor-tinymce')?.getContent() || '',
-    curso: document.getElementById('select-curso-apunte').value,
-    fechaCreacion: new Date().toISOString(),
-    fechaModificacion: new Date().toISOString(),
-    fijado: false,
-    isFavorito:
-      document
-        .getElementById('btn-editor-favorito')
-        ?.classList.contains('active') || false,
-    proyectoId:
-      parseInt(document.getElementById('select-proyecto-apunte').value) || null,
-    tags: tagsArray,
-  };
-  state.apuntes.unshift(nuevoApunte);
-  apunteActivoId = nuevoApunte.id;
-  renderizarPaginaApuntes();
-
-  // --- MOSTRAR BOTÓN ELIMINAR DEL EDITOR ---
-  const btnEliminarEditorEl = document.getElementById('btn-editor-eliminar');
-  if (btnEliminarEditorEl) {
-    btnEliminarEditorEl.style.display = 'inline-flex';
-  }
-  // ---------------------------------------
-}
-function handleAutoSave() {
+  autoGrowTitulo();
   clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => {
-    const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
-    if (apunte) {
-      const tituloAnterior = apunte.titulo;
-      const cursoAnterior = apunte.curso;
-      const proyectoAnterior = apunte.proyectoId;
-      const tagsAnteriores = JSON.stringify(apunte.tags);
-
-      apunte.titulo = document
-        .getElementById('input-titulo-apunte')
-        .value.trim();
-      apunte.contenido = tinymce.get('editor-tinymce')?.getContent() || '';
-      apunte.curso = document.getElementById('select-curso-apunte').value;
-      apunte.proyectoId =
-        parseInt(document.getElementById('select-proyecto-apunte').value) ||
-        null;
-
-      const tagsInput = document.getElementById('input-tags-apunte');
-      const tagsArray = tagsInput
-        ? tagsInput.value
-            .split(',')
-            .map((tag) => tag.trim())
-            .filter((tag) => tag !== '')
-            .filter((tag, index, self) => self.indexOf(tag) === index)
-        : [];
-      apunte.tags = tagsArray;
-
-      apunte.fechaModificacion = new Date().toISOString();
-
-      guardarDatos();
-
-      if (
-        apunte.titulo !== tituloAnterior ||
-        apunte.curso !== cursoAnterior ||
-        apunte.proyectoId !== proyectoAnterior ||
-        JSON.stringify(apunte.tags) !== tagsAnteriores
-      ) {
-        if (apunte.curso !== cursoAnterior) {
-          popularFiltroDeCursosApuntes();
-        }
-        renderizarListaApuntes();
-      }
-    }
-  }, 500);
+  saveTimeout = setTimeout(handleAutoSave, 500); // Llama a la función "inteligente"
 }
+
+/**
+ * MODIFICADO: Esta función ahora es "inteligente".
+ * Decide si crear un nuevo apunte o actualizar uno existente.
+ */
+async function handleAutoSave() {
+  const titulo = document.getElementById('input-titulo-apunte')?.value.trim();
+  const contenido = tinymce.get('editor-tinymce')?.getContent() || '';
+
+  // Si no hay ID, y no hay texto, no hacer nada.
+  if (apunteActivoId === null && titulo === '' && contenido === '') {
+    return;
+  }
+
+  // Preparar los datos que se van a guardar
+  const datosApunte = {
+    titulo: titulo,
+    contenido: contenido,
+    curso: document.getElementById('select-curso-apunte').value,
+    proyectoId: document.getElementById('select-proyecto-apunte').value || null,
+    fechaModificacion: new Date().toISOString(),
+    tags: (document.getElementById('input-tags-apunte')?.value || '')
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter((tag) => tag !== '')
+      .filter((tag, index, self) => self.indexOf(tag) === index),
+  };
+
+  if (apunteActivoId === null) {
+    // --- MODO CREAR ---
+    const datosCreacion = {
+      ...datosApunte,
+      fechaCreacion: new Date().toISOString(),
+      fijado: false,
+      isFavorito:
+        document
+          .getElementById('btn-editor-favorito')
+          ?.classList.contains('active') || false,
+    };
+    try {
+      const nuevoId = await agregarDocumento('apuntes', datosCreacion);
+      apunteActivoId = nuevoId; // ¡CLAVE! Se setea el ID
+      // Mostrar el botón de eliminar ahora que el apunte existe
+      const btnEliminarEditorEl = document.getElementById(
+        'btn-editor-eliminar',
+      );
+      if (btnEliminarEditorEl) {
+        btnEliminarEditorEl.style.display = 'inline-flex';
+      }
+
+      // --- INICIO CORRECCIÓN BUG 1 ---
+      // Forzar renderizado del editor AHORA que tenemos el ID.
+      // Esto evita que el listener de 'apuntesActualizados' lo reinicie.
+      renderizarEditor();
+      // --- FIN CORRECCIÓN BUG 1 ---
+    } catch (error) {
+      console.error('[Apuntes] Error al crear nuevo apunte:', error);
+      mostrarAlerta('Error', 'No se pudo crear el apunte.');
+    }
+  } else {
+    // --- MODO ACTUALIZAR ---
+    try {
+      await actualizarDocumento('apuntes', String(apunteActivoId), datosApunte);
+
+      // Optimización: Forzar render local solo si cambia algo en la lista
+      const apunteLocal = state.apuntes.find(
+        (a) => String(a.id) === String(apunteActivoId),
+      );
+      if (
+        apunteLocal &&
+        (apunteLocal.titulo !== datosApunte.titulo ||
+          apunteLocal.curso !== datosApunte.curso ||
+          apunteLocal.proyectoId !== datosApunte.proyectoId ||
+          JSON.stringify(apunteLocal.tags) !== JSON.stringify(datosApunte.tags))
+      ) {
+        // Actualizar el estado local inmediatamente para el renderizado
+        Object.assign(apunteLocal, datosApunte);
+        renderizarListaApuntes(); // Render local para feedback inmediato
+      }
+    } catch (error) {
+      console.error(
+        `[Apuntes] Error al actualizar apunte ${apunteActivoId}:`,
+        error,
+      );
+      mostrarAlerta('Error', 'No se pudo guardar el apunte.');
+    }
+  }
+}
+
+// --- crearNuevoApunte() fue fusionada con handleAutoSave ---
+
 function seleccionarNuevoApunte() {
   if (state.apuntesEnModoSeleccion) {
     exitSelectionMode();
   }
   apunteActivoId = null; // Marcar que no hay apunte seleccionado
-  // renderizarListaApuntes(); // No es necesario aquí si no cambiamos selección visual
+  renderizarListaApuntes(); // Quitar 'active' de la lista
   renderizarEditor(); // Limpia el editor
 
   // --- Lógica Móvil ---
@@ -642,22 +675,32 @@ function seleccionarNuevoApunte() {
   // ------------------
 }
 
+/**
+ * MODIFICADO: Usa eliminarDocumento y es async.
+ */
 function eliminarApunte(id) {
   if (id === null) return;
-  const apunte = state.apuntes.find((a) => a.id === id);
+  const apunte = state.apuntes.find((a) => String(a.id) === String(id));
   if (!apunte) return;
   mostrarConfirmacion(
     'Eliminar Apunte',
     `¿Estás seguro de que quieres eliminar "${apunte.titulo || 'este apunte'}"?`,
-    () => {
-      state.apuntes = state.apuntes.filter((a) => a.id !== id);
-      if (apunteActivoId === id) {
-        apunteActivoId = null;
-        renderizarEditor(); // Esto ocultará el botón eliminar del editor
+    async () => {
+      // <-- AÑADIDO async
+      try {
+        await eliminarDocumento('apuntes', String(id)); // <-- AÑADIDO
+        console.log(`[Apuntes] Apunte ${id} eliminado.`);
+        if (String(apunteActivoId) === String(id)) {
+          apunteActivoId = null;
+          renderizarEditor(); // Esto ocultará el botón eliminar del editor
+        }
+        exitSelectionMode();
+        // guardarDatos(); // <-- ELIMINADO
+        // renderizarPaginaApuntes(); // <-- ELIMINADO (El listener lo hará)
+      } catch (error) {
+        console.error(`[Apuntes] Error al eliminar apunte ${id}:`, error);
+        mostrarAlerta('Error', 'No se pudo eliminar el apunte.');
       }
-      exitSelectionMode();
-      guardarDatos();
-      renderizarPaginaApuntes();
     },
   );
 }
@@ -669,14 +712,14 @@ function exitSelectionMode() {
 function handleSelectAll(e) {
   const apuntesVisiblesIds = Array.from(
     document.querySelectorAll('#lista-apuntes li[data-id]'),
-  ).map((li) => parseInt(li.dataset.id));
+  ).map((li) => li.dataset.id); // IDs son strings
   if (e.target.checked) {
     state.apuntesSeleccionadosIds = [
       ...new Set([...state.apuntesSeleccionadosIds, ...apuntesVisiblesIds]),
     ];
   } else {
     state.apuntesSeleccionadosIds = state.apuntesSeleccionadosIds.filter(
-      (id) => !apuntesVisiblesIds.includes(id),
+      (id) => !apuntesVisiblesIds.includes(String(id)), // Comparamos string
     );
   }
   if (state.apuntesSeleccionadosIds.length === 0) {
@@ -685,34 +728,58 @@ function handleSelectAll(e) {
     renderizarPaginaApuntes();
   }
 }
+
+/**
+ * MODIFICADO: Usa crearBatch y es async.
+ */
 function eliminarApuntesSeleccionados() {
   const count = state.apuntesSeleccionadosIds.length;
   if (count === 0) return;
   mostrarConfirmacion(
     'Eliminar Apuntes',
     `¿Estás seguro de que quieres eliminar ${count} apunte(s) seleccionado(s)?`,
-    () => {
-      state.apuntes = state.apuntes.filter(
-        (apunte) => !state.apuntesSeleccionadosIds.includes(apunte.id),
-      );
-      if (state.apuntesSeleccionadosIds.includes(apunteActivoId)) {
-        apunteActivoId = null;
-        renderizarEditor();
+    async () => {
+      // <-- AÑADIDO async
+      try {
+        const batch = crearBatch();
+        const userId = state.currentUserId;
+        state.apuntesSeleccionadosIds.forEach((id) => {
+          const docRef = doc(db, 'usuarios', userId, 'apuntes', String(id));
+          batch.delete(docRef);
+        });
+        await batch.commit();
+        console.log(`[Apuntes] ${count} apuntes eliminados en batch.`);
+
+        if (
+          state.apuntesSeleccionadosIds.some(
+            (id) => String(id) === String(apunteActivoId),
+          )
+        ) {
+          apunteActivoId = null;
+          renderizarEditor();
+        }
+        exitSelectionMode();
+        // guardarDatos(); // <-- ELIMINADO
+        // renderizarPaginaApuntes() será llamado por el listener
+      } catch (error) {
+        console.error('[Apuntes] Error al eliminar apuntes en batch:', error);
+        mostrarAlerta('Error', 'No se pudieron eliminar los apuntes.');
       }
-      exitSelectionMode();
-      guardarDatos();
     },
   );
 }
+
+/**
+ * --- INICIO CORRECCIÓN BUG 2 ---
+ * Eliminada la comprobación redundante que impedía la selección
+ */
 function handleSeleccionarApunte(apunteLi) {
   if (state.apuntesEnModoSeleccion) return; // No hacer nada si está en modo selección
 
-  const nuevoId = parseInt(apunteLi.dataset.id, 10);
+  const nuevoId = apunteLi.dataset.id; // ID es string
 
-  // Evitar recargar si ya está seleccionado (útil en escritorio)
-  if (nuevoId === apunteActivoId && window.innerWidth > 900) {
-    return;
-  }
+  // El bloque 'if (nuevoId === apunteActivoId ...)' fue ELIMINADO.
+  // Siempre se debe renderizar al hacer clic.
 
   apunteActivoId = nuevoId; // Establecer el nuevo ID activo
   renderizarListaApuntes(); // Actualiza la lista para marcar el nuevo activo
@@ -724,6 +791,10 @@ function handleSeleccionarApunte(apunteLi) {
   }
   // ------------------
 }
+/**
+ * --- FIN CORRECCIÓN BUG 2 ---
+ */
+
 function handleActionClick(action, apunteId) {
   if (action === 'toggle-menu') {
     const dropdown = document.querySelector(
@@ -754,11 +825,12 @@ function handleActionClick(action, apunteId) {
   }
 }
 function handleCheckboxClick(apunteId) {
-  const index = state.apuntesSeleccionadosIds.indexOf(apunteId);
+  const idStr = String(apunteId);
+  const index = state.apuntesSeleccionadosIds.indexOf(idStr);
   if (index > -1) {
     state.apuntesSeleccionadosIds.splice(index, 1);
   } else {
-    state.apuntesSeleccionadosIds.push(apunteId);
+    state.apuntesSeleccionadosIds.push(idStr);
   }
   if (state.apuntesSeleccionadosIds.length === 0) {
     exitSelectionMode();
@@ -766,37 +838,72 @@ function handleCheckboxClick(apunteId) {
     renderizarPaginaApuntes();
   }
 }
-function toggleFijarApunte(id) {
-  const apunte = state.apuntes.find((a) => a.id === id);
+
+/**
+ * MODIFICADO: Usa actualizarDocumento y es async.
+ */
+async function toggleFijarApunte(id) {
+  const apunte = state.apuntes.find((a) => String(a.id) === String(id));
   if (apunte) {
-    apunte.fijado = !apunte.fijado;
-    guardarDatos();
-    renderizarPaginaApuntes();
-  }
-}
-function toggleFavorito(id) {
-  const apunte = state.apuntes.find((a) => a.id === id);
-  if (apunte) {
-    apunte.isFavorito = !apunte.isFavorito;
-    guardarDatos();
-    renderizarPaginaApuntes();
-    if (id === apunteActivoId) {
-      const btnFavoritoEl = document.getElementById('btn-editor-favorito');
-      if (btnFavoritoEl) {
-        btnFavoritoEl.innerHTML = apunte.isFavorito
-          ? ICONS.star_filled
-          : ICONS.star_outline;
-        btnFavoritoEl.classList.toggle('active', apunte.isFavorito);
-      }
+    const nuevoEstado = !apunte.fijado;
+    try {
+      await actualizarDocumento('apuntes', String(id), { fijado: nuevoEstado });
+      // guardarDatos(); // <-- ELIMINADO
+      // renderizarPaginaApuntes(); // <-- ELIMINADO (El listener lo hará)
+    } catch (error) {
+      console.error(`[Apuntes] Error al fijar apunte ${id}:`, error);
+      mostrarAlerta('Error', 'No se pudo actualizar el apunte.');
+      // No revertir, el listener corregirá
     }
   }
 }
-function toggleEditorFavorito() {
-  if (apunteActivoId === null) return;
 
-  const apunte = state.apuntes.find((a) => a.id === apunteActivoId);
+/**
+ * MODIFICADO: Usa actualizarDocumento y es async.
+ */
+async function toggleFavorito(id) {
+  const apunte = state.apuntes.find((a) => String(a.id) === String(id));
   if (apunte) {
-    toggleFavorito(apunteActivoId);
+    const nuevoEstado = !apunte.isFavorito;
+    try {
+      await actualizarDocumento('apuntes', String(id), {
+        isFavorito: nuevoEstado,
+      });
+      // guardarDatos(); // <-- ELIMINADO
+      // renderizarPaginaApuntes(); // <-- ELIMINADO (El listener lo hará)
+      if (String(id) === String(apunteActivoId)) {
+        const btnFavoritoEl = document.getElementById('btn-editor-favorito');
+        if (btnFavoritoEl) {
+          btnFavoritoEl.innerHTML = nuevoEstado
+            ? ICONS.star_filled
+            : ICONS.star_outline;
+          btnFavoritoEl.classList.toggle('active', nuevoEstado);
+        }
+      }
+    } catch (error) {
+      console.error(`[Apuntes] Error al marcar favorito apunte ${id}:`, error);
+      mostrarAlerta('Error', 'No se pudo actualizar el apunte.');
+      // No revertir
+    }
+  }
+}
+
+/**
+ * MODIFICADO: Ahora es async y llama a handleAutoSave (que crea el apunte).
+ */
+async function toggleEditorFavorito() {
+  if (apunteActivoId === null) {
+    // Si es un apunte nuevo, forzar guardado para crearlo
+    await handleAutoSave();
+    // Si después del guardado sigue sin haber ID (ej. vacío), no hacer nada
+    if (apunteActivoId === null) return;
+  }
+
+  const apunte = state.apuntes.find(
+    (a) => String(a.id) === String(apunteActivoId),
+  );
+  if (apunte) {
+    await toggleFavorito(apunteActivoId);
   }
 }
 function inicializarTinyMCE() {
@@ -846,12 +953,10 @@ function inicializarTinyMCE() {
         editor.getContainer().style.visibility = 'visible';
         renderizarEditor();
       });
-      editor.on('input', () => {
-        handleInput();
-      });
-      editor.on('change', () => {
-        handleAutoSave();
-      });
+      // --- CORREGIDO: Ambas acciones llaman a handleInput (el debouncer) ---
+      editor.on('input', handleInput);
+      editor.on('change', handleInput);
+      // -----------------------------------------------------------------
     },
   });
 }
@@ -1000,20 +1105,26 @@ function handleFiltrosDropdownClick(event) {
   event.stopPropagation(); // Evita que el clic cierre el menú inmediatamente
 }
 
-export function inicializarApuntes() {
+/**
+ * Función interna que conecta los listeners al DOM de la página.
+ * Se llama CADA VEZ que se carga la página de apuntes.
+ * @param {object} data - Datos pasados por el EventBus (ej: data.id)
+ */
+function conectarUIApuntes(data) {
   // 1. Establecer el apunte activo (si viene de otra página)
-  apunteActivoId = state.apunteSeleccionadoId || null;
-  state.apunteSeleccionadoId = null;
-  guardarDatos();
+  apunteActivoId = data?.id || null; // <-- MODIFICADO
+  // state.apunteSeleccionadoId = null; // <-- ELIMINADO
+  // guardarDatos(); // <-- ELIMINADO
 
   // 2. Obtener el selector de curso del editor y popularlo
   const selectCursoApunte = document.getElementById('select-curso-apunte');
   if (selectCursoApunte) {
     popularSelectorDeCursos(selectCursoApunte, false);
     // Preseleccionar curso si viene de la página de cursos
-    if (!apunteActivoId && state.cursoSeleccionadoId) {
+    if (!apunteActivoId && data?.cursoId) {
+      // <-- MODIFICADO
       const curso = state.cursos.find(
-        (c) => c.id === state.cursoSeleccionadoId,
+        (c) => String(c.id) === String(data.cursoId), // <-- MODIFICADO
       );
       if (
         curso &&
@@ -1021,8 +1132,8 @@ export function inicializarApuntes() {
       ) {
         selectCursoApunte.value = curso.nombre;
       }
-      state.cursoSeleccionadoId = null;
-      guardarDatos();
+      // state.cursoSeleccionadoId = null; // <-- ELIMINADO
+      // guardarDatos(); // <-- ELIMINADO
     }
   }
 
@@ -1147,7 +1258,7 @@ export function inicializarApuntes() {
       touchstartY = e.touches[0].clientY;
       longPressTimeout = setTimeout(() => {
         longPressTimeout = null;
-        const apunteId = parseInt(apunteLi.dataset.id, 10);
+        const apunteId = apunteLi.dataset.id; // ID es String
         state.apuntesEnModoSeleccion = true;
         if (!state.apuntesSeleccionadosIds.includes(apunteId)) {
           state.apuntesSeleccionadosIds.push(apunteId);
@@ -1186,7 +1297,7 @@ export function inicializarApuntes() {
     const handleTap = (targetElement) => {
       const apunteLi = targetElement.closest('li[data-id]');
       if (!apunteLi) return;
-      const apunteId = parseInt(apunteLi.dataset.id, 10);
+      const apunteId = apunteLi.dataset.id; // ID es String
       const actionBtn = targetElement.closest('button[data-action]');
       const checkbox = targetElement.closest('input[type="checkbox"]');
       if (actionBtn) {
@@ -1220,10 +1331,7 @@ export function inicializarApuntes() {
   const inputTituloEl = document.getElementById('input-titulo-apunte');
   if (inputTituloEl) {
     if (!inputTituloEl.dataset.listenerAttached) {
-      inputTituloEl.addEventListener('input', () => {
-        autoGrowTitulo();
-        handleInput();
-      });
+      inputTituloEl.addEventListener('input', handleInput); // <-- CORREGIDO
       inputTituloEl.dataset.listenerAttached = 'true';
     }
   }
@@ -1406,4 +1514,64 @@ export function inicializarApuntes() {
       btnImprimirActual.dataset.listenerAttached = 'true';
     }
   }
+} // Fin de conectarUIApuntes
+
+/**
+ * MODIFICADO: Esta es la nueva función principal.
+ * Solo se suscribe a los eventos del EventBus.
+ */
+export function inicializarApuntes() {
+  console.log('[Apuntes] Inicializando y suscribiendo a eventos...');
+
+  // --- Listeners de Modales (se adjuntan una sola vez al inicio) ---
+  // (Estos modales están en index.html, por eso se adjuntan aquí)
+  // (Asegurarse que los ID de los modales de apuntes estén en index.html si existen)
+  // ... (No hay modales de apuntes en index.html, así que no se necesita) ...
+
+  // 1. Escuchar cuándo el HTML de esta página se carga en el DOM
+  EventBus.on('paginaCargada:apuntes', (data) => {
+    console.log(
+      '[Apuntes] Evento: paginaCargada:apuntes recibido. Conectando listeners de UI...',
+    );
+    conectarUIApuntes(data); // Llama a la función que hace el trabajo
+  });
+
+  // 2. Escuchar cuándo cambian los datos de apuntes
+  EventBus.on('apuntesActualizados', () => {
+    // Si la página de apuntes está visible, re-renderiza
+    if (state.paginaActual === 'apuntes') {
+      console.log(
+        '[Apuntes] Evento: apuntesActualizados recibido. Renderizando...',
+      );
+      renderizarPaginaApuntes();
+
+      // --- INICIO CORRECCIÓN BUG 1 ---
+      // NO llamar a renderizarEditor() aquí.
+      // Si el apunte activo es el que cambió, el autoguardado lo manejará.
+      // Si el apunte activo fue eliminado, el listener de 'eliminar' lo manejará.
+      // renderizarEditor(); // <-- ELIMINADO
+      // --- FIN CORRECCIÓN BUG 1 ---
+    }
+  });
+
+  // 3. Escuchar cuándo cambian los cursos o proyectos (para los selectores y filtros)
+  const refrescarDependencias = () => {
+    if (state.paginaActual === 'apuntes') {
+      console.log(
+        '[Apuntes] Evento: dependencias (cursos/proyectos) actualizadas. Actualizando selectores...',
+      );
+      // Repopular selectores en editor
+      popularSelectorDeCursos(
+        document.getElementById('select-curso-apunte'),
+        false,
+      );
+      popularSelectorDeProyectos('select-proyecto-apunte');
+      // Actualizar menú de filtros
+      renderizarMenuFiltros();
+      // Re-renderizar lista por si cambiaron nombres de cursos/proyectos
+      renderizarListaApuntes();
+    }
+  };
+  EventBus.on('cursosActualizados', refrescarDependencias);
+  EventBus.on('proyectosActualizados', refrescarDependencias);
 } // Fin de inicializarApuntes

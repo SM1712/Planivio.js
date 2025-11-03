@@ -29,6 +29,8 @@ const {
   getDocs,
 } = window.firebaseServices;
 
+export { db, doc };
+
 let userId = null; // Guardaremos el ID del usuario logueado
 
 /**

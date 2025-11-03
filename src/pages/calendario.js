@@ -1,5 +1,13 @@
 import { state } from '../state.js';
-import { guardarDatos } from '../utils.js';
+// import { guardarDatos } from '../utils.js'; // <-- ELIMINADO
+import { EventBus } from '../eventBus.js'; // <-- AÑADIDO
+// --- INICIO NUEVAS IMPORTACIONES FIREBASE ---
+import {
+  agregarDocumento,
+  actualizarDocumento,
+  eliminarDocumento,
+} from '../firebase.js';
+// --- FIN NUEVAS IMPORTACIONES FIREBASE ---
 import {
   mostrarConfirmacion,
   mostrarModal,
@@ -9,8 +17,8 @@ import {
   cargarIconos,
 } from '../ui.js';
 import { ICONS } from '../icons.js';
-import { abrirModalNuevaTarea } from './dashboard.js';
-import { cambiarPagina } from '../main.js';
+import { abrirModalNuevaTarea } from './dashboard.js'; // <-- Esto fallará hasta migrar dashboard.js
+// import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
 
 // ... (generarEventosRecurrentes y otras funciones SIN CAMBIOS) ...
 export function generarEventosRecurrentes(
@@ -117,7 +125,10 @@ let dragStartDate = null;
 let dragEndDate = null;
 let wasDragging = false;
 
-function agregarEvento(datosEvento) {
+/**
+ * MODIFICADO: Usa agregarDocumento y es async.
+ */
+async function agregarEvento(datosEvento) {
   if (
     !datosEvento.titulo ||
     !datosEvento.fechaInicio ||
@@ -130,10 +141,17 @@ function agregarEvento(datosEvento) {
     alert('La fecha de fin no puede ser anterior a la fecha de inicio.');
     return;
   }
-  const nuevoEvento = { id: Date.now(), ...datosEvento };
-  state.eventos.push(nuevoEvento);
-  guardarDatos();
-  renderizarCalendario();
+  // const nuevoEvento = { id: Date.now(), ...datosEvento }; // <-- ELIMINADO
+  // state.eventos.push(nuevoEvento); // <-- ELIMINADO
+  try {
+    await agregarDocumento('eventos', datosEvento);
+    console.log('[Calendario] Evento nuevo guardado en Firestore.');
+  } catch (error) {
+    console.error('[Calendario] Error al agregar evento:', error);
+    mostrarAlerta('Error', 'No se pudo guardar el evento.');
+  }
+  // guardarDatos(); // <-- ELIMINADO
+  // renderizarCalendario(); // <-- ELIMINADO (El listener lo hará)
 }
 function formatFechaDDMMYYYY(fechaStr) {
   try {
@@ -659,7 +677,9 @@ export function iniciarEdicionEvento(evento, cursoPreseleccionado = null) {
   mostrarModal('modal-nuevo-evento');
 }
 
-// ... (mostrarDetallesEvento, abrirMenuAccionRapida, actualizarSeleccionArrastre, limpiarSeleccionArrastre, inicializarCalendario SIN CAMBIOS) ...
+/**
+ * MODIFICADO: Usa eliminarDocumento y es async.
+ */
 function mostrarDetallesEvento(evento) {
   const titulo = document.getElementById('evento-detalles-titulo');
   const colorIndicator = document.getElementById('evento-detalles-color');
@@ -677,7 +697,9 @@ function mostrarDetallesEvento(evento) {
   if (btnEditar)
     btnEditar.onclick = () => {
       cerrarModal('modal-evento-detalles');
-      const eventoOriginal = state.eventos.find((e) => e.id === idParaAccion);
+      const eventoOriginal = state.eventos.find(
+        (e) => String(e.id) === String(idParaAccion),
+      );
       if (eventoOriginal) {
         iniciarEdicionEvento(eventoOriginal);
       }
@@ -685,16 +707,28 @@ function mostrarDetallesEvento(evento) {
   if (btnEliminar)
     btnEliminar.onclick = () => {
       cerrarModal('modal-evento-detalles');
-      const eventoOriginal = state.eventos.find((e) => e.id === idParaAccion);
+      const eventoOriginal = state.eventos.find(
+        (e) => String(e.id) === String(idParaAccion),
+      );
       const titulo = eventoOriginal ? eventoOriginal.titulo : evento.titulo;
       setTimeout(() => {
         mostrarConfirmacion(
           'Eliminar Evento',
           `¿Seguro que quieres eliminar "${titulo}" y todas sus repeticiones? Esta acción eliminará la cadena completa.`,
-          () => {
-            state.eventos = state.eventos.filter((e) => e.id !== idParaAccion);
-            guardarDatos();
-            renderizarCalendario();
+          async () => {
+            // <-- AÑADIDO async
+            // state.eventos = state.eventos.filter((e) => e.id !== idParaAccion); // <-- ELIMINADO
+            try {
+              await eliminarDocumento('eventos', String(idParaAccion)); // <-- AÑADIDO
+              console.log(
+                `[Calendario] Evento ${idParaAccion} eliminado de Firestore.`,
+              );
+            } catch (error) {
+              console.error('[Calendario] Error al eliminar evento:', error);
+              mostrarAlerta('Error', 'No se pudo eliminar el evento.');
+            }
+            // guardarDatos(); // <-- ELIMINADO
+            // renderizarCalendario(); // <-- ELIMINADO (El listener lo hará)
           },
         );
       }, 200);
@@ -739,8 +773,10 @@ function limpiarSeleccionArrastre() {
     .forEach((c) => c.classList.remove('selection-range'));
 }
 
-// ===== FUNCIÓN COMPLETA Y CORREGIDA =====
-export function inicializarCalendario() {
+/**
+ * MODIFICADO: Conecta los listeners del DOM cuando la página se carga.
+ */
+function conectarUICalendario() {
   cargarIconos();
   renderizarCalendario();
 
@@ -959,9 +995,9 @@ export function inicializarCalendario() {
       } else if (tareaItem) {
         const tareaId = tareaItem.dataset.taskId;
         if (tareaId) {
-          state.tareaSeleccionadald = parseInt(tareaId); // Typo mantenido
-          guardarDatos();
-          cambiarPagina('tareas');
+          // state.tareaSeleccionadald = parseInt(tareaId); // <-- ELIMINADO
+          // guardarDatos(); // <-- ELIMINADO
+          EventBus.emit('navegarA', { pagina: 'tareas', id: tareaId }); // <-- AÑADIDO
         }
       } else if (btnEditarEvento) {
         const eventId = btnEditarEvento.dataset.eventId;
@@ -989,11 +1025,22 @@ export function inicializarCalendario() {
         mostrarConfirmacion(
           'Completar Tarea',
           `¿Marcar "${tarea.titulo}" como completada?`,
-          () => {
-            tarea.completada = true;
-            tarea.fechaCompletado = new Date().toISOString().split('T')[0]; // Añadir fecha completado
-            guardarDatos();
-            renderizarCalendario(); // Refresca todo (incluye resumen)
+          async () => {
+            // <-- AÑADIDO async
+            // tarea.completada = true; // <-- ELIMINADO
+            // tarea.fechaCompletado = new Date().toISOString().split('T')[0]; // <-- ELIMINADO
+            try {
+              await actualizarDocumento('tareas', String(tareaId), {
+                completada: true,
+                fechaCompletado: new Date().toISOString().split('T')[0],
+              });
+              console.log(`[Calendario] Tarea ${tareaId} completada.`);
+            } catch (error) {
+              console.error('[Calendario] Error al completar tarea:', error);
+              mostrarAlerta('Error', 'No se pudo completar la tarea.');
+            }
+            // guardarDatos(); // <-- ELIMINADO
+            // renderizarCalendario(); // <-- ELIMINADO (El listener lo hará)
           },
         );
       } else if (tarea && tarea.completada) {
@@ -1012,7 +1059,8 @@ export function inicializarCalendario() {
   const formNuevoEvento = document.getElementById('form-nuevo-evento');
   // Aseguramos que el listener se añada UNA SOLA VEZ
   if (formNuevoEvento && !formNuevoEvento.dataset.listenerAttached) {
-    const submitHandler = (e) => {
+    const submitHandler = async (e) => {
+      // <-- AÑADIDO async
       // Definimos el handler aquí dentro
       e.preventDefault();
       // --- Leer datos del formulario ---
@@ -1034,9 +1082,7 @@ export function inicializarCalendario() {
         proyectoId:
           document.getElementById('select-evento-proyecto').value || null,
       };
-      const eventoId = parseInt(
-        document.getElementById('input-evento-id').value,
-      );
+      const eventoId = document.getElementById('input-evento-id').value; // ID es String
 
       // --- Validaciones ---
       if (
@@ -1057,25 +1103,24 @@ export function inicializarCalendario() {
       }
 
       // --- Lógica Guardar/Actualizar ---
-      if (eventoId) {
-        // Si hay ID, es una actualización
-        const index = state.eventos.findIndex((ev) => ev.id === eventoId);
-        if (index !== -1) {
-          // Preservar ID original, actualizar resto de datos
-          state.eventos[index] = { id: eventoId, ...datosEvento };
-          console.log('Evento actualizado:', state.eventos[index]);
-          guardarDatos(); // Guardar cambios
-          renderizarCalendario(); // Refrescar vista
+      try {
+        if (eventoId) {
+          // Si hay ID, es una actualización
+          await actualizarDocumento('eventos', String(eventoId), datosEvento); // <-- AÑADIDO
+          console.log('Evento actualizado:', eventoId);
+          // guardarDatos(); // <-- ELIMINADO
+          // renderizarCalendario(); // <-- ELIMINADO
         } else {
-          console.error(
-            'Error: No se encontró el evento para actualizar con ID:',
-            eventoId,
-          );
+          // Si no hay ID, es un evento nuevo
+          // Llamar a agregarEvento que hace push, guarda y renderiza
+          await agregarEvento(datosEvento); // <-- AÑADIDO await
         }
-      } else {
-        // Si no hay ID, es un evento nuevo
-        // Llamar a agregarEvento que hace push, guarda y renderiza
-        agregarEvento(datosEvento);
+      } catch (error) {
+        console.error(
+          '[Calendario] Error al guardar/actualizar evento:',
+          error,
+        );
+        mostrarAlerta('Error', 'No se pudo guardar el evento.');
       }
 
       cerrarModal('modal-nuevo-evento');
@@ -1132,11 +1177,9 @@ export function inicializarCalendario() {
     btnAccionTarea.addEventListener('click', () => {
       const fecha = document.getElementById('accion-rapida-fecha').value;
       cerrarModal('modal-accion-rapida');
-      // Asegurarse que se pasa la fecha a la página de tareas
-      // (Esto requiere lógica en inicializarTareas para leerla)
-      state.fechaPreseleccionada = fecha; // Guardar temporalmente
-      guardarDatos();
-      cambiarPagina('tareas');
+      // state.fechaPreseleccionada = fecha; // <-- ELIMINADO
+      // guardarDatos(); // <-- ELIMINADO
+      EventBus.emit('navegarA', { pagina: 'tareas', id: null, fecha: fecha }); // <-- AÑADIDO
     });
     btnAccionTarea.dataset.listenerAttached = 'true';
   }
@@ -1174,6 +1217,7 @@ export function inicializarCalendario() {
         const curso = modalChooser.dataset.cursoPreseleccionado;
         cerrarModal('modal-chooser-crear');
         if (fecha) {
+          // Esto fallará hasta que dashboard.js esté migrado, lo cual es correcto.
           abrirModalNuevaTarea(fecha, curso);
         }
         delete modalChooser.dataset.fechaSeleccionada;
@@ -1201,4 +1245,35 @@ export function inicializarCalendario() {
       selectRecurrenciaEvento.dataset.listenerAttached = 'true';
     }
   }
+}
+
+/**
+ * MODIFICADO: Esta es la nueva función principal.
+ * Solo se suscribe a los eventos del EventBus.
+ */
+export function inicializarCalendario() {
+  console.log('[Calendario] Inicializando y suscribiendo a eventos...');
+
+  // 1. Escuchar cuándo el HTML de esta página se carga en el DOM
+  EventBus.on('paginaCargada:calendario', (data) => {
+    console.log(
+      '[Calendario] Evento: paginaCargada:calendario recibido. Conectando listeners de UI...',
+    );
+    conectarUICalendario(); // Llama a la función que hace el trabajo
+  });
+
+  // 2. Escuchar cuándo cambian los datos de eventos
+  const refrescarCalendarioCompleto = () => {
+    if (state.paginaActual === 'calendario') {
+      console.log(
+        '[Calendario] Evento: eventos, tareas o cursos actualizados. Renderizando...',
+      );
+      renderizarCalendario();
+    }
+  };
+
+  EventBus.on('eventosActualizados', refrescarCalendarioCompleto);
+  EventBus.on('tareasActualizadas', refrescarCalendarioCompleto);
+  EventBus.on('cursosActualizados', refrescarCalendarioCompleto); // Para filtro de archivados
+  EventBus.on('proyectosActualizados', refrescarCalendarioCompleto); // Para detalles en resumen
 }

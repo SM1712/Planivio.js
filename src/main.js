@@ -9,6 +9,7 @@
 // 3. Escucha eventos del EventBus (como 'navegarA' o 'configActualizada')
 //    y reacciona a ellos.
 //
+// (Versión 3 - Corregida la carga de iconos de la barra lateral)
 // ==========================================================================
 
 import { state } from './state.js';
@@ -151,7 +152,12 @@ async function cambiarColorAcento(color) {
  */
 function aplicarTema() {
   document.body.classList.toggle('dark-theme', state.config.theme === 'dark');
-  cambiarColorAcento(state.config.accent_color);
+  // Asegurarnos que config exista antes de leer accent_color
+  if (state.config && state.config.accent_color) {
+    cambiarColorAcento(state.config.accent_color);
+  } else {
+    cambiarColorAcento('#0078d7'); // Color por defecto
+  }
   updateRgbVariables();
   // Aplicamos colores de muescas y fondo que dependen del tema (oscuro/claro)
   aplicarColoresMuescas();
@@ -282,24 +288,12 @@ async function manejarEstadoDeAutenticacion() {
       // --- 1. USUARIO ESTÁ LOGUEADO ---
       console.log('Usuario detectado:', user.uid);
 
-      // Mostrar app y header, ocultar login
-      if (appHeader) appHeader.style.visibility = 'visible';
-      loginContainer.style.display = 'none';
-      if (appContainer) appContainer.style.visibility = 'visible';
-
-      // Poblar el panel de usuario en Configuración
-      if (document.getElementById('user-photo'))
-        document.getElementById('user-photo').src = user.photoURL;
-      if (document.getElementById('user-name'))
-        document.getElementById('user-name').textContent = user.displayName;
-      if (document.getElementById('user-email'))
-        document.getElementById('user-email').textContent = user.email;
-
       // ¡IMPORTANTE! Guardar User ID e iniciar sincronización
       setFirebaseUserId(user.uid);
 
       // --- P3.1: Lógica de Migración/Onboarding ---
-      const configRef = doc(
+      // --- CORREGIDO (Problema 2): Añadido 'window.firebaseServices.' ---
+      const configRef = window.firebaseServices.doc(
         window.firebaseServices.db,
         'usuarios',
         user.uid,
@@ -363,6 +357,30 @@ async function manejarEstadoDeAutenticacion() {
 
       // ¡INICIAR SINCRONIZACIÓN! (Cargará config, cursos, tareas, etc.)
       iniciarSincronizacion(user.uid);
+
+      // --- CORREGIDO (Problema 1): Mover inicializadores aquí ---
+      // Ahora que el User ID y la sincronización están listos,
+      // podemos inicializar los módulos de página.
+      console.log('[Main] Sincronización iniciada. Inicializando módulos...');
+      inicializarDashboard();
+      inicializarTareas();
+      inicializarCursos();
+      inicializarCalendario();
+      inicializarApuntes();
+      inicializarProyectos();
+
+      // Mostrar app y header, ocultar login
+      if (appHeader) appHeader.style.visibility = 'visible';
+      loginContainer.style.display = 'none';
+      if (appContainer) appContainer.style.visibility = 'visible';
+
+      // Poblar el panel de usuario en Configuración
+      if (document.getElementById('user-photo'))
+        document.getElementById('user-photo').src = user.photoURL;
+      if (document.getElementById('user-name'))
+        document.getElementById('user-name').textContent = user.displayName;
+      if (document.getElementById('user-email'))
+        document.getElementById('user-email').textContent = user.email;
 
       // Cargamos la página guardada o el dashboard
       // El listener 'configActualizada' aplicará el tema
@@ -440,6 +458,46 @@ function agregarEventListenersGlobales() {
         .classList.remove('sidebar-visible');
     }
   });
+
+  // --- ¡NUEVO BLOQUE AÑADIDO! ---
+  // Cargar iconos de la barra de navegación principal
+  const mainNav = document.getElementById('main-nav');
+  if (mainNav) {
+    try {
+      mainNav.querySelector('li[data-page="dashboard"] .nav-icon').innerHTML =
+        ICONS.dashboard;
+      mainNav.querySelector('li[data-page="tareas"] .nav-icon').innerHTML =
+        ICONS.tareas;
+      mainNav.querySelector('li[data-page="calendario"] .nav-icon').innerHTML =
+        ICONS.calendario;
+      mainNav.querySelector('li[data-page="cursos"] .nav-icon').innerHTML =
+        ICONS.cursos;
+      mainNav.querySelector('li[data-page="apuntes"] .nav-icon').innerHTML =
+        ICONS.apuntes;
+      mainNav.querySelector('li[data-page="proyectos"] .nav-icon').innerHTML =
+        ICONS.proyectos;
+    } catch (error) {
+      console.error('[Main] Error al cargar iconos de navegación:', error);
+      // Esto puede pasar si ICONS aún no está cargado, pero debería estarlo.
+    }
+  }
+  // --- FIN DE NUEVO BLOQUE ---
+
+  // --- ¡NUEVO BLOQUE AÑADIDO! (Versión 2) ---
+  // Cargar iconos del HEADER principal (hamburguesa y config)
+  try {
+    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    if (btnToggleSidebar) {
+      btnToggleSidebar.innerHTML = ICONS.menu;
+    }
+    const btnConfig = document.getElementById('btn-config-dropdown');
+    if (btnConfig) {
+      btnConfig.innerHTML = ICONS.settings;
+    }
+  } catch (error) {
+    console.error('[Main] Error al cargar iconos del header:', error);
+  }
+  // --- FIN DE NUEVO BLOQUE ---
 
   // --- Sidebar (Sin cambios, es solo UI local) ---
   document
@@ -781,7 +839,9 @@ EventBus.on('navegarA', (data) => {
     if (data.id !== undefined && data.pagina === 'proyectos')
       state.proyectoSeleccionadoId = data.id;
 
-    cambiarPagina(data.pagina); // Carga el HTML y emite 'paginaCargada:...'
+    // --- AÑADIDO: Pasar data a la página cargada ---
+    // (Asegurarse de que cambiarPagina acepte 'data' y lo pase al emit)
+    cambiarPagina(data.pagina, data); // Carga el HTML y emite 'paginaCargada:...'
   }
 });
 
@@ -796,27 +856,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnGoogleLogin.addEventListener('click', handleGoogleLogin);
   // (El listener de btn-logout se añade en agregarEventListenersGlobales)
 
-  // Cargar el tema desde localStorage INMEDIATAMENTE para evitar flash blanco
-  // (utils.js aún tiene cargarDatos() por ahora)
-  try {
-    cargarDatos(); // Carga síncrona inicial de localStorage
-    aplicarTema(); // Aplica tema local
-  } catch (e) {
-    console.error('Error en carga inicial de localStorage:', e);
-    aplicarTema(); // Aplica tema por defecto
-  }
+  // --- CORREGIDO (Problema 3): Eliminado el bloque try/catch de cargarDatos() ---
+  // Cargar el tema por defecto para evitar flash, onAuthStateChanged lo corregirá
+  aplicarTema();
 
   // ¡Inicia el cerebro de autenticación!
   // Esto revisará si el usuario está logueado y disparará
   // la carga de datos o mostrará la pantalla de login.
   manejarEstadoDeAutenticacion();
 
-  // Les decimos a los módulos que se preparen para escuchar los eventos 'paginaCargada'
-  // Ahora es seguro llamarlos, porque el DOM está cargado.
-  inicializarDashboard();
-  inicializarTareas();
-  inicializarCursos();
-  inicializarCalendario();
-  inicializarApuntes();
-  inicializarProyectos();
+  // --- CORREGIDO (Problema 1): Los inicializadores de página se movieron
+  //     a la función manejarEstadoDeAutenticacion() para
+  //     evitar el "race condition".
 });

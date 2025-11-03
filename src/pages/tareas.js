@@ -1,11 +1,30 @@
+// ==========================================================================
+// ==                      src/pages/tareas.js                           ==
+// ==========================================================================
+//
+// Módulo de Tareas, migrado a la arquitectura "Pulso".
+// (Versión 2 - CORREGIDA para importar 'db' y 'doc' para los Batches)
+//
+// ==========================================================================
+
 // ===================================
 // ==          IMPORTACIONES        ==
 // ===================================
 import { state } from '../state.js';
-import { guardarDatos } from '../utils.js';
+import { EventBus } from '../eventBus.js';
+// --- INICIO NUEVAS IMPORTACIONES FIREBASE ---
+import {
+  db, // <-- CORREGIDO: Importado para Batches
+  doc, // <-- CORREGIDO: Importado para Batches
+  agregarDocumento,
+  actualizarDocumento,
+  eliminarDocumento,
+  crearBatch,
+} from '../firebase.js'; // <-- Importamos de firebase.js
+// --- FIN NUEVAS IMPORTACIONES FIREBASE ---
 import {
   popularSelectorDeCursos,
-  popularFiltroDeCursos, // AUNQUE EL FILTRO CAMBIÓ, LA FUNCIÓN DE UI PODRÍA USARSE EN OTRO LADO
+  popularFiltroDeCursos,
   popularSelectorDeProyectos,
   popularSelectorDeProyectosEdicion,
   mostrarModal,
@@ -18,7 +37,8 @@ import { ICONS } from '../icons.js';
 let activeDropdown = null;
 let activeDropdownButton = null;
 let activeFiltroDropdown = null;
-let tareasGlobalClickHandler = null;
+// Eliminamos tareasGlobalClickHandler, la lógica se moverá al listener 'paginaCargada'
+
 // ======================================================
 // ==        HELPER FUNCTIONS FOR THIS MODULE         ==
 // ======================================================
@@ -27,7 +47,8 @@ let tareasGlobalClickHandler = null;
 function renderizarTareas() {
   const tbody = document.getElementById('tabla-tareas-body');
   if (!tbody) {
-    console.error('Error: Elemento #tabla-tareas-body no encontrado.');
+    // console.error('Error: Elemento #tabla-tareas-body no encontrado.');
+    // No loguear error, la página puede no estar cargada aún
     return;
   }
   const isMobileView = window.innerWidth <= 900;
@@ -95,7 +116,7 @@ function renderizarTareas() {
       claseVencimiento = obtenerClaseVencimiento(tarea.fecha);
       tr.classList.add(claseVencimiento);
     }
-    if (tarea.id === state.tareaSeleccionadald) {
+    if (String(tarea.id) === String(state.tareaSeleccionadald)) {
       // Typo 'ld' mantenido
       tr.classList.add('selected-task');
     }
@@ -182,7 +203,7 @@ function getTareasVisiblesFiltradas() {
   if (state.filtroProyecto && state.filtroProyecto !== 'todos') {
     tareasAMostrar = tareasAMostrar.filter(
       // (Mantenemos la lógica anterior, asumiendo proyectold es typo y debería ser proyectoId)
-      (t) => t.proyectold === parseInt(state.filtroProyecto),
+      (t) => String(t.proyectold) === String(state.filtroProyecto), // Corregido a String(proyectold)
     );
   }
 
@@ -201,7 +222,7 @@ function getTareasVisiblesFiltradas() {
   return tareasAMostrar;
 }
 
-// ... (El resto de las funciones: actualizarBotonFiltros, repopularMenuFiltros, completarTareasSeleccionadas, eliminarTareasSeleccionadas, seleccionarTodasTareasVisibles, renderizarDetalles, renderizarSubtareas, ordenarPor, agregarTarea, agregarSubtarea, eliminarSubtarea, toggleSubtarea, iniciarEdicionTarea, eliminarTarea, actualizarUIModoSeleccion, iniciarModoSeleccion, salirModoSeleccion, toggleSeleccionTarea, inicializarTareas SIN CAMBIOS INTERNOS) ...
+// ... (actualizarBotonFiltros, repopularMenuFiltros SIN CAMBIOS INTERNOS) ...
 function actualizarBotonFiltros() {
   const btnLabel = document.getElementById('btn-filtros-label');
   if (!btnLabel) return;
@@ -235,7 +256,7 @@ function actualizarBotonFiltros() {
   }
   if (filtroProyecto && filtroProyecto !== 'todos') {
     const proyecto = state.proyectos.find(
-      (p) => p.id === parseInt(filtroProyecto),
+      (p) => String(p.id) === String(filtroProyecto), // Corregido a String(p.id)
     );
     const proyectoNombre = proyecto ? proyecto.nombre : 'Proyecto';
     filtrosActivos.push(`Proy: ${proyectoNombre}`);
@@ -309,11 +330,11 @@ function repopularMenuFiltros(menuElement) {
     htmlMenu += `</div>`;
   }
 
-  // Filtro Proyectos (sin cambios funcionales aquí)
+  // Filtro Proyectos (Corregido para comparar string IDs)
   if (state.proyectos && state.proyectos.length > 0) {
     htmlMenu += `<div class="filtro-seccion-titulo">Filtrar por Proyecto</div>`;
     const proyectoActivo = state.proyectos.find(
-      (p) => p.id === parseInt(filtroProyecto),
+      (p) => String(p.id) === String(filtroProyecto),
     );
     const nombreProyectoActivo = proyectoActivo
       ? proyectoActivo.nombre
@@ -325,9 +346,9 @@ function repopularMenuFiltros(menuElement) {
     htmlMenu += `<button data-action="filter-proyecto" data-value="todos" class="opcion-btn ${filtroProyecto === 'todos' ? 'opcion-activa' : ''}">Todos los Proyectos ${filtroProyecto === 'todos' ? checkIconHTML : emptyIconHTML}</button>`;
     state.proyectos.forEach((proyecto) => {
       const activoClass =
-        parseInt(filtroProyecto) === proyecto.id ? 'opcion-activa' : '';
+        String(filtroProyecto) === String(proyecto.id) ? 'opcion-activa' : '';
       const icon =
-        parseInt(filtroProyecto) === proyecto.id
+        String(filtroProyecto) === String(proyecto.id)
           ? checkIconHTML
           : emptyIconHTML;
       htmlMenu += `<button data-action="filter-proyecto" data-value="${proyecto.id}" class="opcion-btn ${activoClass}">${proyecto.nombre} ${icon}</button>`;
@@ -336,33 +357,73 @@ function repopularMenuFiltros(menuElement) {
   }
   menu.innerHTML = htmlMenu;
 }
-function completarTareasSeleccionadas() {
+
+/**
+ * MODIFICADO: Completa tareas seleccionadas usando un Batch de Firebase.
+ */
+async function completarTareasSeleccionadas() {
   if (state.tareasSeleccionadasIds.length === 0) return;
-  state.tareas.forEach((tarea) => {
-    if (state.tareasSeleccionadasIds.includes(tarea.id)) {
-      if (!tarea.completada) {
-        tarea.completada = true;
-        tarea.fechaCompletado = new Date().toISOString().split('T')[0];
+
+  console.log(
+    `[Tareas] Iniciando batch para completar ${state.tareasSeleccionadasIds.length} tareas.`,
+  );
+  try {
+    const batch = crearBatch();
+    const fechaCompletado = new Date().toISOString().split('T')[0];
+    const userId = state.currentUserId;
+
+    state.tareasSeleccionadasIds.forEach((tareaId) => {
+      const tarea = state.tareas.find((t) => String(t.id) === String(tareaId));
+      if (tarea && !tarea.completada) {
+        // --- CORREGIDO: Usamos 'db' y 'doc' importados ---
+        const docRef = doc(db, 'usuarios', userId, 'tareas', String(tareaId));
+        batch.update(docRef, {
+          completada: true,
+          fechaCompletado: fechaCompletado,
+        });
       }
-    }
-  });
-  guardarDatos();
-  renderizarTareas();
-  salirModoSeleccion();
+    });
+
+    await batch.commit();
+    console.log('[Tareas] Batch de completar tareas exitoso.');
+    // No llamamos a renderizar, el listener 'tareasActualizadas' lo hará.
+    salirModoSeleccion();
+  } catch (error) {
+    console.error('[Tareas] Error al completar tareas en batch:', error);
+    mostrarAlerta('Error', 'No se pudieron completar las tareas.');
+  }
 }
+
+/**
+ * MODIFICADO: Elimina tareas seleccionadas usando un Batch de Firebase.
+ */
 function eliminarTareasSeleccionadas() {
   const count = state.tareasSeleccionadasIds.length;
   if (count === 0) return;
+
   mostrarConfirmacion(
     'Eliminar Tareas',
     `¿Estás seguro de que quieres eliminar ${count} tarea(s)? Esta acción no se puede deshacer.`,
-    () => {
-      state.tareas = state.tareas.filter(
-        (tarea) => !state.tareasSeleccionadasIds.includes(tarea.id),
-      );
-      guardarDatos();
-      renderizarTareas();
-      salirModoSeleccion();
+    async () => {
+      console.log(`[Tareas] Iniciando batch para eliminar ${count} tareas.`);
+      try {
+        const batch = crearBatch();
+        const userId = state.currentUserId;
+
+        state.tareasSeleccionadasIds.forEach((tareaId) => {
+          // --- CORREGIDO: Usamos 'db' y 'doc' importados ---
+          const docRef = doc(db, 'usuarios', userId, 'tareas', String(tareaId));
+          batch.delete(docRef);
+        });
+
+        await batch.commit();
+        console.log('[Tareas] Batch de eliminar tareas exitoso.');
+        // No llamamos a renderizar, el listener 'tareasActualizadas' lo hará.
+        salirModoSeleccion();
+      } catch (error) {
+        console.error('[Tareas] Error al eliminar tareas en batch:', error);
+        mostrarAlerta('Error', 'No se pudieron eliminar las tareas.');
+      }
     },
   );
 }
@@ -391,7 +452,11 @@ function renderizarDetalles() {
   const listaSubtareas = document.getElementById('lista-subtareas');
   const proyectoContainer = document.getElementById('det-proyecto-container');
   const proyectoNombre = document.getElementById('det-proyecto-nombre');
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald); // Era tareaSeleccionadald
+
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald),
+  ); // Era tareaSeleccionadald
+
   if (tarea) {
     if (titulo) titulo.textContent = tarea.titulo || '(Sin título)';
     if (descripcion)
@@ -407,7 +472,9 @@ function renderizarDetalles() {
     if (proyectoContainer && proyectoNombre) {
       if (tarea.proyectold) {
         // Typo 'ld'
-        const proyecto = state.proyectos.find((p) => p.id === tarea.proyectold); // Typo 'ld'
+        const proyecto = state.proyectos.find(
+          (p) => String(p.id) === String(tarea.proyectold),
+        ); // Typo 'ld'
         if (proyecto) {
           proyectoNombre.textContent = proyecto.nombre;
           proyectoContainer.style.display = 'block';
@@ -465,9 +532,13 @@ function ordenarPor(columna) {
     state.ordenamiento.col = columna;
     state.ordenamiento.reverse = false;
   }
-  renderizarTareas();
+  renderizarTareas(); // Esto es local, SÍ renderiza manual
 }
-function agregarTarea(event) {
+
+/**
+ * MODIFICADO: Agrega una tarea a Firestore.
+ */
+async function agregarTarea(event) {
   event.preventDefault();
   const cursoSelect = document.getElementById('select-curso-tarea');
   const proyectoSelect = document.getElementById('select-proyecto-tarea');
@@ -488,9 +559,9 @@ function agregarTarea(event) {
     return;
   }
   const nuevaTarea = {
-    id: Date.now(),
+    // id: Date.now(), // <-- ID ELIMINADO, Firestore lo genera
     curso: cursoSelect.value || 'General',
-    proyectold: parseInt(proyectoSelect.value) || null, // Typo 'ld'
+    proyectold: proyectoSelect.value ? String(proyectoSelect.value) : null, // Typo 'ld', aseguramos String
     titulo: tituloInput.value.trim(),
     descripcion: descInput.value.trim(),
     fecha: fechaInput.value,
@@ -503,37 +574,65 @@ function agregarTarea(event) {
     alert('El título y la fecha son obligatorios.');
     return;
   }
-  state.tareas.push(nuevaTarea);
-  guardarDatos();
-  renderizarTareas();
-  popularFiltroDeCursos();
-  event.target.reset();
-  if (fechaInput) fechaInput.valueAsDate = new Date();
-  popularSelectorDeProyectos();
-  if (cursoSelect && state.cursos.length > 0) {
-    const primerCursoNoGeneral = state.cursos.find(
-      (c) => c.nombre !== 'General' && !c.isArchivado,
-    ); // Busca objeto
-    cursoSelect.value = primerCursoNoGeneral
-      ? primerCursoNoGeneral.nombre
-      : state.cursos[0]?.nombre || 'General'; // Usa nombre
+
+  try {
+    await agregarDocumento('tareas', nuevaTarea);
+    console.log('[Tareas] Nueva tarea agregada a Firestore.');
+    // No llamamos a renderizar, el listener 'tareasActualizadas' lo hará.
+    // No llamamos a guardarDatos().
+    event.target.reset();
+    if (fechaInput) fechaInput.valueAsDate = new Date();
+    // No necesitamos repopular selectores aquí, los listeners de
+    // 'cursosActualizados' y 'proyectosActualizados' lo harán.
+    if (cursoSelect && state.cursos.length > 0) {
+      const primerCursoNoGeneral = state.cursos.find(
+        (c) => c.nombre !== 'General' && !c.isArchivado,
+      ); // Busca objeto
+      cursoSelect.value = primerCursoNoGeneral
+        ? primerCursoNoGeneral.nombre
+        : state.cursos[0]?.nombre || 'General'; // Usa nombre
+    }
+  } catch (error) {
+    console.error('[Tareas] Error al agregar tarea:', error);
+    mostrarAlerta('Error', 'No se pudo guardar la tarea.');
   }
 }
-function agregarSubtarea() {
+
+/**
+ * MODIFICADO: Agrega una subtarea (actualiza doc en Firestore).
+ */
+async function agregarSubtarea() {
   const input = document.getElementById('input-nueva-subtarea');
   const texto = input?.value.trim();
   if (!texto || state.tareaSeleccionadald === null) return; // Typo 'ld'
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald); // Typo 'ld'
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald),
+  ); // Typo 'ld'
   if (tarea) {
     if (!Array.isArray(tarea.subtareas)) tarea.subtareas = [];
-    tarea.subtareas.push({ texto, completada: false });
+    const nuevasSubtareas = [...tarea.subtareas, { texto, completada: false }];
     if (input) input.value = '';
-    guardarDatos();
-    renderizarSubtareas(tarea);
+
+    try {
+      await actualizarDocumento('tareas', String(tarea.id), {
+        subtareas: nuevasSubtareas,
+      });
+      console.log(`[Tareas] Subtarea agregada a Tarea ${tarea.id}.`);
+      // No llamamos a renderizar, el listener 'tareasActualizadas' lo hará.
+    } catch (error) {
+      console.error('[Tareas] Error al agregar subtarea:', error);
+      mostrarAlerta('Error', 'No se pudo agregar la subtarea.');
+    }
   }
 }
+
+/**
+ * MODIFICADO: Elimina una subtarea (actualiza doc en Firestore).
+ */
 function eliminarSubtarea(index) {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald); // Typo 'ld'
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald),
+  ); // Typo 'ld'
   if (
     !tarea ||
     !Array.isArray(tarea.subtareas) ||
@@ -544,43 +643,73 @@ function eliminarSubtarea(index) {
   mostrarConfirmacion(
     'Eliminar Sub-tarea',
     `¿Eliminar "${subTexto || '(vacía)'}"?`,
-    () => {
-      tarea.subtareas.splice(index, 1);
-      guardarDatos();
-      renderizarSubtareas(tarea);
+    async () => {
+      const nuevasSubtareas = [...tarea.subtareas];
+      nuevasSubtareas.splice(index, 1);
+      try {
+        await actualizarDocumento('tareas', String(tarea.id), {
+          subtareas: nuevasSubtareas,
+        });
+        console.log(`[Tareas] Subtarea eliminada de Tarea ${tarea.id}.`);
+        // No llamamos a renderizar.
+      } catch (error) {
+        console.error('[Tareas] Error al eliminar subtarea:', error);
+        mostrarAlerta('Error', 'No se pudo eliminar la subtarea.');
+      }
     },
   );
 }
-function toggleSubtarea(index) {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald); // Typo 'ld'
+
+/**
+ * MODIFICADO: Cambia estado de subtarea (actualiza doc en Firestore).
+ */
+async function toggleSubtarea(index) {
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald),
+  ); // Typo 'ld'
   if (
     tarea &&
     Array.isArray(tarea.subtareas) &&
     tarea.subtareas[index] !== undefined
   ) {
-    tarea.subtareas[index].completada = !tarea.subtareas[index].completada;
-    guardarDatos();
-    const checkbox = document.querySelector(
-      `#lista-subtareas input[data-index="${index}"]`,
-    );
-    const textoSpan = document.getElementById(
-      `subtarea-texto-${tarea.id}-${index}`,
-    );
-    if (checkbox && textoSpan) {
-      textoSpan.style.textDecoration = checkbox.checked
-        ? 'line-through'
-        : 'none';
-      textoSpan.style.color = checkbox.checked
-        ? 'var(--text-muted)'
-        : 'var(--text-base)';
-      checkbox.checked = tarea.subtareas[index].completada;
-    } else {
-      renderizarSubtareas(tarea);
+    const nuevasSubtareas = [...tarea.subtareas]; // Copia
+    nuevasSubtareas[index] = {
+      ...nuevasSubtareas[index],
+      completada: !nuevasSubtareas[index].completada,
+    };
+
+    try {
+      await actualizarDocumento('tareas', String(tarea.id), {
+        subtareas: nuevasSubtareas,
+      });
+      console.log(`[Tareas] Subtarea toggled en Tarea ${tarea.id}.`);
+      // No llamamos a guardarDatos() ni renderizar.
+      // El renderizado local (checkbox) SÍ se mantiene para feedback inmediato.
+      const checkbox = document.querySelector(
+        `#lista-subtareas input[data-index="${index}"]`,
+      );
+      const textoSpan = document.getElementById(
+        `subtarea-texto-${tarea.id}-${index}`,
+      );
+      if (checkbox && textoSpan) {
+        checkbox.checked = nuevasSubtareas[index].completada; // Usa el nuevo estado
+        textoSpan.style.textDecoration = checkbox.checked
+          ? 'line-through'
+          : 'none';
+        textoSpan.style.color = checkbox.checked
+          ? 'var(--text-muted)'
+          : 'var(--text-base)';
+      }
+    } catch (error) {
+      console.error('[Tareas] Error al togglear subtarea:', error);
+      mostrarAlerta('Error', 'No se pudo actualizar la subtarea.');
     }
   }
 }
 function iniciarEdicionTarea() {
-  const tarea = state.tareas.find((t) => t.id === state.tareaSeleccionadald); // Typo 'ld'
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald),
+  ); // Typo 'ld'
   if (!tarea) return;
   try {
     document.getElementById('edit-titulo-tarea').value = tarea.titulo || '';
@@ -595,28 +724,35 @@ function iniciarEdicionTarea() {
     alert('Error al abrir el editor de tareas.');
   }
 }
-function eliminarTarea(idAEliminar) {
+
+/**
+ * MODIFICADO: Elimina una tarea de Firestore.
+ */
+async function eliminarTarea(idAEliminar) {
   if (idAEliminar === null || idAEliminar === undefined) return;
-  const tareaIndex = state.tareas.findIndex((t) => t.id === idAEliminar);
-  if (tareaIndex === -1) return;
-  state.tareas.splice(tareaIndex, 1);
-  if (state.tareaSeleccionadald === idAEliminar) {
-    // Typo 'ld'
-    state.tareaSeleccionadald = null; // Typo 'ld'
-    document
-      .querySelector('.app-container')
-      ?.classList.remove('detalle-visible');
-    renderizarDetalles();
+  const tareaIdStr = String(idAEliminar);
+
+  try {
+    await eliminarDocumento('tareas', tareaIdStr);
+    console.log(`[Tareas] Tarea ${tareaIdStr} eliminada de Firestore.`);
+    if (String(state.tareaSeleccionadald) === tareaIdStr) {
+      // Typo 'ld'
+      state.tareaSeleccionadald = null; // Typo 'ld'
+      document
+        .querySelector('.app-container')
+        ?.classList.remove('detalle-visible');
+      renderizarDetalles(); // Renderiza el panel vacío
+    }
+    // No llamamos a renderizarTareas() ni guardarDatos().
+  } catch (error) {
+    console.error(`[Tareas] Error al eliminar tarea ${tareaIdStr}:`, error);
+    mostrarAlerta('Error', 'No se pudo eliminar la tarea.');
   }
-  guardarDatos();
-  renderizarTareas();
-  popularFiltroDeCursos();
 }
+
 function eliminarTareaSeleccionada() {
-  // Esta función parece redundante ahora
-  console.warn(
-    'eliminarTareaSeleccionada llamada - usar lógica del listener global',
-  );
+  // Esta función es redundante, eliminada por eliminarTareasSeleccionadas()
+  console.warn('eliminarTareaSeleccionada (obsoleta) llamada.');
 }
 function actualizarUIModoSeleccion() {
   const panelCentral = document.querySelector('#page-tareas .panel-central');
@@ -650,8 +786,11 @@ function actualizarUIModoSeleccion() {
     }
     const filas = tablaBody.querySelectorAll('tr[data-id]');
     filas.forEach((fila) => {
-      const tareaId = parseInt(fila.dataset.id, 10);
-      const isSelected = state.tareasSeleccionadasIds.includes(tareaId);
+      const tareaId = fila.dataset.id; // ID es string
+      // Comparamos IDs como strings o números consistentes
+      const isSelected = state.tareasSeleccionadasIds.some(
+        (id) => String(id) === tareaId,
+      );
       fila.classList.toggle('seleccionada-en-modo', isSelected);
     });
   } else {
@@ -665,11 +804,12 @@ function actualizarUIModoSeleccion() {
   }
 }
 function iniciarModoSeleccion(tareaIdInicial) {
+  const tareaId = String(tareaIdInicial); // Asegurar string
   if (!state.tareasEnModoSeleccion) {
     state.tareasEnModoSeleccion = true;
     state.tareasSeleccionadasIds = [];
     if (tareaIdInicial !== null && tareaIdInicial !== undefined) {
-      state.tareasSeleccionadasIds.push(tareaIdInicial);
+      state.tareasSeleccionadasIds.push(tareaId);
     }
     const appContainer = document.querySelector('.app-container');
     if (appContainer?.classList.contains('detalle-visible')) {
@@ -679,7 +819,7 @@ function iniciarModoSeleccion(tareaIdInicial) {
     }
     actualizarUIModoSeleccion();
   } else {
-    toggleSeleccionTarea(tareaIdInicial);
+    toggleSeleccionTarea(tareaId);
   }
 }
 function salirModoSeleccion() {
@@ -690,13 +830,14 @@ function salirModoSeleccion() {
   }
 }
 function toggleSeleccionTarea(tareaId) {
+  const idStr = String(tareaId); // Asegurar string
   if (!state.tareasEnModoSeleccion || tareaId === null || tareaId === undefined)
     return;
-  const index = state.tareasSeleccionadasIds.indexOf(tareaId);
+  const index = state.tareasSeleccionadasIds.indexOf(idStr);
   if (index > -1) {
     state.tareasSeleccionadasIds.splice(index, 1);
   } else {
-    state.tareasSeleccionadasIds.push(tareaId);
+    state.tareasSeleccionadasIds.push(idStr);
   }
   if (state.tareasSeleccionadasIds.length === 0) {
     salirModoSeleccion();
@@ -704,327 +845,165 @@ function toggleSeleccionTarea(tareaId) {
     actualizarUIModoSeleccion();
   }
 }
-export function inicializarTareas(pageElement) {
-  let touchStartX = 0,
-    touchStartY = 0,
-    touchEndX = 0,
-    touchEndY = 0;
-  let swipedRow = null,
-    swipeBackgroundBar = null;
-  const swipeThreshold = 50,
-    feedbackThreshold = 30,
-    swipeMaxVertical = 30;
-  let isSwiping = false,
-    positioningParent = null;
-  let longPressTimer = null;
-  let pressStartX = 0,
-    pressStartY = 0;
-  const longPressDuration = 500;
-  try {
-    cargarIconos();
-    popularSelectorDeCursos(
-      document.getElementById('select-curso-tarea'),
-      true,
-    );
-    popularSelectorDeProyectos();
-    const btnCompletarSel = document.getElementById(
-      'btn-completar-seleccionadas',
-    );
-    const btnEliminarSel = document.getElementById(
-      'btn-eliminar-seleccionadas',
-    );
-    const btnCancelarSel = document.getElementById('btn-cancelar-seleccion');
-    const checkAllIcon =
-      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.77 4.93l-1.41-1.41-8.36 8.36-3.54-3.54-1.41 1.41 4.95 4.95zM4.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41zM11.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41z"/></svg>';
-    if (btnCompletarSel)
-      btnCompletarSel.innerHTML = ICONS.check_all || checkAllIcon;
-    if (btnEliminarSel) btnEliminarSel.innerHTML = ICONS.delete;
-    if (btnCancelarSel) btnCancelarSel.innerHTML = ICONS.close;
-  } catch (error) {
-    console.error('Error durante initial setup:', error);
-  }
-  try {
-    renderizarTareas();
-    renderizarDetalles();
-  } catch (error) {
-    console.error('Error durante el renderizado inicial:', error);
-  }
-  if (state.tareaSeleccionadald) {
-    // Usamos requestAnimationFrame simple para asegurar que el elemento exista
-    requestAnimationFrame(() => {
-      const tareaElemento = document.querySelector(
-        `tr[data-id="${state.tareaSeleccionadald}"]`, // <--- El typo, lo dejamos como está
-      );
-      if (tareaElemento) {
-        console.log(
-          `Intentando hacer scroll (manual) a tarea ID: ${state.tareaSeleccionadald}`,
-        );
 
-        // ===========================================
-        // ==          INICIO DE LA CORRECCIÓN      ==
-        // ===========================================
+/**
+ * MODIFICADO: Inicializa la página de Tareas, suscribiéndose a eventos.
+ */
+export function inicializarTareas() {
+  console.log('[Tareas] Inicializando y suscribiendo a eventos...');
 
-        // 1. Identificamos el contenedor que SÍ debe hacer scroll
-        //    (Lo tomo de tu código de swipe, línea 1222)
-        const scrollContainer = document.querySelector(
-          '#page-tareas .tabla-container',
-        );
+  // --- SUSCRIPCIÓN A EVENTOS DE DATOS ---
+  // (Se adjuntan una sola vez al cargar main.js)
 
-        if (scrollContainer) {
-          // 2. Calculamos las posiciones relativas
-          const containerRect = scrollContainer.getBoundingClientRect();
-          const taskRect = tareaElemento.getBoundingClientRect();
-
-          // 3. Posición del 'top' de la tarea RELATIVO al 'top' del contenedor
-          const taskTopRelativeToContainer = taskRect.top - containerRect.top;
-
-          // 4. Calculamos un offset para centrarla (imitando tu 'block: 'center'')
-          const containerHeight = scrollContainer.clientHeight;
-          const taskHeight = tareaElemento.offsetHeight;
-          const offset = containerHeight / 2 - taskHeight / 2;
-
-          // 5. El nuevo scrollTop es:
-          //    (scroll actual) + (posición relativa de la tarea) - (offset para centrar)
-          const newScrollTop =
-            scrollContainer.scrollTop + taskTopRelativeToContainer - offset;
-
-          // 6. Usamos scrollTo() en el contenedor correcto
-          scrollContainer.scrollTo({
-            top: newScrollTop,
-            behavior: 'smooth',
-          });
-        } else {
-          // Fallback por si no encuentra el contenedor (comportamiento antiguo)
-          console.warn(
-            "No se encontró '.tabla-container', usando scrollIntoView() de emergencia.",
-          );
-          tareaElemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        // ===========================================
-        // ==           FIN DE LA CORRECCIÓN        ==
-        // ===========================================
-
-        // Resaltado temporal
-        tareaElemento.classList.add('resaltado-temporal');
-        setTimeout(() => {
-          tareaElemento.classList.remove('resaltado-temporal');
-        }, 2500);
-      } else {
-        console.warn(
-          `Elemento tarea no encontrado (rAF): ID ${state.tareaSeleccionadald}`,
-        );
-      }
-    });
-  }
-  const appContainer = document.querySelector('.app-container');
-  if (appContainer)
-    appContainer.classList.toggle(
-      'detalle-visible',
-      state.tareaSeleccionadald !== null,
-    );
-  // Typo 'ld'
-  else console.error("Contenedor principal '.app-container' no encontrado.");
-  const pageTareas = pageElement;
-  if (!pageTareas) {
-    console.error(
-      'Error: inicializarTareas fue llamado sin un elemento de página.',
-    );
-    return;
-  }
-  if (tareasGlobalClickHandler) {
-    document.removeEventListener('click', tareasGlobalClickHandler);
-    tareasGlobalClickHandler = null;
-  }
-  tareasGlobalClickHandler = (e) => {
-    if (
-      !activeDropdown &&
-      !activeFiltroDropdown &&
-      state.paginaActual !== 'tareas'
-    )
-      return;
-    const currentPageTareas = document.getElementById('page-tareas');
-    const isClickInsidePage = currentPageTareas
-      ? currentPageTareas.contains(e.target)
-      : false;
-    const isClickInsideActiveDropdown = activeDropdown
-      ? activeDropdown.contains(e.target)
-      : false;
-    const isClickInsideFiltroDropdown = activeFiltroDropdown
-      ? activeFiltroDropdown.contains(e.target)
-      : false;
-    const menuButton = e.target.closest('.btn-tarea-menu');
-    const dropdownOptionButton = e.target.closest(
-      '.tarea-actions-dropdown-active button[data-action]',
-    );
-    const filtroMenuButton = e.target.closest('#btn-filtros-dropdown');
-    const filtroDropdownOption = e.target.closest(
-      '#menu-filtros-dropdown-active .opcion-btn',
-    );
-    if (dropdownOptionButton && isClickInsideActiveDropdown) {
-      e.stopPropagation();
-      const action = dropdownOptionButton.dataset.action;
-      const taskId = activeDropdownButton
-        ? parseInt(activeDropdownButton.closest('tr[data-id]')?.dataset.id, 10)
-        : null;
-      if (activeDropdown) activeDropdown.remove();
-      activeDropdown = null;
-      activeDropdownButton = null;
-      if (taskId !== null) {
-        switch (action) {
-          case 'editar-tarea-menu':
-            if (state.tareaSeleccionadald !== taskId)
-              state.tareaSeleccionadald = taskId; // Typo 'ld'
-            iniciarEdicionTarea();
-            break;
-          case 'seleccionar-tarea-menu':
-            iniciarModoSeleccion(taskId);
-            break;
-          case 'eliminar-tarea-menu':
-            const tarea = state.tareas.find((t) => t.id === taskId);
-            if (tarea)
-              mostrarConfirmacion(
-                `Eliminar Tarea`,
-                `¿Eliminar "${tarea.titulo}"?`,
-                () => eliminarTarea(taskId),
-              );
-            break;
-        }
-      }
-      return;
-    } else if (filtroDropdownOption && isClickInsideFiltroDropdown) {
-      e.stopPropagation();
-      const action = filtroDropdownOption.dataset.action;
-      const value = filtroDropdownOption.dataset.value;
-      if (action === 'sort') {
-        if (state.ordenamiento.col === value)
-          state.ordenamiento.reverse = !state.ordenamiento.reverse;
-        else {
-          state.ordenamiento.col = value;
-          state.ordenamiento.reverse = false;
-        }
-      } else if (action === 'filter-curso') {
-        state.filtroCurso = value;
-      } else if (action === 'filter-proyecto') {
-        state.filtroProyecto = value;
-      } else if (action === 'toggle-submenu') {
-        const submenuId = `filtro-submenu-${filtroDropdownOption.dataset.submenu}`;
-        const submenu = activeFiltroDropdown?.querySelector(`#${submenuId}`);
-        if (submenu) {
-          submenu.classList.toggle('hidden');
-          filtroDropdownOption.classList.toggle('abierto');
-        }
-        return;
-      } else {
-        return;
-      }
+  EventBus.on('tareasActualizadas', () => {
+    if (state.paginaActual === 'tareas') {
+      console.log('[Tareas] Evento: tareasActualizadas. Renderizando...');
       renderizarTareas();
-      if (activeFiltroDropdown) repopularMenuFiltros(activeFiltroDropdown);
+      renderizarDetalles(); // Refrescar detalles también
+    }
+  });
+
+  const refrescarDependencias = () => {
+    if (state.paginaActual === 'tareas') {
+      console.log(
+        '[Tareas] Evento: dependencias (cursos/proyectos) actualizadas. Renderizando...',
+      );
+      // Repopular selectores en formularios
+      popularSelectorDeCursos(
+        document.getElementById('select-curso-tarea'),
+        true,
+      );
+      popularSelectorDeProyectos();
+      // Renderizar tareas (para filtros, nombres, etc.)
+      renderizarTareas();
+      renderizarDetalles(); // Nombres de proyecto/curso pueden haber cambiado
+    }
+  };
+  EventBus.on('cursosActualizados', refrescarDependencias);
+  EventBus.on('proyectosActualizados', refrescarDependencias);
+
+  // --- SUSCRIPCIÓN AL EVENTO DE CARGA DE PÁGINA ---
+  EventBus.on('paginaCargada:tareas', (data) => {
+    console.log(
+      '[Tareas] Evento: paginaCargada:tareas recibido. Conectando listeners de UI...',
+    );
+
+    const pageElement = document.getElementById('page-tareas');
+    if (!pageElement) {
+      console.error('[Tareas] ¡Error crítico! #page-tareas no encontrado.');
       return;
-    } else if (menuButton && isClickInsidePage) {
-      e.stopPropagation();
-      if (activeFiltroDropdown) {
-        activeFiltroDropdown.remove();
-        activeFiltroDropdown = null;
-        document
-          .getElementById('btn-filtros-dropdown')
-          ?.classList.remove('active');
-      }
-      if (activeDropdown && activeDropdownButton !== menuButton) {
-        activeDropdown.remove();
-        activeDropdown = null;
-        activeDropdownButton = null;
-      }
-      if (activeDropdown && activeDropdownButton === menuButton) {
-        activeDropdown.remove();
-        activeDropdown = null;
-        activeDropdownButton = null;
-        return;
-      }
-      const row = menuButton.closest('tr[data-id]');
-      const template = row?.querySelector('.tarea-actions-dropdown');
-      if (!template) return;
-      activeDropdown = template.cloneNode(true);
-      activeDropdown.classList.add('tarea-actions-dropdown-active');
-      activeDropdown.style.visibility = 'hidden';
-      document.body.appendChild(activeDropdown);
-      activeDropdownButton = menuButton;
-      const btnRect = menuButton.getBoundingClientRect();
-      const menuRect = activeDropdown.getBoundingClientRect();
-      const margin = 10;
-      let left = btnRect.left - menuRect.width - 5;
-      if (left < margin) left = btnRect.right + 5;
-      let top = btnRect.top + btnRect.height / 2 - menuRect.height / 2;
-      if (top + menuRect.height > window.innerHeight - margin)
-        top = btnRect.bottom - menuRect.height;
-      if (top < margin) top = margin;
-      activeDropdown.style.left = `${left}px`;
-      activeDropdown.style.top = `${top}px`;
+    }
+
+    // --- Lógica de Navegación (Scroll-to-task) ---
+    if (data && data.id) {
+      state.tareaSeleccionadald = String(data.id); // Typo 'ld', asegurar string
+      // Abrir panel de detalles
+      document
+        .querySelector('.app-container')
+        ?.classList.add('detalle-visible');
+
+      // Usamos requestAnimationFrame para asegurar que el DOM esté pintado
       requestAnimationFrame(() => {
-        if (activeDropdown) activeDropdown.style.visibility = 'visible';
-      });
-      return;
-    } else if (filtroMenuButton && isClickInsidePage) {
-      e.stopPropagation();
-      if (activeDropdown) {
-        activeDropdown.remove();
-        activeDropdown = null;
-        activeDropdownButton = null;
-      }
-      if (activeFiltroDropdown) {
-        activeFiltroDropdown.remove();
-        activeFiltroDropdown = null;
-        filtroMenuButton.classList.remove('active');
-      } else {
-        const template = document.getElementById('menu-filtros-dropdown');
-        if (template) {
-          activeFiltroDropdown = template.cloneNode(true);
-          activeFiltroDropdown.id = 'menu-filtros-dropdown-active';
-          document.body.appendChild(activeFiltroDropdown);
-          const btnRect = filtroMenuButton.getBoundingClientRect();
-          activeFiltroDropdown.style.visibility = 'hidden';
-          const menuRect = activeFiltroDropdown.getBoundingClientRect();
-          const margin = 10;
-          let left = btnRect.left;
-          if (btnRect.left + menuRect.width > window.innerWidth - margin)
-            left = btnRect.right - menuRect.width;
-          if (left < margin) left = margin;
-          let top = btnRect.bottom + 4;
-          if (top + menuRect.height > window.innerHeight - margin)
-            top = btnRect.top - menuRect.height - 4;
-          if (top < margin) top = margin;
-          activeFiltroDropdown.style.left = `${left}px`;
-          activeFiltroDropdown.style.top = `${top}px`;
-          repopularMenuFiltros(activeFiltroDropdown);
-          requestAnimationFrame(() => {
-            if (activeFiltroDropdown) {
-              activeFiltroDropdown.style.visibility = 'visible';
-              activeFiltroDropdown.classList.add('visible');
-              filtroMenuButton.classList.add('active');
-            }
-          });
+        const tareaElemento = document.querySelector(
+          `tr[data-id="${state.tareaSeleccionadald}"]`, // <--- El typo
+        );
+        if (tareaElemento) {
+          console.log(
+            `[Tareas] Navegación: Haciendo scroll a tarea ID: ${state.tareaSeleccionadald}`,
+          );
+          // (Lógica de scroll corregida de tu versión anterior)
+          const scrollContainer = document.querySelector(
+            '#page-tareas .tabla-container',
+          );
+          if (scrollContainer) {
+            const containerRect = scrollContainer.getBoundingClientRect();
+            const taskRect = tareaElemento.getBoundingClientRect();
+            const taskTopRelativeToContainer = taskRect.top - containerRect.top;
+            const containerHeight = scrollContainer.clientHeight;
+            const taskHeight = tareaElemento.offsetHeight;
+            const offset = containerHeight / 2 - taskHeight / 2;
+            const newScrollTop =
+              scrollContainer.scrollTop + taskTopRelativeToContainer - offset;
+            scrollContainer.scrollTo({ top: newScrollTop, behavior: 'smooth' });
+          } else {
+            console.warn(
+              "No se encontró '.tabla-container', usando scrollIntoView() de emergencia.",
+            );
+            tareaElemento.scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+            });
+          }
+          // Resaltado temporal
+          tareaElemento.classList.add('resaltado-temporal');
+          setTimeout(() => {
+            tareaElemento.classList.remove('resaltado-temporal');
+          }, 2500);
+        } else {
+          console.warn(
+            `[Tareas] Elemento tarea no encontrado (rAF): ID ${state.tareaSeleccionadald}`,
+          );
         }
-      }
-      return;
+      });
     } else {
-      let menuFueCerrado = false;
-      if (activeDropdown && !isClickInsideActiveDropdown) {
-        activeDropdown.remove();
-        activeDropdown = null;
-        activeDropdownButton = null;
-        menuFueCerrado = true;
-      }
-      if (activeFiltroDropdown && !isClickInsideFiltroDropdown) {
-        activeFiltroDropdown.remove();
+      // Si no hay ID, asegurar que el panel de detalles esté cerrado
+      // (a menos que el usuario ya tuviera uno seleccionado)
+      if (state.tareaSeleccionadald === null) {
         document
-          .getElementById('btn-filtros-dropdown')
-          ?.classList.remove('active');
-        activeFiltroDropdown = null;
-        menuFueCerrado = true;
+          .querySelector('.app-container')
+          ?.classList.remove('detalle-visible');
       }
-      if (menuFueCerrado) return;
-      if (isClickInsidePage) {
-        const fila = e.target.closest('#tabla-tareas-body tr[data-id]');
-        const cerrarDetallesBtn = e.target.closest('#btn-cerrar-detalles');
+    }
+
+    // --- Renderizado Inicial ---
+    try {
+      cargarIconos();
+      popularSelectorDeCursos(
+        document.getElementById('select-curso-tarea'),
+        true,
+      );
+      popularSelectorDeProyectos();
+      // Iconos del header contextual
+      const btnCompletarSel = document.getElementById(
+        'btn-completar-seleccionadas',
+      );
+      const btnEliminarSel = document.getElementById(
+        'btn-eliminar-seleccionadas',
+      );
+      const btnCancelarSel = document.getElementById('btn-cancelar-seleccion');
+      const checkAllIcon =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.77 4.93l-1.41-1.41-8.36 8.36-3.54-3.54-1.41 1.41 4.95 4.95zM4.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41zM11.23 12.05l-1.41-1.41-1.41 1.41 1.41 1.41 1.41-1.41z"/></svg>';
+      if (btnCompletarSel)
+        btnCompletarSel.innerHTML = ICONS.check_all || checkAllIcon;
+      if (btnEliminarSel) btnEliminarSel.innerHTML = ICONS.delete;
+      if (btnCancelarSel) btnCancelarSel.innerHTML = ICONS.close;
+      // Iconos del FAB móvil
+      const btnAbrirCreacion = document.getElementById(
+        'btn-abrir-creacion-movil',
+      );
+      if (btnAbrirCreacion) btnAbrirCreacion.innerHTML = ICONS.plus;
+      // Iconos del panel de detalles
+      const btnCerrarDetalles = document.getElementById('btn-cerrar-detalles');
+      if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
+      const btnEditar = document.getElementById('btn-editar-tarea');
+      if (btnEditar) btnEditar.innerHTML = ICONS.edit;
+      const btnEliminar = document.getElementById('btn-eliminar-tarea');
+      if (btnEliminar) btnEliminar.innerHTML = ICONS.delete;
+
+      renderizarTareas();
+      renderizarDetalles();
+      actualizarUIModoSeleccion(); // Asegura que el header contextual esté oculto
+    } catch (error) {
+      console.error('[Tareas] Error durante el renderizado inicial:', error);
+    }
+
+    // --- LISTENERS DE PÁGINA (Se adjuntan solo a #page-tareas) ---
+    // (Usamos el patrón de 'proyectos.js' de un solo listener de clic por página)
+    if (pageElement.dataset.clickHandlerAttached !== 'true') {
+      pageElement.dataset.clickHandlerAttached = 'true';
+
+      pageElement.addEventListener('click', async (e) => {
+        // --- Clic en Header Contextual (Modo Selección) ---
         const contextualHeaderButton = e.target.closest(
           '#tareas-header-contextual button[data-action]',
         );
@@ -1035,415 +1014,702 @@ export function inicializarTareas(pageElement) {
               salirModoSeleccion();
               break;
             case 'completar-seleccion':
-              completarTareasSeleccionadas();
+              await completarTareasSeleccionadas(); // async
               break;
             case 'eliminar-seleccion':
-              eliminarTareasSeleccionadas();
+              eliminarTareasSeleccionadas(); // Llama a confirmación (que es async)
               break;
           }
           return;
-        } else if (fila) {
-          const taskId = parseInt(fila.dataset.id, 10);
-          if (state.tareasEnModoSeleccion) toggleSeleccionTarea(taskId);
-          else if (state.tareaSeleccionadald !== taskId) {
+        }
+
+        // --- Clic en Fila de Tarea ---
+        const fila = e.target.closest('#tabla-tareas-body tr[data-id]');
+        if (fila) {
+          const taskId = fila.dataset.id; // Es String
+          if (state.tareasEnModoSeleccion) {
+            toggleSeleccionTarea(taskId);
+          } else if (String(state.tareaSeleccionadald) !== taskId) {
             // Typo 'ld'
             state.tareaSeleccionadald = taskId; // Typo 'ld'
-            guardarDatos();
-            renderizarTareas();
+            // No guardamos en DB, es estado de UI local
+            renderizarTareas(); // Para 'selected-task'
             renderizarDetalles();
-            appContainer?.classList.add('detalle-visible');
+            document
+              .querySelector('.app-container')
+              ?.classList.add('detalle-visible');
           }
           return;
-        } else if (cerrarDetallesBtn) {
+        }
+
+        // --- Clic en Panel de Detalles ---
+        const panelDetalles = document.getElementById('panel-detalles');
+        if (panelDetalles && panelDetalles.contains(e.target)) {
+          const completarBtn = e.target.closest('#btn-completar-tarea');
+          const editarBtn = e.target.closest('#btn-editar-tarea');
+          const eliminarBtn = e.target.closest('#btn-eliminar-tarea');
+          const addSubtareaBtn = e.target.closest('#btn-agregar-subtarea');
+          const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
+          const subtareaCheckbox = e.target.closest(
+            '#lista-subtareas input[type="checkbox"]',
+          );
+
+          if (completarBtn && !completarBtn.disabled) {
+            const tarea = state.tareas.find(
+              (t) => String(t.id) === String(state.tareaSeleccionadald),
+            ); // Typo 'ld'
+            if (tarea) {
+              const completada = !tarea.completada;
+              const fechaCompletado = completada
+                ? new Date().toISOString().split('T')[0]
+                : null;
+              try {
+                await actualizarDocumento('tareas', String(tarea.id), {
+                  completada,
+                  fechaCompletado,
+                });
+                // No renderizar, listener lo hará.
+              } catch (error) {
+                console.error('[Tareas] Error al completar tarea:', error);
+              }
+            }
+            return;
+          }
+          if (editarBtn && !editarBtn.disabled) {
+            iniciarEdicionTarea();
+            return;
+          }
+          if (eliminarBtn && !eliminarBtn.disabled) {
+            const tarea = state.tareas.find(
+              (t) => String(t.id) === String(state.tareaSeleccionadald),
+            ); // Typo 'ld'
+            if (tarea) {
+              mostrarConfirmacion(
+                'Eliminar Tarea',
+                `¿Eliminar "${tarea.titulo}"?`,
+                async () => {
+                  await eliminarTarea(state.tareaSeleccionadald); // async
+                },
+              );
+            } // Typo 'ld'
+            return;
+          }
+          if (addSubtareaBtn) {
+            await agregarSubtarea(); // async
+            return;
+          }
+          if (deleteSubtaskBtn) {
+            const index = parseInt(deleteSubtaskBtn.dataset.index, 10);
+            eliminarSubtarea(index); // Llama a confirmación (que es async)
+            return;
+          }
+          if (subtareaCheckbox) {
+            const index = parseInt(subtareaCheckbox.dataset.index, 10);
+            await toggleSubtarea(index); // async
+            return;
+          }
+        } // Fin clics panel detalles
+
+        // --- Clic en Botón Cerrar Detalles ---
+        const cerrarDetallesBtn = e.target.closest('#btn-cerrar-detalles');
+        if (cerrarDetallesBtn) {
           state.tareaSeleccionadald = null; // Typo 'ld'
-          guardarDatos();
-          appContainer?.classList.remove('detalle-visible');
-          renderizarTareas();
-          renderizarDetalles();
+          document
+            .querySelector('.app-container')
+            ?.classList.remove('detalle-visible');
+          renderizarTareas(); // Quitar 'selected-task'
+          renderizarDetalles(); // Renderizar panel vacío
           return;
         }
-      }
+
+        // --- Clic en Botón Filtro (Dropdown) ---
+        // (La lógica del dropdown es compleja y usa 'document.body', la mantenemos separada)
+      }); // --- FIN LISTENER DE CLIC DE PÁGINA ---
+    } // Fin if(dataset.clickHandlerAttached)
+
+    // --- LISTENERS DE DROPDOWN (Globales, como en el original) ---
+    if (!document.body.dataset.tareasDropdownListener) {
+      document.body.dataset.tareasDropdownListener = 'true';
+
+      document.addEventListener('click', (e) => {
+        if (state.paginaActual !== 'tareas') {
+          // Si no estamos en tareas, cerrar dropdowns abiertos
+          if (activeDropdown) activeDropdown.remove();
+          if (activeFiltroDropdown) activeFiltroDropdown.remove();
+          activeDropdown = null;
+          activeDropdownButton = null;
+          activeFiltroDropdown = null;
+          return;
+        }
+
+        const isClickInsideActiveDropdown = activeDropdown
+          ? activeDropdown.contains(e.target)
+          : false;
+        const isClickInsideFiltroDropdown = activeFiltroDropdown
+          ? activeFiltroDropdown.contains(e.target)
+          : false;
+        const menuButton = e.target.closest('.btn-tarea-menu');
+        const dropdownOptionButton = e.target.closest(
+          '.tarea-actions-dropdown-active button[data-action]',
+        );
+        const filtroMenuButton = e.target.closest('#btn-filtros-dropdown');
+        const filtroDropdownOption = e.target.closest(
+          '#menu-filtros-dropdown-active .opcion-btn',
+        );
+
+        if (dropdownOptionButton && isClickInsideActiveDropdown) {
+          e.stopPropagation();
+          const action = dropdownOptionButton.dataset.action;
+          const taskId = activeDropdownButton
+            ? activeDropdownButton.closest('tr[data-id]')?.dataset.id
+            : null; // ID es String
+          if (activeDropdown) activeDropdown.remove();
+          activeDropdown = null;
+          activeDropdownButton = null;
+          if (taskId !== null) {
+            switch (action) {
+              case 'editar-tarea-menu':
+                if (String(state.tareaSeleccionadald) !== taskId)
+                  state.tareaSeleccionadald = taskId; // Typo 'ld'
+                iniciarEdicionTarea();
+                break;
+              case 'seleccionar-tarea-menu':
+                iniciarModoSeleccion(taskId);
+                break;
+              case 'eliminar-tarea-menu':
+                const tarea = state.tareas.find((t) => String(t.id) === taskId);
+                if (tarea)
+                  mostrarConfirmacion(
+                    `Eliminar Tarea`,
+                    `¿Eliminar "${tarea.titulo}"?`,
+                    async () => await eliminarTarea(taskId), // async
+                  );
+                break;
+            }
+          }
+          return;
+        } else if (filtroDropdownOption && isClickInsideFiltroDropdown) {
+          e.stopPropagation();
+          const action = filtroDropdownOption.dataset.action;
+          const value = filtroDropdownOption.dataset.value;
+          if (action === 'sort') {
+            if (state.ordenamiento.col === value)
+              state.ordenamiento.reverse = !state.ordenamiento.reverse;
+            else {
+              state.ordenamiento.col = value;
+              state.ordenamiento.reverse = false;
+            }
+          } else if (action === 'filter-curso') {
+            state.filtroCurso = value;
+          } else if (action === 'filter-proyecto') {
+            state.filtroProyecto = value; // Guardamos ID como string
+          } else if (action === 'toggle-submenu') {
+            const submenuId = `filtro-submenu-${filtroDropdownOption.dataset.submenu}`;
+            const submenu = activeFiltroDropdown?.querySelector(
+              `#${submenuId}`,
+            );
+            if (submenu) {
+              submenu.classList.toggle('hidden');
+              filtroDropdownOption.classList.toggle('abierto');
+            }
+            return;
+          } else {
+            return;
+          }
+          renderizarTareas(); // El filtro/orden SÍ es renderizado manual
+          if (activeFiltroDropdown) repopularMenuFiltros(activeFiltroDropdown);
+          return;
+        } else if (menuButton) {
+          e.stopPropagation();
+          if (activeFiltroDropdown) {
+            activeFiltroDropdown.remove();
+            activeFiltroDropdown = null;
+            document
+              .getElementById('btn-filtros-dropdown')
+              ?.classList.remove('active');
+          }
+          if (activeDropdown && activeDropdownButton !== menuButton) {
+            activeDropdown.remove();
+            activeDropdown = null;
+            activeDropdownButton = null;
+          }
+          if (activeDropdown && activeDropdownButton === menuButton) {
+            activeDropdown.remove();
+            activeDropdown = null;
+            activeDropdownButton = null;
+            return;
+          }
+          const row = menuButton.closest('tr[data-id]');
+          const template = row?.querySelector('.tarea-actions-dropdown');
+          if (!template) return;
+          activeDropdown = template.cloneNode(true);
+          activeDropdown.classList.add('tarea-actions-dropdown-active');
+          activeDropdown.style.visibility = 'hidden';
+          document.body.appendChild(activeDropdown);
+          activeDropdownButton = menuButton;
+          const btnRect = menuButton.getBoundingClientRect();
+          const menuRect = activeDropdown.getBoundingClientRect();
+          const margin = 10;
+          let left = btnRect.left - menuRect.width - 5;
+          if (left < margin) left = btnRect.right + 5;
+          let top = btnRect.top + btnRect.height / 2 - menuRect.height / 2;
+          if (top + menuRect.height > window.innerHeight - margin)
+            top = btnRect.bottom - menuRect.height;
+          if (top < margin) top = margin;
+          activeDropdown.style.left = `${left}px`;
+          activeDropdown.style.top = `${top}px`;
+          requestAnimationFrame(() => {
+            if (activeDropdown) activeDropdown.style.visibility = 'visible';
+          });
+          return;
+        } else if (filtroMenuButton) {
+          e.stopPropagation();
+          if (activeDropdown) {
+            activeDropdown.remove();
+            activeDropdown = null;
+            activeDropdownButton = null;
+          }
+          if (activeFiltroDropdown) {
+            activeFiltroDropdown.remove();
+            activeFiltroDropdown = null;
+            filtroMenuButton.classList.remove('active');
+          } else {
+            const template = document.getElementById('menu-filtros-dropdown');
+            if (template) {
+              activeFiltroDropdown = template.cloneNode(true);
+              activeFiltroDropdown.id = 'menu-filtros-dropdown-active';
+              document.body.appendChild(activeFiltroDropdown);
+              const btnRect = filtroMenuButton.getBoundingClientRect();
+              activeFiltroDropdown.style.visibility = 'hidden';
+              const menuRect = activeFiltroDropdown.getBoundingClientRect();
+              const margin = 10;
+              let left = btnRect.left;
+              if (btnRect.left + menuRect.width > window.innerWidth - margin)
+                left = btnRect.right - menuRect.width;
+              if (left < margin) left = margin;
+              let top = btnRect.bottom + 4;
+              if (top + menuRect.height > window.innerHeight - margin)
+                top = btnRect.top - menuRect.height - 4;
+              if (top < margin) top = margin;
+              activeFiltroDropdown.style.left = `${left}px`;
+              activeFiltroDropdown.style.top = `${top}px`;
+              repopularMenuFiltros(activeFiltroDropdown);
+              requestAnimationFrame(() => {
+                if (activeFiltroDropdown) {
+                  activeFiltroDropdown.style.visibility = 'visible';
+                  activeFiltroDropdown.classList.add('visible');
+                  filtroMenuButton.classList.add('active');
+                }
+              });
+            }
+          }
+          return;
+        } else {
+          // Clic fuera de todo dropdown
+          if (activeDropdown && !isClickInsideActiveDropdown) {
+            activeDropdown.remove();
+            activeDropdown = null;
+            activeDropdownButton = null;
+          }
+          if (activeFiltroDropdown && !isClickInsideFiltroDropdown) {
+            activeFiltroDropdown.remove();
+            document
+              .getElementById('btn-filtros-dropdown')
+              ?.classList.remove('active');
+            activeFiltroDropdown = null;
+          }
+        }
+      }); // Fin listener global de 'click'
+    } // Fin if(dataset.tareasDropdownListener)
+
+    // --- LISTENERS DE CHECKBOX (Select All) ---
+    const checkSelectAll = document.getElementById('seleccionar-todas-tareas');
+    if (checkSelectAll && !checkSelectAll.dataset.listenerAttached) {
+      checkSelectAll.dataset.listenerAttached = 'true';
+      checkSelectAll.addEventListener('change', (e) => {
+        if (!state.tareasEnModoSeleccion) return;
+        seleccionarTodasTareasVisibles(e.target.checked);
+      });
     }
-  };
-  document.addEventListener('click', tareasGlobalClickHandler);
-  const checkSelectAll = document.getElementById('seleccionar-todas-tareas');
-  if (checkSelectAll && !checkSelectAll.dataset.listenerAttached) {
-    checkSelectAll.dataset.listenerAttached = 'true';
-    checkSelectAll.addEventListener('change', (e) => {
-      if (!state.tareasEnModoSeleccion) return;
-      seleccionarTodasTareasVisibles(e.target.checked);
-    });
-  }
-  const tablaBody = document.getElementById('tabla-tareas-body');
-  if (tablaBody && !tablaBody.dataset.longPressListener) {
-    tablaBody.dataset.longPressListener = 'true';
-    tablaBody.addEventListener(
-      'touchstart',
-      (e) => {
-        if (isSwiping || state.tareasEnModoSeleccion || e.touches.length > 1) {
+
+    // --- LISTENERS DE TABLA (dDblclick, Long Press, Swipe) ---
+    const tablaBody = document.getElementById('tabla-tareas-body');
+    if (tablaBody) {
+      // (Listeners de Touch/Long Press, sin cambios internos)
+      if (!tablaBody.dataset.longPressListener) {
+        let touchStartX = 0,
+          touchStartY = 0,
+          touchEndX = 0,
+          touchEndY = 0;
+        let longPressTimer = null;
+        let pressStartX = 0,
+          pressStartY = 0;
+        const longPressDuration = 500;
+        tablaBody.dataset.longPressListener = 'true';
+        tablaBody.addEventListener(
+          'touchstart',
+          (e) => {
+            const isSwiping = tablaBody.dataset.isSwiping === 'true';
+            if (
+              isSwiping ||
+              state.tareasEnModoSeleccion ||
+              e.touches.length > 1
+            ) {
+              clearTimeout(longPressTimer);
+              longPressTimer = null;
+              return;
+            }
+            const touch = e.touches[0];
+            pressStartX = touch.clientX;
+            pressStartY = touch.clientY;
+            touchEndX = touch.clientX;
+            touchEndY = touch.clientY;
+            const fila = e.target.closest('tr[data-id]');
+            if (!fila) return;
+            const tareaId = fila.dataset.id; // String ID
+            clearTimeout(longPressTimer);
+            longPressTimer = setTimeout(() => {
+              const currentDiffX = Math.abs(touchEndX - pressStartX);
+              const currentDiffY = Math.abs(touchEndY - pressStartY);
+              if (currentDiffX < 10 && currentDiffY < 10) {
+                iniciarModoSeleccion(tareaId);
+              }
+              longPressTimer = null;
+            }, longPressDuration);
+          },
+          { passive: true },
+        );
+        tablaBody.addEventListener(
+          'touchmove',
+          (e) => {
+            const touch = e.touches[0];
+            touchEndX = touch.clientX;
+            touchEndY = touch.clientY;
+            if (longPressTimer) {
+              const diffX = Math.abs(touchEndX - pressStartX);
+              const diffY = Math.abs(touchEndY - pressStartY);
+              if (diffX > 10 || diffY > 10) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+              }
+            }
+          },
+          { passive: true },
+        );
+        const cancelLongPress = () => {
           clearTimeout(longPressTimer);
           longPressTimer = null;
-          return;
-        }
-        const touch = e.touches[0];
-        pressStartX = touch.clientX;
-        pressStartY = touch.clientY;
-        touchEndX = touch.clientX;
-        touchEndY = touch.clientY;
-        const fila = e.target.closest('tr[data-id]');
-        if (!fila) return;
-        const tareaId = parseInt(fila.dataset.id, 10);
-        clearTimeout(longPressTimer);
-        longPressTimer = setTimeout(() => {
-          const currentDiffX = Math.abs(touchEndX - pressStartX);
-          const currentDiffY = Math.abs(touchEndY - pressStartY);
-          if (currentDiffX < 10 && currentDiffY < 10) {
-            iniciarModoSeleccion(tareaId);
-          }
-          longPressTimer = null;
-        }, longPressDuration);
-      },
-      { passive: true },
-    );
-    tablaBody.addEventListener(
-      'touchmove',
-      (e) => {
-        const touch = e.touches[0];
-        touchEndX = touch.clientX;
-        touchEndY = touch.clientY;
-        if (longPressTimer) {
-          const diffX = Math.abs(touchEndX - pressStartX);
-          const diffY = Math.abs(touchEndY - pressStartY);
-          if (diffX > 10 || diffY > 10) {
-            clearTimeout(longPressTimer);
-            longPressTimer = null;
-          }
-        }
-      },
-      { passive: true },
-    );
-    const cancelLongPress = () => {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    };
-    tablaBody.addEventListener('touchend', cancelLongPress);
-    tablaBody.addEventListener('touchcancel', cancelLongPress);
-  }
-  if (tablaBody && !tablaBody.dataset.dblClickListener) {
-    tablaBody.dataset.dblClickListener = 'true';
-    tablaBody.addEventListener('dblclick', (e) => {
-      const fila = e.target.closest('tr[data-id]');
-      if (
-        !fila ||
-        window.getSelection().toString() ||
-        state.tareasEnModoSeleccion
-      )
-        return;
-      const tareaId = parseInt(fila.dataset.id, 10);
-      const tarea = state.tareas.find((t) => t.id === tareaId);
-      if (tarea) {
-        tarea.completada = !tarea.completada;
-        tarea.fechaCompletado = tarea.completada
-          ? new Date().toISOString().split('T')[0]
-          : null;
-        guardarDatos();
-        renderizarTareas();
-        if (tareaId === state.tareaSeleccionadald) renderizarDetalles(); // Typo 'ld'
+        };
+        tablaBody.addEventListener('touchend', cancelLongPress);
+        tablaBody.addEventListener('touchcancel', cancelLongPress);
       }
-    });
-  }
-  const panelDetalles = document.getElementById('panel-detalles');
-  if (panelDetalles && !panelDetalles.dataset.clickListener) {
-    panelDetalles.dataset.clickListener = 'true';
-    panelDetalles.addEventListener('click', (e) => {
-      const completarBtn = e.target.closest('#btn-completar-tarea');
-      const editarBtn = e.target.closest('#btn-editar-tarea');
-      const eliminarBtn = e.target.closest('#btn-eliminar-tarea');
-      const addSubtareaBtn = e.target.closest('#btn-agregar-subtarea');
-      const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
-      const subtareaCheckbox = e.target.closest(
-        '#lista-subtareas input[type="checkbox"]',
-      );
-      if (completarBtn && !completarBtn.disabled) {
-        const tarea = state.tareas.find(
-          (t) => t.id === state.tareaSeleccionadald,
-        ); // Typo 'ld'
-        if (tarea) {
-          tarea.completada = !tarea.completada;
-          tarea.fechaCompletado = tarea.completada
-            ? new Date().toISOString().split('T')[0]
-            : null;
-          guardarDatos();
-          renderizarTareas();
-          renderizarDetalles();
-        }
-        return;
-      }
-      if (editarBtn && !editarBtn.disabled) {
-        iniciarEdicionTarea();
-        return;
-      }
-      if (eliminarBtn && !eliminarBtn.disabled) {
-        const tarea = state.tareas.find(
-          (t) => t.id === state.tareaSeleccionadald,
-        ); // Typo 'ld'
-        if (tarea) {
-          mostrarConfirmacion(
-            'Eliminar Tarea',
-            `¿Eliminar "${tarea.titulo}"?`,
-            () => {
-              eliminarTarea(state.tareaSeleccionadald);
-            },
-          );
-        } // Typo 'ld'
-        return;
-      }
-      if (addSubtareaBtn) {
-        agregarSubtarea();
-        return;
-      }
-      if (deleteSubtaskBtn) {
-        const index = parseInt(deleteSubtaskBtn.dataset.index, 10);
-        eliminarSubtarea(index);
-        return;
-      }
-      if (subtareaCheckbox) {
-        const index = parseInt(subtareaCheckbox.dataset.index, 10);
-        toggleSubtarea(index);
-        return;
-      }
-    });
-  }
-  if (tablaBody && !tablaBody.dataset.touchListenersBar) {
-    tablaBody.dataset.touchListenersBar = 'true';
-    positioningParent = document.querySelector('.tabla-container');
-    if (
-      positioningParent &&
-      window.getComputedStyle(positioningParent).position === 'static'
-    ) {
-      positioningParent.style.position = 'relative';
-    }
-    tablaBody.addEventListener(
-      'touchstart',
-      (e) => {
-        if (state.tareasEnModoSeleccion) return;
-        const touch = e.touches[0];
-        touchStartX = touch.clientX;
-        touchStartY = touch.clientY;
-        swipedRow = e.target.closest('tr[data-id]');
-        isSwiping = false;
-        swipeBackgroundBar = null;
-        touchEndX = touchStartX;
-        touchEndY = touchStartY;
-        document
-          .querySelectorAll('.swipe-background-bar')
-          .forEach((b) => b.remove());
-      },
-      { passive: true },
-    );
-    tablaBody.addEventListener(
-      'touchmove',
-      (e) => {
-        if (state.tareasEnModoSeleccion || !swipedRow || !positioningParent)
-          return;
-        const touch = e.touches[0];
-        touchEndX = touch.clientX;
-        touchEndY = touch.clientY;
-        const diffX = touchEndX - touchStartX;
-        const diffY = touchEndY - touchStartY;
-        if (
-          !isSwiping &&
-          Math.abs(diffX) > 10 &&
-          Math.abs(diffX) > Math.abs(diffY)
-        ) {
-          isSwiping = true;
-          if (!swipeBackgroundBar) {
-            try {
-              const rowRect = swipedRow.getBoundingClientRect();
-              const parentRect = positioningParent.getBoundingClientRect();
-              swipeBackgroundBar = document.createElement('div');
-              swipeBackgroundBar.classList.add('swipe-background-bar');
-              swipeBackgroundBar.style.position = 'absolute';
-              swipeBackgroundBar.style.width = `${rowRect.width}px`;
-              swipeBackgroundBar.style.height = `${rowRect.height}px`;
-              swipeBackgroundBar.style.top = `${rowRect.top - parentRect.top + positioningParent.scrollTop}px`;
-              swipeBackgroundBar.style.left = `${rowRect.left - parentRect.left + positioningParent.scrollLeft}px`;
-              positioningParent.appendChild(swipeBackgroundBar);
-              requestAnimationFrame(() => {
-                if (swipeBackgroundBar)
-                  swipeBackgroundBar.classList.add('visible');
-              });
-            } catch (error) {
-              isSwiping = false;
-              if (swipeBackgroundBar) swipeBackgroundBar.remove();
-              swipeBackgroundBar = null;
-            }
-          }
-        }
-        if (isSwiping) {
-          const wrappers = swipedRow.querySelectorAll('.cell-content-wrapper');
-          wrappers.forEach((wrapper) => {
-            wrapper.style.transform = `translateX(${diffX}px)`;
-          });
-          if (swipeBackgroundBar) {
-            if (diffX < -feedbackThreshold) {
-              swipeBackgroundBar.classList.add('swiping-left', 'show-feedback');
-              swipeBackgroundBar.classList.remove('swiping-right');
-            } else if (diffX > feedbackThreshold) {
-              swipeBackgroundBar.classList.add(
-                'swiping-right',
-                'show-feedback',
-              );
-              swipeBackgroundBar.classList.remove('swiping-left');
-            } else {
-              swipeBackgroundBar.classList.remove(
-                'swiping-left',
-                'swiping-right',
-                'show-feedback',
-              );
-            }
-          }
-        }
-      },
-      { passive: true },
-    );
-    tablaBody.addEventListener('touchend', (e) => {
-      if (state.tareasEnModoSeleccion || !swipedRow) return;
-      const rowToAnimate = swipedRow;
-      const barToRemove = swipeBackgroundBar;
-      if (!rowToAnimate || !isSwiping || !barToRemove) {
-        if (barToRemove) barToRemove.remove();
-        swipedRow = null;
-        swipeBackgroundBar = null;
-        isSwiping = false;
-        return;
-      }
-      const diffX = touchEndX - touchStartX;
-      const diffY = touchEndY - touchStartY;
-      barToRemove.style.opacity = '0';
-      setTimeout(() => {
-        barToRemove.remove();
-      }, 150);
-      const wrappers = rowToAnimate.querySelectorAll('.cell-content-wrapper');
-      wrappers.forEach((wrapper) => {
-        wrapper.style.transform = '';
-      });
-      if (
-        Math.abs(diffX) > swipeThreshold &&
-        Math.abs(diffY) < swipeMaxVertical
-      ) {
-        const tareaId = parseInt(rowToAnimate.dataset.id, 10);
-        setTimeout(() => {
-          const tarea = state.tareas.find((t) => t.id === tareaId);
-          if (!tarea) return;
-          if (diffX < 0) {
-            tarea.completada = !tarea.completada;
-            tarea.fechaCompletado = tarea.completada
+      // (Listener de Dblclick, MODIFICADO para ser async)
+      if (!tablaBody.dataset.dblClickListener) {
+        tablaBody.dataset.dblClickListener = 'true';
+        tablaBody.addEventListener('dblclick', async (e) => {
+          const fila = e.target.closest('tr[data-id]');
+          if (
+            !fila ||
+            window.getSelection().toString() ||
+            state.tareasEnModoSeleccion
+          )
+            return;
+          const tareaId = fila.dataset.id; // String ID
+          const tarea = state.tareas.find((t) => String(t.id) === tareaId);
+          if (tarea) {
+            const completada = !tarea.completada;
+            const fechaCompletado = completada
               ? new Date().toISOString().split('T')[0]
               : null;
-            guardarDatos();
-            renderizarTareas();
-            if (tareaId === state.tareaSeleccionadald) renderizarDetalles(); // Typo 'ld'
-          } else {
-            mostrarConfirmacion(
-              `Eliminar Tarea`,
-              `¿Eliminar "${tarea.titulo}"?`,
-              () => {
-                eliminarTarea(tareaId);
-              },
-            );
+            try {
+              await actualizarDocumento('tareas', String(tarea.id), {
+                completada,
+                fechaCompletado,
+              });
+              // No renderizar, listener lo hará
+            } catch (error) {
+              console.error('[Tareas] Error en dblclick:', error);
+            }
           }
-        }, 50);
+        });
       }
-      swipedRow = null;
-      swipeBackgroundBar = null;
-      isSwiping = false;
-    });
-  }
-  const formNuevaTarea = document.getElementById('form-nueva-tarea');
-  if (formNuevaTarea && !formNuevaTarea.dataset.submitListener) {
-    formNuevaTarea.dataset.submitListener = 'true';
-    formNuevaTarea.addEventListener('submit', agregarTarea);
-  }
-  const formEditarTarea = document.getElementById('form-editar-tarea');
-  if (formEditarTarea && !formEditarTarea.dataset.submitListener) {
-    formEditarTarea.dataset.submitListener = 'true';
-    formEditarTarea.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const tarea = state.tareas.find(
-        (t) => t.id === state.tareaSeleccionadald,
-      ); // Typo 'ld'
-      if (tarea) {
-        tarea.titulo = document
-          .getElementById('edit-titulo-tarea')
-          .value.trim();
-        tarea.descripcion = document
-          .getElementById('edit-desc-tarea')
-          .value.trim();
-        tarea.proyectold =
-          parseInt(
-            document.getElementById('edit-select-proyecto-tarea').value,
-          ) || null; // Typo 'ld'
-        tarea.fecha = document.getElementById('edit-fecha-tarea').value;
-        tarea.prioridad = document.getElementById('edit-prioridad-tarea').value;
-        guardarDatos();
-        renderizarTareas();
-        renderizarDetalles();
-        cerrarModal('modal-editar-tarea');
-      } else {
-        cerrarModal('modal-editar-tarea');
-      }
-    });
-  }
-  const btnAbrirCreacionMovil = document.getElementById(
-    'btn-abrir-creacion-movil',
-  );
-  if (
-    btnAbrirCreacionMovil &&
-    !btnAbrirCreacionMovil.dataset.listenerAttached
-  ) {
-    btnAbrirCreacionMovil.dataset.listenerAttached = 'true';
-    btnAbrirCreacionMovil.addEventListener('click', () => {
-      const panelCreacion = document.getElementById('panel-creacion');
-      const form = document.getElementById('form-nueva-tarea');
-      const modalContenido = document.getElementById(
-        'modal-form-movil-contenido',
-      );
-      const modalCerrarBtn = document.querySelector(
-        '#modal-form-movil .btn-cerrar-modal',
-      );
-      const modalOverlay = document.getElementById('modal-form-movil');
-      if (
-        form &&
-        modalContenido &&
-        modalCerrarBtn &&
-        modalOverlay &&
-        panelCreacion
-      ) {
-        if (ICONS.close && modalCerrarBtn)
-          modalCerrarBtn.innerHTML = ICONS.close;
-        form.reset();
-        document.getElementById('input-fecha-tarea').valueAsDate = new Date();
-        popularSelectorDeCursos(
-          document.getElementById('select-curso-tarea'),
-          true,
+      // (Listeners de Swipe, MODIFICADO para ser async)
+      if (!tablaBody.dataset.touchListenersBar) {
+        let touchStartX = 0,
+          touchStartY = 0,
+          touchEndX = 0,
+          touchEndY = 0;
+        let swipedRow = null,
+          swipeBackgroundBar = null;
+        const swipeThreshold = 50,
+          feedbackThreshold = 30,
+          swipeMaxVertical = 30;
+        let isSwiping = false,
+          positioningParent = null;
+
+        tablaBody.dataset.touchListenersBar = 'true';
+        positioningParent = document.querySelector('.tabla-container');
+        if (
+          positioningParent &&
+          window.getComputedStyle(positioningParent).position === 'static'
+        ) {
+          positioningParent.style.position = 'relative';
+        }
+        tablaBody.addEventListener(
+          'touchstart',
+          (e) => {
+            if (state.tareasEnModoSeleccion) return;
+            const touch = e.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+            swipedRow = e.target.closest('tr[data-id]');
+            isSwiping = false;
+            tablaBody.dataset.isSwiping = 'false';
+            swipeBackgroundBar = null;
+            touchEndX = touchStartX;
+            touchEndY = touchStartY;
+            document
+              .querySelectorAll('.swipe-background-bar')
+              .forEach((b) => b.remove());
+          },
+          { passive: true },
         );
-        popularSelectorDeProyectos();
-        modalContenido.appendChild(form);
-        mostrarModal('modal-form-movil');
-        const onModalClose = (event) => {
-          if (
-            event.target === modalOverlay ||
-            event.target.closest('[data-action="cerrar-modal"]')
-          ) {
-            panelCreacion.appendChild(form);
-            cerrarModal('modal-form-movil');
-            modalOverlay.removeEventListener('click', onModalClose);
+        tablaBody.addEventListener(
+          'touchmove',
+          (e) => {
+            if (state.tareasEnModoSeleccion || !swipedRow || !positioningParent)
+              return;
+            const touch = e.touches[0];
+            touchEndX = touch.clientX;
+            touchEndY = touch.clientY;
+            const diffX = touchEndX - touchStartX;
+            const diffY = touchEndY - touchStartY;
+            if (
+              !isSwiping &&
+              Math.abs(diffX) > 10 &&
+              Math.abs(diffX) > Math.abs(diffY)
+            ) {
+              isSwiping = true;
+              tablaBody.dataset.isSwiping = 'true';
+              if (!swipeBackgroundBar) {
+                try {
+                  const rowRect = swipedRow.getBoundingClientRect();
+                  const parentRect = positioningParent.getBoundingClientRect();
+                  swipeBackgroundBar = document.createElement('div');
+                  swipeBackgroundBar.classList.add('swipe-background-bar');
+                  swipeBackgroundBar.style.position = 'absolute';
+                  swipeBackgroundBar.style.width = `${rowRect.width}px`;
+                  swipeBackgroundBar.style.height = `${rowRect.height}px`;
+                  swipeBackgroundBar.style.top = `${rowRect.top - parentRect.top + positioningParent.scrollTop}px`;
+                  swipeBackgroundBar.style.left = `${rowRect.left - parentRect.left + positioningParent.scrollLeft}px`;
+                  positioningParent.appendChild(swipeBackgroundBar);
+                  requestAnimationFrame(() => {
+                    if (swipeBackgroundBar)
+                      swipeBackgroundBar.classList.add('visible');
+                  });
+                } catch (error) {
+                  isSwiping = false;
+                  tablaBody.dataset.isSwiping = 'false';
+                  if (swipeBackgroundBar) swipeBackgroundBar.remove();
+                  swipeBackgroundBar = null;
+                }
+              }
+            }
+            if (isSwiping) {
+              const wrappers = swipedRow.querySelectorAll(
+                '.cell-content-wrapper',
+              );
+              wrappers.forEach((wrapper) => {
+                wrapper.style.transform = `translateX(${diffX}px)`;
+              });
+              if (swipeBackgroundBar) {
+                if (diffX < -feedbackThreshold) {
+                  swipeBackgroundBar.classList.add(
+                    'swiping-left',
+                    'show-feedback',
+                  );
+                  swipeBackgroundBar.classList.remove('swiping-right');
+                } else if (diffX > feedbackThreshold) {
+                  swipeBackgroundBar.classList.add(
+                    'swiping-right',
+                    'show-feedback',
+                  );
+                  swipeBackgroundBar.classList.remove('swiping-left');
+                } else {
+                  swipeBackgroundBar.classList.remove(
+                    'swiping-left',
+                    'swiping-right',
+                    'show-feedback',
+                  );
+                }
+              }
+            }
+          },
+          { passive: true },
+        );
+        tablaBody.addEventListener('touchend', (e) => {
+          if (state.tareasEnModoSeleccion || !swipedRow) return;
+          const rowToAnimate = swipedRow;
+          const barToRemove = swipeBackgroundBar;
+          if (!rowToAnimate || !isSwiping || !barToRemove) {
+            if (barToRemove) barToRemove.remove();
+            swipedRow = null;
+            swipeBackgroundBar = null;
+            isSwiping = false;
+            tablaBody.dataset.isSwiping = 'false';
+            return;
           }
-        };
-        modalOverlay.removeEventListener('click', onModalClose);
-        modalOverlay.addEventListener('click', onModalClose);
-      }
-    });
-  }
-} //=================================
+          const diffX = touchEndX - touchStartX;
+          const diffY = touchEndY - touchStartY;
+          barToRemove.style.opacity = '0';
+          setTimeout(() => {
+            barToRemove.remove();
+          }, 150);
+          const wrappers = rowToAnimate.querySelectorAll(
+            '.cell-content-wrapper',
+          );
+          wrappers.forEach((wrapper) => {
+            wrapper.style.transform = '';
+          });
+          if (
+            Math.abs(diffX) > swipeThreshold &&
+            Math.abs(diffY) < swipeMaxVertical
+          ) {
+            const tareaId = rowToAnimate.dataset.id; // String ID
+            setTimeout(async () => {
+              // <-- async
+              const tarea = state.tareas.find((t) => String(t.id) === tareaId);
+              if (!tarea) return;
+              if (diffX < 0) {
+                // Completar
+                const completada = !tarea.completada;
+                const fechaCompletado = completada
+                  ? new Date().toISOString().split('T')[0]
+                  : null;
+                try {
+                  await actualizarDocumento('tareas', String(tarea.id), {
+                    completada,
+                    fechaCompletado,
+                  });
+                } catch (error) {
+                  console.error('[Tareas] Error en swipe-completar:', error);
+                }
+              } else {
+                // Eliminar
+                mostrarConfirmacion(
+                  `Eliminar Tarea`,
+                  `¿Eliminar "${tarea.titulo}"?`,
+                  async () => {
+                    await eliminarTarea(tareaId); // async
+                  },
+                );
+              }
+            }, 50);
+          }
+          swipedRow = null;
+          swipeBackgroundBar = null;
+          isSwiping = false;
+          tablaBody.dataset.isSwiping = 'false';
+        });
+      } // fin if(dataset.touchListenersBar)
+    } // fin if(tablaBody)
+
+    // --- LISTENERS DE FORMULARIOS (Una sola vez) ---
+    const formNuevaTarea = document.getElementById('form-nueva-tarea');
+    if (formNuevaTarea && !formNuevaTarea.dataset.submitListener) {
+      formNuevaTarea.dataset.submitListener = 'true';
+      formNuevaTarea.addEventListener('submit', agregarTarea); // Es async
+    }
+
+    const formEditarTarea = document.getElementById('form-editar-tarea');
+    if (formEditarTarea && !formEditarTarea.dataset.submitListener) {
+      formEditarTarea.dataset.submitListener = 'true';
+      formEditarTarea.addEventListener('submit', async (e) => {
+        // <-- async
+        e.preventDefault();
+        const tarea = state.tareas.find(
+          (t) => String(t.id) === String(state.tareaSeleccionadald),
+        ); // Typo 'ld'
+        if (tarea) {
+          const datosActualizar = {
+            titulo: document.getElementById('edit-titulo-tarea').value.trim(),
+            descripcion: document
+              .getElementById('edit-desc-tarea')
+              .value.trim(),
+            proyectold:
+              document.getElementById('edit-select-proyecto-tarea').value ||
+              null, // Typo 'ld'
+            fecha: document.getElementById('edit-fecha-tarea').value,
+            prioridad: document.getElementById('edit-prioridad-tarea').value,
+          };
+          try {
+            await actualizarDocumento(
+              'tareas',
+              String(tarea.id),
+              datosActualizar,
+            );
+            cerrarModal('modal-editar-tarea');
+          } catch (error) {
+            console.error('[Tareas] Error al editar tarea:', error);
+            mostrarAlerta('Error', 'No se pudo actualizar la tarea.');
+          }
+        } else {
+          cerrarModal('modal-editar-tarea');
+        }
+      });
+    }
+
+    // --- LISTENER DEL FAB (Móvil) ---
+    const btnAbrirCreacionMovil = document.getElementById(
+      'btn-abrir-creacion-movil',
+    );
+    if (
+      btnAbrirCreacionMovil &&
+      !btnAbrirCreacionMovil.dataset.listenerAttached
+    ) {
+      btnAbrirCreacionMovil.dataset.listenerAttached = 'true';
+      btnAbrirCreacionMovil.addEventListener('click', () => {
+        const panelCreacion = document.getElementById('panel-creacion');
+        const form = document.getElementById('form-nueva-tarea');
+        const modalContenido = document.getElementById(
+          'modal-form-movil-contenido',
+        );
+        const modalCerrarBtn = document.querySelector(
+          '#modal-form-movil .btn-cerrar-modal',
+        );
+        const modalOverlay = document.getElementById('modal-form-movil');
+        if (
+          form &&
+          modalContenido &&
+          modalCerrarBtn &&
+          modalOverlay &&
+          panelCreacion
+        ) {
+          if (ICONS.close && modalCerrarBtn)
+            modalCerrarBtn.innerHTML = ICONS.close;
+          form.reset();
+          document.getElementById('input-fecha-tarea').valueAsDate = new Date();
+          popularSelectorDeCursos(
+            document.getElementById('select-curso-tarea'),
+            true,
+          );
+          popularSelectorDeProyectos();
+          modalContenido.appendChild(form);
+          mostrarModal('modal-form-movil');
+          const onModalClose = (event) => {
+            if (
+              event.target === modalOverlay ||
+              event.target.closest('[data-action="cerrar-modal"]')
+            ) {
+              panelCreacion.appendChild(form);
+              cerrarModal('modal-form-movil');
+              modalOverlay.removeEventListener('click', onModalClose);
+            }
+          };
+          modalOverlay.removeEventListener('click', onModalClose);
+          modalOverlay.addEventListener('click', onModalClose);
+        }
+      });
+    }
+  }); //================================= FIN 'paginaCargada:tareas'
+} //================================= FIN inicializarTareas

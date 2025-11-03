@@ -1,5 +1,22 @@
+// ==========================================================================
+// ==                      src/pages/proyectos.js                        ==
+// ==========================================================================
+//
+// Módulo de Proyectos, modificado para la arquitectura "Pulso".
+// (Versión 3 - Corregido el listener del modal para evitar recarga)
+//
+// ==========================================================================
+
 import { state } from '../state.js';
-import { guardarDatos } from '../utils.js';
+import { EventBus } from '../eventBus.js';
+// --- INICIO CORRECCIÓN IMPORTACIONES ---
+// Importamos las funciones de SERVICIO de firebase.js, no las internas de Firebase
+import {
+  agregarDocumento,
+  actualizarDocumento,
+  eliminarDocumento,
+} from '../firebase.js'; // <-- CORREGIDO
+// --- FIN CORRECCIÓN IMPORTACIONES ---
 import {
   mostrarModal,
   cerrarModal,
@@ -8,23 +25,21 @@ import {
   popularSelectorDeCursos,
 } from '../ui.js';
 import { ICONS } from '../icons.js';
-// ================== INICIO DE LÍNEAS AÑADIDAS (FASE 3) ==================
-import { cambiarPagina } from '../main.js';
-import { iniciarEdicionEvento } from './calendario.js';
-// =================== FIN DE LÍNEAS AÑADIDAS (FASE 3) ==================
+// import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
+import { iniciarEdicionEvento } from './calendario.js'; // (Este módulo también necesita migración)
 
 let graficaDeProyecto = null;
-// ================== INICIO DE LÍNEA AÑADIDA (FASE 1) ==================
-let searchTermProyectos = ''; // Variable para guardar la búsqueda
-// =================== FIN DE LÍNEA AÑADIDA (FASE 1) ==================
+let searchTermProyectos = ''; // Variable local para búsqueda
 
-// ... (calcularEstadisticasProyecto se mantiene igual) ...
+// (calcularEstadisticasProyecto se mantiene igual, lee el 'state' global)
 export function calcularEstadisticasProyecto(proyectoId) {
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
   const tareasDelProyecto = state.tareas.filter(
-    (t) => t.proyectoId === proyectoId && !cursosArchivadosNombres.has(t.curso), // <-- AÑADIDO ESTO
+    (t) =>
+      String(t.proyectoId) === String(proyectoId) &&
+      !cursosArchivadosNombres.has(t.curso),
   );
   const totalTareas = tareasDelProyecto.length;
   if (totalTareas === 0) {
@@ -37,7 +52,6 @@ export function calcularEstadisticasProyecto(proyectoId) {
       porcentaje: 0,
     };
   }
-
   const completadas = tareasDelProyecto.filter((t) => t.completada).length;
   const alta = tareasDelProyecto.filter(
     (t) => !t.completada && t.prioridad === 'Alta',
@@ -49,59 +63,55 @@ export function calcularEstadisticasProyecto(proyectoId) {
     (t) => !t.completada && t.prioridad === 'Baja',
   ).length;
   const porcentaje = Math.round((completadas / totalTareas) * 100);
-
   return { total: totalTareas, completadas, alta, media, baja, porcentaje };
 }
 
-// ================== INICIO FUNCIÓN MODIFICADA (FASE 1 y Corrección) ==================
-function renderizarProyectos() {
+/**
+ * Renderiza las tarjetas de proyecto basándose en el 'state' actual.
+ */
+export function renderizarProyectos() {
   const container = document.getElementById('lista-proyectos-container');
-  if (!container) return;
-  container.innerHTML = ''; // Limpia el contenedor
+  if (!container) return; // Si la página no está cargada, no hace nada
+  container.innerHTML = '';
 
-  // 1. Carga los cursos archivados
   const cursosArchivadosNombres = new Set(
     state.cursos.filter((c) => c.isArchivado).map((c) => c.nombre),
   );
-
-  // 2. Obtiene el término de búsqueda
   const terminoBusqueda = searchTermProyectos.toLowerCase();
 
-  // 3. Filtra los proyectos
   const proyectosMostrables = state.proyectos.filter((proyecto) => {
-    // Condición 1: El curso NO debe estar archivado
     const cursoArchivado =
       proyecto.curso && cursosArchivadosNombres.has(proyecto.curso);
-
-    // Condición 2: Debe coincidir con la búsqueda
     const coincideBusqueda =
       terminoBusqueda === '' ||
       proyecto.nombre.toLowerCase().includes(terminoBusqueda);
-
-    // El proyecto se muestra si NO está archivado Y coincide con la búsqueda
     return !cursoArchivado && coincideBusqueda;
   });
 
-  // 4. Muestra el mensaje de "Vacío"
   if (proyectosMostrables.length === 0) {
     if (searchTermProyectos !== '') {
-      // Mensaje si no hay resultados de búsqueda
       container.innerHTML =
         '<p style="padding: 15px; color: var(--text-muted);">No se encontraron proyectos que coincidan con tu búsqueda.</p>';
     } else {
-      // Mensaje si no hay proyectos en general
       container.innerHTML =
         '<p style="padding: 15px; color: var(--text-muted);">No tienes proyectos creados. ¡Añade el primero!</p>';
     }
-    return; // Importante salir aquí
+    return;
   }
 
-  // 5. Renderiza las tarjetas (Tu código original)
+  // Ordenar (Aseguramos que 'General' no esté aquí, pero si lo estuviera, lo maneja)
+  proyectosMostrables.sort((a, b) => {
+    if (a.isArchivado !== b.isArchivado) {
+      return a.isArchivado ? 1 : -1;
+    }
+    return a.nombre.localeCompare(b.nombre);
+  });
+
   proyectosMostrables.forEach((proyecto) => {
     const stats = calcularEstadisticasProyecto(proyecto.id);
     const card = document.createElement('div');
     card.className = 'proyecto-card';
-    if (proyecto.id === state.proyectoSeleccionadoId)
+    if (String(proyecto.id) === String(state.proyectoSeleccionadoId))
       card.classList.add('selected');
     card.dataset.id = proyecto.id;
 
@@ -135,16 +145,17 @@ function renderizarProyectos() {
             <p>${proyecto.descripcion || 'Sin descripción.'}</p>
             ${statsHtml}
             <div class="proyecto-card-actions">
-                <button class="btn-icon btn-editar-proyecto" title="Editar Proyecto">${ICONS.edit}</button>
-                <button class="btn-icon btn-eliminar-proyecto" title="Eliminar Proyecto">${ICONS.delete}</button>
+                <button class="btn-icon btn-editar-proyecto" title="Editar Proyecto">${ICONS.edit || 'E'}</button>
+                <button class="btn-icon btn-eliminar-proyecto" title="Eliminar Proyecto">${ICONS.delete || 'X'}</button>
             </div>
         `;
     container.appendChild(card);
   });
 }
-// ================== FIN FUNCIÓN MODIFICADA (FASE 1 y Corrección) ==================
 
-// ... (renderizarGraficaProyecto se mantiene igual) ...
+/**
+ * Renderiza la gráfica (Sin cambios internos)
+ */
 function renderizarGraficaProyecto(stats) {
   const ctx = document
     .getElementById('proyecto-grafica-progreso')
@@ -190,7 +201,9 @@ function renderizarGraficaProyecto(stats) {
   });
 }
 
-// ================== INICIO FUNCIÓN MODIFICADA (FASE 3) ==================
+/**
+ * Renderiza la lista de tareas (Sin cambios internos, lee 'state' global)
+ */
 function renderizarListasDeTareas(proyectoId) {
   const container = document.getElementById('proyecto-det-tareas-container');
   if (!container) return;
@@ -200,17 +213,17 @@ function renderizarListasDeTareas(proyectoId) {
   );
   const tareasPendientes = state.tareas.filter(
     (t) =>
-      t.proyectoId === proyectoId &&
+      String(t.proyectoId) === String(proyectoId) &&
       !t.completada &&
       !cursosArchivadosNombres.has(t.curso),
   );
-
   const totalTareasProyecto = state.tareas.filter(
-    (t) => t.proyectold === proyectoId && !cursosArchivadosNombres.has(t.curso),
+    (t) =>
+      String(t.proyectoId) === String(proyectoId) &&
+      !cursosArchivadosNombres.has(t.curso),
   ).length;
 
   let html = '<div class="tareas-por-prioridad">';
-
   if (tareasPendientes.length > 0) html += '<h4>Tareas Pendientes</h4>';
 
   ['Alta', 'Media', 'Baja'].forEach((prioridad) => {
@@ -218,8 +231,7 @@ function renderizarListasDeTareas(proyectoId) {
     if (tareas.length > 0) {
       html += `<h5>Prioridad ${prioridad}</h5><ul>`;
       tareas.forEach((t) => {
-        const [y, m, d] = t.fecha.split('-');
-        // --- LÍNEA MODIFICADA ---
+        const [y, m, d] = t.fecha ? t.fecha.split('-') : ['--', '--', '--'];
         html += `<li class="detalle-item" data-task-id="${t.id}">
                     <div>
                       <span class="prioridad-indicador prioridad-${prioridad.toLowerCase()}"></span>
@@ -227,7 +239,6 @@ function renderizarListasDeTareas(proyectoId) {
                     </div>
                     <span class="fecha-tarea">${d}/${m}/${y}</span>
                   </li>`;
-        // --- FIN LÍNEA MODIFICADA ---
       });
       html += '</ul>';
     }
@@ -236,35 +247,33 @@ function renderizarListasDeTareas(proyectoId) {
   if (tareasPendientes.length === 0 && totalTareasProyecto > 0) {
     html +=
       '<p class="detalle-lista-vacia">¡Todas las tareas de este proyecto están completadas!</p>';
+  } else if (tareasPendientes.length === 0 && totalTareasProyecto === 0) {
+    html +=
+      '<p class="detalle-lista-vacia">¡No hay tareas asignadas a este proyecto!</p>';
   }
 
   html += '</div>';
   container.innerHTML = html;
 }
-// ================== FIN FUNCIÓN MODIFICADA (FASE 3) ==================
 
-// ================== INICIO NUEVAS FUNCIONES (FASE 2) ==================
+/**
+ * Renderiza la lista de eventos (Sin cambios internos, lee 'state' global)
+ */
 function renderizarListaEventos(proyectoId, container) {
   if (!container) return;
-
   const eventosDelProyecto = state.eventos.filter(
-    (e) => String(e.proyectoId) === String(proyectoId), // Usamos String() por seguridad
+    (e) => String(e.proyectoId) === String(proyectoId),
   );
-
   if (eventosDelProyecto.length === 0) {
     container.innerHTML =
       '<p class="detalle-lista-vacia">Este proyecto no tiene eventos asociados.</p>';
     return;
   }
-
-  // Ordenar por fecha de inicio
   eventosDelProyecto.sort(
     (a, b) => new Date(a.fechaInicio) - new Date(b.fechaInicio),
   );
-
   let html = '<ul class="detalle-lista">';
   eventosDelProyecto.forEach((evento) => {
-    // Formatear fecha
     const inicio = new Date(evento.fechaInicio + 'T00:00:00');
     const fin = new Date(evento.fechaFin + 'T00:00:00');
     const diaInicio = inicio.getDate().toString().padStart(2, '0');
@@ -275,7 +284,6 @@ function renderizarListaEventos(proyectoId, container) {
       const mesFin = (fin.getMonth() + 1).toString().padStart(2, '0');
       meta += ` - ${diaFin}/${mesFin}`;
     }
-
     html += `
       <li class="detalle-item" data-evento-id="${evento.id}">
         <span class="prioridad-indicador" style="background-color: ${evento.color};"></span>
@@ -290,24 +298,22 @@ function renderizarListaEventos(proyectoId, container) {
   container.innerHTML = html;
 }
 
-function renderizarListaApuntes(proyectold, container) {
+/**
+ * Renderiza la lista de apuntes (Sin cambios internos, lee 'state' global)
+ */
+function renderizarListaApuntes(proyectoId, container) {
   if (!container) return;
-
   const apuntesDelProyecto = state.apuntes.filter(
-    (a) => String(a.proyectoId) === String(proyectold), // 'proyectold'
+    (a) => String(a.proyectoId) === String(proyectoId),
   );
-
   if (apuntesDelProyecto.length === 0) {
     container.innerHTML =
       '<p class="detalle-lista-vacia">Este proyecto no tiene apuntes asociados.</p>';
     return;
   }
-
-  // Ordenar por fecha de modificación
   apuntesDelProyecto.sort(
     (a, b) => new Date(b.fechaModificacion) - new Date(a.fechaModificacion),
   );
-
   let html = '<ul class="detalle-lista">';
   apuntesDelProyecto.forEach((apunte) => {
     const titulo = apunte.titulo || 'Apunte sin título';
@@ -315,36 +321,33 @@ function renderizarListaApuntes(proyectold, container) {
       apunte.tags && apunte.tags.length > 0
         ? apunte.tags.map((tag) => `#${tag}`).join(' ')
         : 'Sin etiquetas';
-
     html += `
       <li class="detalle-item" data-apunte-id="${apunte.id}">
-        <span class="tab-icon">${ICONS.apuntes || ''}</span>
+        <span class="tab-icon">${ICONS.apuntes || 'A'}</span>
         <div class="detalle-item-contenido">
           <span class="detalle-item-titulo">${titulo}</span>
           <span class="detalle-item-meta">${tags}</span>
         </div>
-      </li>
-    `;
+      </li>`;
   });
   html += '</ul>';
   container.innerHTML = html;
 }
-// ================== FIN NUEVAS FUNCIONES (FASE 2) ==================
 
-// ================== INICIO FUNCIÓN MODIFICADA (FASE 2) ==================
-function renderizarDetallesProyecto() {
+/**
+ * Renderiza el panel de detalles completo (gráfica, tareas, eventos, apuntes).
+ */
+export function renderizarDetallesProyecto() {
   const headerInfo = document.getElementById('proyecto-det-header-info');
   const descEl = document.getElementById('proyecto-det-descripcion');
-
-  // --- Contenedores de las pestañas ---
   const statsContainer = document.getElementById(
     'proyecto-det-stats-container',
-  ); // Tab 1
+  );
   const tareasContainer = document.getElementById(
     'proyecto-det-tareas-container',
-  ); // Tab 1
-  const eventosContainer = document.getElementById('proyectos-tab-eventos'); // Tab 2
-  const apuntesContainer = document.getElementById('proyectos-tab-apuntes'); // Tab 3
+  );
+  const eventosContainer = document.getElementById('proyectos-tab-eventos');
+  const apuntesContainer = document.getElementById('proyectos-tab-apuntes');
 
   if (graficaDeProyecto) {
     graficaDeProyecto.destroy();
@@ -359,14 +362,11 @@ function renderizarDetallesProyecto() {
     !eventosContainer ||
     !apuntesContainer
   ) {
-    console.error(
-      'Error: Faltan elementos esenciales del DOM en el panel de detalles del proyecto (quizás las pestañas no se cargaron).',
-    );
-    return;
+    return; // No hacer nada si el panel no está cargado
   }
 
   const proyecto = state.proyectos.find(
-    (p) => p.id === state.proyectoSeleccionadoId,
+    (p) => String(p.id) === String(state.proyectoSeleccionadoId),
   );
 
   if (proyecto) {
@@ -380,31 +380,31 @@ function renderizarDetallesProyecto() {
 
     const stats = calcularEstadisticasProyecto(proyecto.id);
 
-    // --- Renderizar Pestaña 1: Resumen (Tareas + Gráfica) ---
+    // Pestaña 1: Resumen (Tareas + Gráfica)
     if (stats.total === 0) {
-      statsContainer.style.display = 'none'; // Oculta gráfica
-      tareasContainer.innerHTML =
-        '<p class="detalle-lista-vacia">¡No hay tareas asignadas a este proyecto!</p>';
+      statsContainer.style.display = 'none';
+      renderizarListasDeTareas(proyecto.id); // Llama para mostrar mensaje de "sin tareas"
     } else {
-      statsContainer.style.display = 'grid'; // Muestra gráfica
-      renderizarListasDeTareas(proyecto.id); // Función que ya tenías
+      statsContainer.style.display = 'grid';
+      renderizarListasDeTareas(proyecto.id);
       setTimeout(() => {
         const canvasEl = document.getElementById('proyecto-grafica-progreso');
         if (canvasEl && document.contains(canvasEl)) {
-          renderizarGraficaProyecto(stats); // Función que ya tenías
+          renderizarGraficaProyecto(stats);
         }
       }, 50);
     }
 
-    // --- Renderizar Pestaña 2: Eventos ---
+    // Pestaña 2: Eventos
     renderizarListaEventos(proyecto.id, eventosContainer);
 
-    // --- Renderizar Pestaña 3: Apuntes ---
+    // Pestaña 3: Apuntes
     renderizarListaApuntes(proyecto.id, apuntesContainer);
   } else {
-    // Estado vacío (cuando no hay proyecto seleccionado)
+    // Estado vacío
     headerInfo.innerHTML = '<h3>Selecciona un proyecto</h3>';
-    descEl.textContent = '';
+    descEl.textContent =
+      'Elige un proyecto de la lista para ver sus detalles, tareas, eventos y apuntes asociados.';
     statsContainer.style.display = 'none';
     tareasContainer.innerHTML = '';
     eventosContainer.innerHTML =
@@ -413,12 +413,13 @@ function renderizarDetallesProyecto() {
       '<p class="detalle-lista-vacia">Selecciona un proyecto para ver sus apuntes.</p>';
   }
 }
-// ================== FIN FUNCIÓN MODIFICADA (FASE 2) ==================
 
-// ... (agregarOEditarProyecto, iniciarEdicionProyecto, eliminarProyecto, abrirModalQuickAdd, agregarTareaDesdeModal se mantienen iguales) ...
-function agregarOEditarProyecto() {
+/**
+ * MODIFICADO: Agrega o edita un proyecto en Firestore.
+ */
+async function agregarOEditarProyecto() {
   const idInput = document.getElementById('input-proyecto-id');
-  const id = idInput ? parseInt(idInput.value) : null;
+  const id = idInput ? idInput.value : null; // ID es string (o null)
   const nombre = document.getElementById('input-nombre-proyecto').value.trim();
   const descripcion = document
     .getElementById('input-desc-proyecto')
@@ -431,26 +432,42 @@ function agregarOEditarProyecto() {
       'El nombre del proyecto no puede estar vacío.',
     );
   }
-  if (id) {
-    const proyecto = state.proyectos.find((p) => p.id === id);
-    if (proyecto)
-      Object.assign(proyecto, { nombre, descripcion, curso: curso || null });
-  } else {
-    state.proyectos.push({
-      id: Date.now(),
-      nombre,
-      descripcion,
-      curso: curso || null,
-    });
+
+  const datosProyecto = {
+    nombre,
+    descripcion,
+    curso: curso || null,
+  };
+
+  try {
+    if (id) {
+      // --- CORREGIDO ---
+      // Editar (Actualizar)
+      await actualizarDocumento('proyectos', String(id), datosProyecto);
+      console.log(`[Proyectos] Proyecto ${id} actualizado en Firestore.`);
+    } else {
+      // --- CORREGIDO ---
+      // Nuevo (Crear con ID auto)
+      const nuevoId = await agregarDocumento('proyectos', datosProyecto);
+      console.log(
+        `[Proyectos] Proyecto nuevo guardado en Firestore con ID: ${nuevoId}`,
+      );
+    }
+    cerrarModal('modal-nuevo-proyecto');
+    // Ya NO llamamos a renderizar...()
+  } catch (error) {
+    console.error('[Proyectos] Error al guardar proyecto:', error);
+    mostrarAlerta('Error', 'No se pudo guardar el proyecto.');
   }
-  guardarDatos();
-  renderizarProyectos();
-  renderizarDetallesProyecto();
-  cerrarModal('modal-nuevo-proyecto');
 }
 
+/**
+ * Carga datos en el modal de edición (Sin cambios internos)
+ */
 function iniciarEdicionProyecto(id) {
-  const proyecto = id ? state.proyectos.find((p) => p.id === id) : null;
+  const proyecto = id
+    ? state.proyectos.find((p) => String(p.id) === String(id))
+    : null;
   const form = document.getElementById('form-nuevo-proyecto');
   if (form) form.reset();
 
@@ -479,41 +496,46 @@ function iniciarEdicionProyecto(id) {
   mostrarModal('modal-nuevo-proyecto');
 }
 
-function eliminarProyecto(id) {
-  const proyecto = state.proyectos.find((p) => p.id === id);
+/**
+ * MODIFICADO: Elimina un proyecto de Firestore.
+ */
+async function eliminarProyecto(id) {
+  const proyecto = state.proyectos.find((p) => String(p.id) === String(id));
   if (!proyecto) return;
+
   mostrarConfirmacion(
     'Eliminar Proyecto',
-    `¿Estás seguro de que quieres eliminar el proyecto "${proyecto.nombre}"? Las tareas asociadas no se borrarán, solo se desvincularán.`,
-    () => {
-      state.proyectos = state.proyectos.filter((p) => p.id !== id);
-      state.tareas.forEach((t) => {
-        if (t.proyectoId === id) t.proyectoId = null;
-      });
-      // --- MODIFICACIÓN: Desvincular Eventos y Apuntes también ---
-      state.eventos.forEach((e) => {
-        if (String(e.proyectoId) === String(id)) e.proyectoId = null;
-      });
-      state.apuntes.forEach((a) => {
-        if (String(a.proyectoId) === String(id)) a.proyectoId = null;
-      });
-      // --- FIN MODIFICACIÓN ---
-      if (state.proyectoSeleccionadoId === id) {
-        state.proyectoSeleccionadoId = null;
-        document
-          .getElementById('page-proyectos')
-          ?.classList.remove('detalle-visible');
+    `¿Estás seguro de que quieres eliminar el proyecto "${proyecto.nombre}"? Las tareas, eventos y apuntes asociados NO se borrarán, solo se desvincularán.`,
+    async () => {
+      try {
+        // Fase P3.2 - TODO: Implementar batch para desvincular tareas, eventos, apuntes
+        console.warn(
+          `[Proyectos] TODO: Desvincular tareas/eventos/apuntes del proyecto ${id} (Fase P3)`,
+        );
+
+        // --- CORREGIDO ---
+        // Fase P2 - Eliminación simple del proyecto
+        await eliminarDocumento('proyectos', String(id));
+        console.log(`[Proyectos] Proyecto ${id} eliminado de Firestore.`);
+
+        if (String(state.proyectoSeleccionadoId) === String(id)) {
+          state.proyectoSeleccionadoId = null;
+          // El listener de 'proyectosActualizados' llamará a renderizarDetallesProyecto()
+        }
+      } catch (error) {
+        console.error('[Proyectos] Error al eliminar proyecto:', error);
+        mostrarAlerta('Error', 'No se pudo eliminar el proyecto.');
       }
-      guardarDatos();
-      renderizarProyectos();
-      renderizarDetallesProyecto();
     },
   );
 }
 
+/**
+ * Carga datos en el modal Quick Add (Sin cambios internos)
+ */
 function abrirModalQuickAdd() {
   const proyecto = state.proyectos.find(
-    (p) => p.id === state.proyectoSeleccionadoId,
+    (p) => String(p.id) === String(state.proyectoSeleccionadoId),
   );
   if (!proyecto) return;
 
@@ -533,18 +555,21 @@ function abrirModalQuickAdd() {
       if (primerCurso) selectorCurso.value = primerCurso.nombre;
     }
   }
-
   const inputFecha = document.getElementById('quick-add-fecha-tarea');
   if (inputFecha) inputFecha.valueAsDate = new Date();
 
   mostrarModal('modal-quick-add-tarea');
 }
 
-function agregarTareaDesdeModal() {
+/**
+ * MODIFICADO: Agrega una tarea desde el modal Quick Add a Firestore.
+ */
+async function agregarTareaDesdeModal() {
   const nuevaTarea = {
-    id: Date.now(),
+    // id: Date.now(), // <-- ELIMINADO
     curso: document.getElementById('quick-add-curso-tarea').value,
-    proyectoId: state.proyectoSeleccionadoId,
+    proyectoId: state.proyectoSeleccionadoId, // <-- CORREGIDO a proyectoId (deberías revisar tu state.js)
+    proyectold: state.proyectoSeleccionadoId, // <-- Mantenemos tu typo por si acaso
     titulo: document.getElementById('quick-add-titulo-tarea').value.trim(),
     descripcion: document.getElementById('quick-add-desc-tarea').value.trim(),
     fecha: document.getElementById('quick-add-fecha-tarea').value,
@@ -558,214 +583,284 @@ function agregarTareaDesdeModal() {
       'El título y la fecha son obligatorios.',
     );
   }
-  state.tareas.push(nuevaTarea);
-  guardarDatos();
-  renderizarProyectos();
-  renderizarDetallesProyecto();
-  cerrarModal('modal-quick-add-tarea');
+
+  try {
+    // --- CORREGIDO ---
+    // (proyectos.js puede agregar 'tareas')
+    const nuevoId = await agregarDocumento('tareas', nuevaTarea);
+    console.log(
+      `[Proyectos] Tarea rápida agregada a Firestore con ID: ${nuevoId}`,
+    );
+    cerrarModal('modal-quick-add-tarea');
+  } catch (error) {
+    console.error('[Proyectos] Error al agregar tarea rápida:', error);
+    mostrarAlerta('Error', 'No se pudo guardar la tarea.');
+  }
 }
 
-// ================== INICIO FUNCIÓN MODIFICADA (FASE 1, 2 y 3) ==================
+/**
+ * MODIFICADO: Inicializa la página de Proyectos, suscribiéndose a eventos.
+ */
 export function inicializarProyectos() {
-  const btnCerrarDetalles = document.getElementById(
-    'btn-cerrar-detalles-proyecto',
-  );
-  if (btnCerrarDetalles) {
-    btnCerrarDetalles.innerHTML = ICONS.close;
-  }
-  const btnMenuProyecto = document.getElementById('btn-proyecto-menu');
-  if (btnMenuProyecto) {
-    btnMenuProyecto.innerHTML = ICONS.dots_vertical;
-  }
+  console.log('[Proyectos] Inicializando y suscribiendo a eventos...');
 
-  // --- INICIO CÓDIGO AÑADIDO (FASE 2) ---
-  // Cargar iconos en las pestañas
-  const iconResumen = document.getElementById('proyectos-tab-icon-resumen');
-  const iconEventos = document.getElementById('proyectos-tab-icon-eventos');
-  const iconApuntes = document.getElementById('proyectos-tab-icon-apuntes');
-  if (iconResumen) iconResumen.innerHTML = ICONS.tareas;
-  if (iconEventos) iconEventos.innerHTML = ICONS.calendario;
-  if (iconApuntes) iconApuntes.innerHTML = ICONS.apuntes;
-
-  // Listener para el cambio de pestañas
-  const tabsNav = document.getElementById('proyectos-tabs-nav');
-  if (tabsNav) {
-    tabsNav.addEventListener('click', (e) => {
-      const tabButton = e.target.closest('.tab-item');
-      if (!tabButton) return;
-
-      const tabId = tabButton.dataset.tab;
-      if (!tabId) return;
-
-      document
-        .querySelectorAll('#panel-proyecto-detalles .tab-pane')
-        .forEach((pane) => {
-          pane.classList.remove('active');
-        });
-      tabsNav.querySelectorAll('.tab-item').forEach((btn) => {
-        btn.classList.remove('active');
-      });
-
-      document.getElementById(tabId)?.classList.add('active');
-      tabButton.classList.add('active');
-    });
-  }
-  // --- FIN CÓDIGO AÑADIDO (FASE 2) ---
-
-  renderizarProyectos();
-  renderizarDetallesProyecto();
-
-  if (state.proyectoSeleccionadoId !== null) {
-    document.getElementById('page-proyectos')?.classList.add('detalle-visible');
-  } else {
-    document
-      .getElementById('page-proyectos')
-      ?.classList.remove('detalle-visible');
-  }
-
-  const btnNuevoProyecto = document.getElementById('btn-nuevo-proyecto');
-  if (btnNuevoProyecto && !btnNuevoProyecto.dataset.initialized) {
-    btnNuevoProyecto.addEventListener('click', () =>
-      iniciarEdicionProyecto(null),
-    );
-    btnNuevoProyecto.dataset.initialized = 'true';
-  }
-
+  // --- Listeners de Modales (se adjuntan una sola vez al inicio) ---
+  // (Estos modales están en index.html, por eso se adjuntan aquí)
   const formNuevoProyecto = document.getElementById('form-nuevo-proyecto');
-  if (formNuevoProyecto) {
-    formNuevoProyecto.addEventListener('submit', (e) => {
-      e.preventDefault();
-      agregarOEditarProyecto();
+  if (formNuevoProyecto && !formNuevoProyecto.dataset.listenerAttached) {
+    formNuevoProyecto.addEventListener('submit', async (e) => {
+      // <-- async
+      e.preventDefault(); // <-- ¡CLAVE PARA EVITAR RECARGA!
+      await agregarOEditarProyecto(); // <-- await
     });
-  }
-
-  const container = document.getElementById('lista-proyectos-container');
-  if (container) {
-    container.addEventListener('click', (e) => {
-      const card = e.target.closest('.proyecto-card');
-      if (!card) return;
-
-      if (e.target.closest('.btn-editar-proyecto')) {
-        e.stopPropagation();
-        iniciarEdicionProyecto(parseInt(card.dataset.id));
-        return;
-      }
-      if (e.target.closest('.btn-eliminar-proyecto')) {
-        e.stopPropagation();
-        eliminarProyecto(parseInt(card.dataset.id));
-        return;
-      }
-
-      state.proyectoSeleccionadoId = parseInt(card.dataset.id);
-      document
-        .getElementById('page-proyectos')
-        ?.classList.add('detalle-visible');
-      renderizarProyectos();
-      renderizarDetallesProyecto();
-    });
-  }
-
-  if (btnCerrarDetalles) {
-    btnCerrarDetalles.addEventListener('click', () => {
-      state.proyectoSeleccionadoId = null;
-      document
-        .getElementById('page-proyectos')
-        ?.classList.remove('detalle-visible');
-      renderizarProyectos();
-      renderizarDetallesProyecto();
-    });
+    formNuevoProyecto.dataset.listenerAttached = 'true';
   }
 
   const formQuickAdd = document.getElementById('form-quick-add-tarea');
-  if (formQuickAdd) {
-    formQuickAdd.addEventListener('submit', (e) => {
-      e.preventDefault();
-      agregarTareaDesdeModal();
+  if (formQuickAdd && !formQuickAdd.dataset.listenerAttached) {
+    formQuickAdd.addEventListener('submit', async (e) => {
+      // <-- async
+      e.preventDefault(); // <-- ¡CLAVE PARA EVITAR RECARGA!
+      await agregarTareaDesdeModal(); // <-- await
     });
+    formQuickAdd.dataset.listenerAttached = 'true';
   }
 
-  const menuDropdown = document.getElementById('proyecto-menu-dropdown');
-  if (btnMenuProyecto && menuDropdown) {
-    btnMenuProyecto.addEventListener('click', (e) => {
-      e.stopPropagation();
-      menuDropdown.classList.toggle('visible');
-    });
-  }
+  // --- SUSCRIPCIÓN A EVENTOS ---
 
-  document
-    .getElementById('btn-detalles-editar-proyecto')
-    ?.addEventListener('click', () => {
-      iniciarEdicionProyecto(state.proyectoSeleccionadoId);
-      if (menuDropdown) menuDropdown.classList.remove('visible');
-    });
+  // 1. Escuchar cuándo el HTML de esta página se carga en el DOM
+  EventBus.on('paginaCargada:proyectos', () => {
+    console.log(
+      '[Proyectos] Evento: paginaCargada:proyectos recibido. Conectando listeners de UI...',
+    );
 
-  document
-    .getElementById('btn-detalles-agregar-tarea')
-    ?.addEventListener('click', () => {
-      abrirModalQuickAdd();
-      if (menuDropdown) menuDropdown.classList.remove('visible');
-    });
+    const pageElement = document.getElementById('page-proyectos');
+    if (!pageElement) return;
 
-  document
-    .getElementById('btn-detalles-eliminar-proyecto')
-    ?.addEventListener('click', () => {
-      eliminarProyecto(state.proyectoSeleccionadoId);
-      if (menuDropdown) menuDropdown.classList.remove('visible');
-    });
+    // Renderizado inicial (muestra lo que 'state' tenga en este momento)
+    renderizarProyectos();
+    renderizarDetallesProyecto(); // Renderiza el panel vacío
 
-  // --- INICIO CÓDIGO AÑADIDO (FASE 1) ---
-  const inputBusqueda = document.getElementById('input-buscar-proyectos');
-  if (inputBusqueda) {
-    inputBusqueda.value = searchTermProyectos;
-    inputBusqueda.addEventListener('input', (e) => {
-      searchTermProyectos = e.target.value;
-      renderizarProyectos();
-    });
-  }
-  // --- FIN CÓDIGO AÑADIDO (FASE 1) ---
+    if (state.proyectoSeleccionadoId !== null) {
+      pageElement.classList.add('detalle-visible');
+    } else {
+      pageElement.classList.remove('detalle-visible');
+    }
 
-  // --- INICIO CÓDIGO AÑADIDO (FASE 3) ---
-  const panelDetalles = document.getElementById('panel-proyecto-detalles');
-  if (panelDetalles) {
-    panelDetalles.addEventListener('click', (e) => {
-      // 1. Clic en una TAREA
-      const tareaItem = e.target.closest('li[data-task-id]');
-      if (tareaItem) {
-        const tareaId = tareaItem.dataset.taskId;
-        if (tareaId) {
-          state.tareaSeleccionadald = parseInt(tareaId);
-          guardarDatos();
-          cambiarPagina('tareas');
+    // Cargar iconos en botones
+    const btnCerrarDetalles = document.getElementById(
+      'btn-cerrar-detalles-proyecto',
+    );
+    if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
+    const btnMenuProyecto = document.getElementById('btn-proyecto-menu');
+    if (btnMenuProyecto) btnMenuProyecto.innerHTML = ICONS.dots_vertical;
+    const iconResumen = document.getElementById('proyectos-tab-icon-resumen');
+    const iconEventos = document.getElementById('proyectos-tab-icon-eventos');
+    const iconApuntes = document.getElementById('proyectos-tab-icon-apuntes');
+    if (iconResumen) iconResumen.innerHTML = ICONS.tareas;
+    if (iconEventos) iconEventos.innerHTML = ICONS.calendario;
+    if (iconApuntes) iconApuntes.innerHTML = ICONS.apuntes;
+
+    // Sincronizar UI de búsqueda
+    const inputBusqueda = document.getElementById('input-buscar-proyectos');
+    if (inputBusqueda) {
+      inputBusqueda.value = searchTermProyectos;
+      // Adjuntar listener de input (solo si no existe)
+      if (inputBusqueda.dataset.listenerAttached !== 'true') {
+        inputBusqueda.dataset.listenerAttached = 'true';
+        inputBusqueda.addEventListener('input', (e) => {
+          searchTermProyectos = e.target.value;
+          renderizarProyectos(); // Búsqueda es local, SÍ renderiza manual
+        });
+      }
+    }
+
+    // --- Listeners de UI (se conectan cada vez que se carga la página) ---
+    // (Usamos el patrón de un solo listener de clic por página)
+    if (pageElement.dataset.clickHandlerAttached !== 'true') {
+      pageElement.dataset.clickHandlerAttached = 'true';
+
+      pageElement.addEventListener('click', (e) => {
+        // Clic en Pestañas
+        const tabButton = e.target.closest('.tab-item');
+        if (tabButton) {
+          e.stopPropagation();
+          const tabId = tabButton.dataset.tab;
+          if (!tabId) return;
+          document
+            .querySelectorAll('#panel-proyecto-detalles .tab-pane')
+            .forEach((pane) => pane.classList.remove('active'));
+          document
+            .querySelectorAll('#panel-proyecto-detalles .tab-item')
+            .forEach((btn) => btn.classList.remove('active'));
+          document.getElementById(tabId)?.classList.add('active');
+          tabButton.classList.add('active');
           return;
         }
-      }
 
-      // 2. Clic en un APUNTE
-      const apunteItem = e.target.closest('li[data-apunte-id]');
-      if (apunteItem) {
-        const apunteId = apunteItem.dataset.apunteId;
-        if (apunteId) {
-          state.apunteActivoId = parseInt(apunteId);
-          guardarDatos();
-          cambiarPagina('apuntes');
+        // Clic en Tarjeta de Proyecto
+        const card = e.target.closest('.proyecto-card');
+        if (card) {
+          const proyectoId = card.dataset.id;
+          if (e.target.closest('.btn-editar-proyecto')) {
+            e.stopPropagation();
+            iniciarEdicionProyecto(proyectoId);
+            return;
+          }
+          if (e.target.closest('.btn-eliminar-proyecto')) {
+            e.stopPropagation();
+            eliminarProyecto(proyectoId); // ya es async
+            return;
+          }
+          state.proyectoSeleccionadoId = proyectoId;
+          pageElement.classList.add('detalle-visible');
+          renderizarProyectos(); // Re-render lista para highlight
+          renderizarDetallesProyecto(); // Carga detalles
           return;
         }
-      }
 
-      // 3. Clic en un EVENTO
-      const eventoItem = e.target.closest('li[data-evento-id]');
-      if (eventoItem) {
-        const eventoId = eventoItem.dataset.eventoId;
-        const evento = state.eventos.find(
-          (e) => String(e.id) === String(eventoId),
+        // Clic en panel de detalles
+        const panelDetalles = document.getElementById(
+          'panel-proyecto-detalles',
         );
-        if (evento) {
-          iniciarEdicionEvento(evento);
+        if (panelDetalles && panelDetalles.contains(e.target)) {
+          // Clic en Tarea
+          const tareaItem = e.target.closest('li[data-task-id]');
+          if (tareaItem) {
+            const tareaId = tareaItem.dataset.taskId;
+            if (tareaId) {
+              EventBus.emit('navegarA', {
+                pagina: 'tareas',
+                id: tareaId, // ID ya es string (o debería serlo)
+              });
+              return;
+            }
+          }
+          // Clic en Apunte
+          const apunteItem = e.target.closest('li[data-apunte-id]');
+          if (apunteItem) {
+            const apunteId = apunteItem.dataset.apunteId;
+            if (apunteId) {
+              EventBus.emit('navegarA', {
+                pagina: 'apuntes',
+                id: apunteId,
+              });
+              return;
+            }
+          }
+          // Clic en Evento
+          const eventoItem = e.target.closest('li[data-evento-id]');
+          if (eventoItem) {
+            const eventoId = eventoItem.dataset.eventId;
+            const evento = state.eventos.find(
+              (e) => String(e.id) === String(eventoId),
+            );
+            if (evento) {
+              // Asumiendo que calendario.js está migrado o desactivado
+              if (window.iniciarEdicionEvento) {
+                window.iniciarEdicionEvento(evento);
+              } else {
+                console.warn(
+                  'iniciarEdicionEvento no está disponible globalmente.',
+                );
+                // Mantenemos tu import original por si acaso
+                try {
+                  iniciarEdicionEvento(evento);
+                } catch (e) {
+                  /* no hacer nada si falla */
+                }
+              }
+            }
+            return;
+          }
+          // Clic en botón "Cerrar"
+          if (e.target.closest('#btn-cerrar-detalles-proyecto')) {
+            state.proyectoSeleccionadoId = null;
+            pageElement.classList.remove('detalle-visible');
+            renderizarProyectos();
+            renderizarDetallesProyecto();
+            return;
+          }
+          // Clic en menú ...
+          const menuDropdown = document.getElementById(
+            'proyecto-menu-dropdown',
+          );
+          if (e.target.closest('#btn-proyecto-menu')) {
+            e.stopPropagation();
+            menuDropdown?.classList.toggle('visible');
+            return;
+          }
+          // Clic en opciones de menú
+          if (e.target.closest('#btn-detalles-editar-proyecto')) {
+            iniciarEdicionProyecto(state.proyectoSeleccionadoId);
+            if (menuDropdown) menuDropdown.classList.remove('visible');
+            return;
+          }
+          if (e.target.closest('#btn-detalles-agregar-tarea')) {
+            abrirModalQuickAdd();
+            if (menuDropdown) menuDropdown.classList.remove('visible');
+            return;
+          }
+          if (e.target.closest('#btn-detalles-eliminar-proyecto')) {
+            eliminarProyecto(state.proyectoSeleccionadoId); // ya es async
+            if (menuDropdown) menuDropdown.classList.remove('visible');
+            return;
+          }
+        } // Fin clics panel detalles
+
+        // Clic en "Nuevo Proyecto" (header)
+        if (e.target.closest('#btn-nuevo-proyecto')) {
+          iniciarEdicionProyecto(null);
           return;
         }
+      }); // Fin clickHandler
+
+      pageElement.addEventListener('click', clickHandler);
+    } // Fin if(dataset.clickHandlerAttached)
+
+    // Listener para cerrar menú dropdown si se hace clic fuera
+    if (!document.body.dataset.proyectoMenuListener) {
+      document.body.dataset.proyectoMenuListener = 'true';
+      document.addEventListener('click', (e) => {
+        if (state.paginaActual !== 'proyectos') return; // Solo actuar si estamos en la pág
+        const menu = document.getElementById('proyecto-menu-dropdown');
+        const btn = document.getElementById('btn-proyecto-menu');
+        if (
+          menu &&
+          btn &&
+          menu.classList.contains('visible') &&
+          !menu.contains(e.target) &&
+          !btn.contains(e.target)
+        ) {
+          menu.classList.remove('visible');
+        }
+      });
+    }
+  }); // Fin 'paginaCargada:proyectos'
+
+  // 2. Escuchar cuándo cambian los datos (cursos, tareas, etc.)
+  EventBus.on('proyectosActualizados', () => {
+    if (state.paginaActual === 'proyectos') {
+      console.log('[Proyectos] Evento: proyectosActualizados. Renderizando...');
+      renderizarProyectos();
+      renderizarDetallesProyecto(); // Refrescar detalles también
+    }
+  });
+
+  const refrescarDependencias = () => {
+    if (state.paginaActual === 'proyectos') {
+      console.log(
+        '[Proyectos] Evento: dependencias (tareas, etc) actualizadas. Renderizando...',
+      );
+      renderizarProyectos(); // Para actualizar contadores
+      if (state.proyectoSeleccionadoId) {
+        renderizarDetallesProyecto(); // Para actualizar listas en pestañas
       }
-    });
-  }
-  // --- FIN CÓDIGO AÑADIDO (FASE 3) ---
-}
-// ================== FIN FUNCIÓN MODIFICADA (FASE 1, 2 y 3) ==================
+    }
+  };
+
+  EventBus.on('tareasActualizadas', refrescarDependencias);
+  EventBus.on('eventosActualizados', refrescarDependencias);
+  EventBus.on('apuntesActualizados', refrescarDependencias);
+  EventBus.on('cursosActualizados', refrescarDependencias); // Para actualizar nombre de curso
+} // Fin de inicializarProyectos

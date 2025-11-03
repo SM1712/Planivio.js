@@ -2,8 +2,10 @@
 // ==                             IMPORTACIONES                            ==
 // ==========================================================================
 import { state } from '../state.js';
-import { guardarDatos } from '../utils.js';
-import { cambiarPagina } from '../main.js';
+// import { guardarDatos } from '../utils.js'; // <-- ELIMINADO
+import { EventBus } from '../eventBus.js'; // <-- AÑADIDO
+// import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
+import { agregarDocumento } from '../firebase.js'; // <-- AÑADIDO
 import {
   mostrarModal,
   cerrarModal,
@@ -13,7 +15,8 @@ import {
 } from '../ui.js';
 import { calcularEstadisticasProyecto } from './proyectos.js';
 
-// ... (El resto de las funciones: widgetSelectors, frasesDashboard, obtenerSaludoYFrase, Lógica Pomodoro, calcularRacha, renderizarWidgets, etc. NO CAMBIAN) ...
+// ... (El resto de las funciones: widgetSelectors, frasesDashboard, Lógica Pomodoro, calcularRacha, renderizarWidgets, etc. NO CAMBIAN) ...
+// (Estas funciones solo LEEN del 'state', lo cual es correcto)
 const widgetSelectors = {
   racha: '.widget-racha',
   enfoque: '.widget-enfoque',
@@ -546,29 +549,41 @@ function llamarFuncionRenderWidget(widgetKey) {
       );
   }
 }
+
+/**
+ * MODIFICADO: Usa EventBus para navegar
+ */
 function handleApunteRecienteClick(event) {
   const apunteLi = event.target.closest('li[data-id]');
   if (!apunteLi) return;
-  const apunteId = parseInt(apunteLi.dataset.id, 10);
-  state.apunteActivoId = apunteId;
-  guardarDatos();
-  cambiarPagina('apuntes');
+  const apunteId = apunteLi.dataset.id; // ID es String
+  // state.apunteActivoId = apunteId; // <-- ELIMINADO
+  // guardarDatos(); // <-- ELIMINADO
+  EventBus.emit('navegarA', { pagina: 'apuntes', id: apunteId }); // <-- MODIFICADO
 }
+
+/**
+ * MODIFICADO: Usa EventBus para navegar
+ */
 function handleProyectoProgresoClick(event) {
   const proyectoLi = event.target.closest('li[data-id]');
   if (!proyectoLi) return;
-  const proyectoId = parseInt(proyectoLi.dataset.id, 10);
-  state.proyectoSeleccionadoId = proyectoId;
-  guardarDatos();
-  cambiarPagina('proyectos');
+  const proyectoId = proyectoLi.dataset.id; // ID es String
+  // state.proyectoSeleccionadoId = proyectoId; // <-- ELIMINADO
+  // guardarDatos(); // <-- ELIMINADO
+  EventBus.emit('navegarA', { pagina: 'proyectos', id: proyectoId }); // <-- MODIFICADO
 }
+
+/**
+ * MODIFICADO: Usa EventBus para navegar
+ */
 function handleTareaVencidaClick(event) {
   const tareaLi = event.target.closest('li[data-id]');
   if (!tareaLi) return;
-  const tareaId = parseInt(tareaLi.dataset.id, 10);
-  state.tareaSeleccionadald = tareaId;
-  guardarDatos();
-  cambiarPagina('tareas');
+  const tareaId = tareaLi.dataset.id; // ID es String
+  // state.tareaSeleccionadald = tareaId; // <-- ELIMINADO
+  // guardarDatos(); // <-- ELIMINADO
+  EventBus.emit('navegarA', { pagina: 'tareas', id: tareaId }); // <-- MODIFICADO
 }
 
 // ==========================================================================
@@ -644,8 +659,11 @@ export function abrirModalNuevaTarea(
   mostrarModal('modal-dashboard-nueva-tarea');
 }
 
-/** Procesa el formulario del modal y añade la nueva tarea */
-export function agregarTareaDesdeDashboard(event) {
+/**
+ * MODIFICADO: Procesa el formulario del modal y añade la nueva tarea a Firebase.
+ */
+export async function agregarTareaDesdeDashboard(event) {
+  // <-- AÑADIDO async
   // ... (función sin cambios internos, solo verifica elementos)
   event.preventDefault();
   const cursoSelect = document.getElementById('dashboard-select-curso-tarea');
@@ -674,9 +692,9 @@ export function agregarTareaDesdeDashboard(event) {
   }
 
   const nuevaTarea = {
-    id: Date.now(),
+    // id: Date.now(), // <-- ELIMINADO
     curso: cursoSelect.value, // Ya se obtiene el nombre del curso seleccionado
-    proyectoId: parseInt(proyectoSelect.value) || null,
+    proyectoId: parseInt(proyectoSelect.value) || null, // <-- Usamos proyectoId (tu original)
     titulo: tituloInput.value.trim(),
     descripcion: descInput?.value.trim() || '', // Manejo seguro de descInput
     fecha: fechaInput.value,
@@ -692,10 +710,12 @@ export function agregarTareaDesdeDashboard(event) {
   }
 
   try {
-    state.tareas.push(nuevaTarea);
-    guardarDatos();
+    // state.tareas.push(nuevaTarea); // <-- ELIMINADO
+    // guardarDatos(); // <-- ELIMINADO
+    await agregarDocumento('tareas', nuevaTarea); // <-- AÑADIDO
+    console.log('[Dashboard] Tarea rápida guardada en Firestore.');
     cerrarModal('modal-dashboard-nueva-tarea');
-    renderizarWidgets();
+    // renderizarWidgets(); // <-- ELIMINADO (El listener lo hará)
   } catch (error) {
     console.error('[Dashboard] Error al guardar la nueva tarea:', error);
     alert('Hubo un error al guardar la tarea.');
@@ -703,11 +723,14 @@ export function agregarTareaDesdeDashboard(event) {
 }
 
 // ==========================================================================
-// ==                  FUNCIÓN PRINCIPAL DE INICIALIZACIÓN                 ==
+// ==                  FUNCIÓN INTERNA DE CONEXIÓN DE UI                   ==
 // ==========================================================================
-export function inicializarDashboard() {
-  // ... (función sin cambios internos, solo asegura que los listeners se añadan correctamente)
-  console.log('--- [Dashboard] Iniciando inicializarDashboard ---');
+/**
+ * Conecta los listeners del DOM de la página.
+ * Se llama CADA VEZ que se carga la página del dashboard.
+ */
+function conectarUIDashboard() {
+  console.log('--- [Dashboard] Iniciando conectarUIDashboard ---');
   const pageDashboard = document.getElementById('page-dashboard');
   if (!pageDashboard) {
     console.error('[Dashboard] Error: #page-dashboard no encontrado.');
@@ -768,11 +791,45 @@ export function inicializarDashboard() {
       const button = e.target.closest('button[data-action]');
       if (!button) return;
       const action = button.dataset.action;
-      if (action === 'ir-a-cursos') cambiarPagina('cursos');
-      else if (action === 'nueva-tarea-modal') abrirModalNuevaTarea(); // Llama sin argumentos aquí
+      if (action === 'ir-a-cursos') {
+        EventBus.emit('navegarA', { pagina: 'cursos' }); // <-- MODIFICADO
+      } else if (action === 'nueva-tarea-modal') {
+        abrirModalNuevaTarea(); // Llama sin argumentos aquí
+      }
     });
 
     pageDashboard.dataset.initialized = 'true';
   }
-  console.log('--- [Dashboard] inicializarDashboard completado ---');
+  console.log('--- [Dashboard] conectarUIDashboard completado ---');
+}
+
+// ==========================================================================
+// ==                  FUNCIÓN PRINCIPAL DE INICIALIZACIÓN (MODIFICADA)    ==
+// ==========================================================================
+export function inicializarDashboard() {
+  console.log('[Dashboard] Inicializando y suscribiendo a eventos...');
+
+  // 1. Escuchar cuándo el HTML de esta página se carga en el DOM
+  EventBus.on('paginaCargada:dashboard', (data) => {
+    console.log(
+      '[Dashboard] Evento: paginaCargada:dashboard recibido. Conectando listeners de UI...',
+    );
+    conectarUIDashboard(); // Llama a la función que hace el trabajo
+  });
+
+  // 2. Escuchar cuándo cambian los datos (para refrescar widgets)
+  const refrescarWidgets = () => {
+    if (state.paginaActual === 'dashboard') {
+      console.log(
+        '[Dashboard] Evento: Datos actualizados. Renderizando widgets...',
+      );
+      renderizarWidgets();
+    }
+  };
+
+  EventBus.on('tareasActualizadas', refrescarWidgets);
+  EventBus.on('cursosActualizados', refrescarWidgets);
+  EventBus.on('eventosActualizados', refrescarWidgets);
+  EventBus.on('proyectosActualizados', refrescarWidgets);
+  EventBus.on('apuntesActualizados', refrescarWidgets);
 }

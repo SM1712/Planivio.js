@@ -898,7 +898,7 @@
                       style="background-color: #9e9e9e"
                     ></button
                     ><button
-                      type="button"
+                      typeG="button"
                       class="color-swatch"
                       data-color="#616161"
                       style="background-color: #616161"
@@ -1065,13 +1065,25 @@
         signOut,
       } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
 
-      // Importar Firestore (para Fase R2)
+      // --- INICIO: CORRECCIÓN ---
+      // Importar Firestore (para Fase R2 y P1)
+      // Necesitamos TODAS las funciones que firebase.js va a necesitar.
       import {
         getFirestore,
         doc,
         setDoc,
         getDoc,
+        onSnapshot, // <-- FALTABA ESTA
+        collection, // <-- FALTABA ESTA
+        addDoc, // <-- FALTABA ESTA
+        updateDoc, // <-- FALTABA ESTA
+        deleteDoc, // <-- FALTABA ESTA
+        writeBatch, // <-- FALTABA ESTA
+        query, // <-- FALTABA ESTA
+        where, // <-- FALTABA ESTA
+        getDocs, // <-- FALTABA ESTA
       } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
+      // --- FIN: CORRECCIÓN ---
 
       // Tu configuración
       const firebaseConfig = {
@@ -1099,13 +1111,23 @@
         signInWithPopup: signInWithPopup,
         signOut: signOut,
 
-        // Funciones de Firestore
+        // --- INICIO: CORRECCIÓN ---
+        // Funciones de Firestore (TODAS las que importamos)
         doc: doc,
         setDoc: setDoc,
         getDoc: getDoc,
+        onSnapshot: onSnapshot, // <-- AÑADIDO
+        collection: collection, // <-- AÑADIDO
+        addDoc: addDoc, // <-- AÑADIDO
+        updateDoc: updateDoc, // <-- AÑADIDO
+        deleteDoc: deleteDoc, // <-- AÑADIDO
+        writeBatch: writeBatch, // <-- AÑADIDO
+        query: query, // <-- AÑADIDO
+        where: where, // <-- AÑADIDO
+        getDocs: getDocs, // <-- AÑADIDO
+        // --- FIN: CORRECCIÓN ---
       };
     </script>
-
     <script
       type="module"
       src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"
