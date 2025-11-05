@@ -10,6 +10,7 @@
       referrerpolicy="origin"
     ></script>
     <link rel="icon" type="image/png" href="./Planivio.ico" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
   </head>
@@ -18,6 +19,18 @@
       <button id="btn-toggle-sidebar" class="btn-icon"></button>
       <h1 class="app-title">Planivio</h1>
       <div class="config-container">
+        <button id="btn-pulsos-header" class="btn-icon btn-pulsos">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+          >
+            <path
+              d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"
+            />
+          </svg>
+          <span id="pulsos-contador" class="pulsos-contador hidden">0</span>
+        </button>
         <button id="btn-config-dropdown" class="config-btn"></button>
       </div>
     </header>
@@ -561,6 +574,10 @@
                 <span class="nav-icon"></span
                 ><span class="nav-text">Tareas</span>
               </li>
+              <li class="settings-nav-item" data-tab="pulsos">
+                <span class="nav-icon"></span
+                ><span class="nav-text">Pulsos</span>
+              </li>
             </ul>
           </aside>
           <main class="settings-content">
@@ -965,6 +982,123 @@
                 </div>
               </div>
             </div>
+            <div id="settings-pulsos" class="settings-pane" data-tab="pulsos">
+              <h3>Centro de Pulsos</h3>
+              <p>
+                Configura qué notificaciones quieres recibir de Pulsito y
+                cuándo.
+              </p>
+
+              <div class="widget-toggle-list" style="margin-bottom: 20px">
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-pulso-update"
+                    data-pulso-key="update"
+                    data-pulso-sub-key="activo"
+                  /><label for="toggle-pulso-update"
+                    >Notificar actualizaciones</label
+                  >
+                </div>
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-pulso-tareasVencidas"
+                    data-pulso-key="tareasVencidas"
+                    data-pulso-sub-key="activo"
+                  /><label for="toggle-pulso-tareasVencidas"
+                    >Avisar de tareas vencidas</label
+                  >
+                </div>
+              </div>
+
+              <div class="config-option">
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-pulso-resumenHoy"
+                    data-pulso-key="resumenHoy"
+                    data-pulso-sub-key="activo"
+                  /><label for="toggle-pulso-resumenHoy">Resumen del día</label>
+                </div>
+                <div class="config-sub-option" data-pulso-parent="resumenHoy">
+                  <label for="input-pulso-resumenHoy-hora">Hora:</label>
+                  <input
+                    type="time"
+                    id="input-pulso-resumenHoy-hora"
+                    class="input-pulso-hora"
+                    data-pulso-key="resumenHoy"
+                    data-pulso-sub-key="hora"
+                  />
+                </div>
+              </div>
+
+              <div class="config-option">
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-pulso-eventosSemana"
+                    data-pulso-key="eventosSemana"
+                    data-pulso-sub-key="activo"
+                  /><label for="toggle-pulso-eventosSemana"
+                    >Resumen semanal</label
+                  >
+                </div>
+                <div
+                  class="config-sub-option"
+                  data-pulso-parent="eventosSemana"
+                >
+                  <label for="select-pulso-eventosSemana-dia">Día:</label>
+                  <select
+                    id="select-pulso-eventosSemana-dia"
+                    data-pulso-key="eventosSemana"
+                    data-pulso-sub-key="dia"
+                  >
+                    <option value="0">Domingo</option>
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                  </select>
+                  <label for="input-pulso-eventosSemana-hora">Hora:</label>
+                  <input
+                    type="time"
+                    id="input-pulso-eventosSemana-hora"
+                    class="input-pulso-hora"
+                    data-pulso-key="eventosSemana"
+                    data-pulso-sub-key="hora"
+                  />
+                </div>
+              </div>
+
+              <div class="config-option">
+                <div class="widget-toggle-item">
+                  <input
+                    type="checkbox"
+                    id="toggle-pulso-recordatorioRacha"
+                    data-pulso-key="recordatorioRacha"
+                    data-pulso-sub-key="activo"
+                  /><label for="toggle-pulso-recordatorioRacha"
+                    >Recordatorio de racha</label
+                  >
+                </div>
+                <div
+                  class="config-sub-option"
+                  data-pulso-parent="recordatorioRacha"
+                >
+                  <label for="input-pulso-recordatorioRacha-hora">Hora:</label>
+                  <input
+                    type="time"
+                    id="input-pulso-recordatorioRacha-hora"
+                    class="input-pulso-hora"
+                    data-pulso-key="recordatorioRacha"
+                    data-pulso-sub-key="hora"
+                  />
+                </div>
+              </div>
+            </div>
           </main>
         </div>
       </div>
@@ -1054,7 +1188,87 @@
     </div>
     <emoji-picker class="light emoji-picker-popup"></emoji-picker>
 
+    <div id="panel-pulsos-popover" class="popover-panel hidden">
+      <div class="popover-header">
+        <h3>Pulsos</h3>
+        <button id="btn-pulsos-marcar-leidos" class="btn-link">
+          Marcar como leídos
+        </button>
+      </div>
+      <div id="pulsos-lista-container" class="popover-content">
+        <div class="pulso-item">
+          <span class="pulso-icono">👋</span>
+          <div class="pulso-texto">
+            <strong>¡Bienvenido a Pulsos!</strong>
+            <p>Aquí verás tus notificaciones.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal-update-pulso" class="modal-overlay">
+      <div class="modal-content modal-update-pulso">
+        <div class="modal-update-body">
+          <h2 class="titulo-panel accent" id="update-pulso-titulo">
+            Bienvenido a Planivio: Pulso
+          </h2>
+          <img
+            src="assets/Logo moderno de Planivio.png"
+            alt="Logo de Planivio"
+            class="update-logo"
+            id="update-pulso-imagen"
+          />
+          <p id="update-pulso-descripcion">
+            Planivio ha evolucionado. Ya no es solo una app, es tu centro de
+            mando personal, diseñado para ser rápido, inteligente y estar
+            contigo en todas partes.
+          </p>
+
+          <h3 id="update-pulso-subtitulo-1">
+            Pulsito, tu asistente en el día a día:
+          </h3>
+          <p id="update-pulso-texto-1">
+            ¡Hola! Soy Pulsito, el corazón de Planivio. Mi trabajo es enviarte
+            "Pulsos" (como este) para recordarte tareas vencidas, resúmenes de
+            tu día y darte ánimo. ¡Configura qué quieres recibir en el nuevo
+            menú de Ajustes > Pulsos!
+          </p>
+
+          <h3 id="update-pulso-subtitulo-2">Planivio Everywhere</h3>
+          <p id="update-pulso-texto-2">
+            La interfaz ha sido rediseñada para sentirse nativa en cualquier
+            dispositivo. Ya sea en tu PC, tablet o celular, la experiencia es
+            fluida, adaptativa y coherente.
+          </p>
+
+          <h3 id="update-pulso-subtitulo-3">Planivio Sync</h3>
+          <p id="update-pulso-texto-3">
+            Gracias a la nueva arquitectura "Pulso", tus datos ahora se
+            sincronizan en tiempo real. Un cambio en tu celular se reflejará
+            instantáneamente en tu PC, y viceversa. Sin botones de "guardar",
+            sin demoras.
+          </p>
+
+          <h3 id="update-pulso-subtitulo-4">¿Por qué "Pulso"?</h3>
+          <p id="update-pulso-texto-4">
+            Porque Planivio ahora tiene vida. "Pulsa" tus datos a todos tus
+            dispositivos y me usa a mí, Pulsito, para ser el "pulso" de tu
+            productividad, manteniéndote siempre al tanto.
+          </p>
+        </div>
+        <div class="modal-actions">
+          <button
+            id="btn-update-pulso-cerrar"
+            class="btn-accent"
+            data-action="cerrar-modal"
+          >
+            ¡Entendido!
+          </button>
+        </div>
+      </div>
+    </div>
     <script type="module">
+      // ... (Tu script de Firebase no cambia)
       // Importar App (necesario siempre)
       import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-app.js';
 

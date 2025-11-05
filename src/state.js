@@ -10,6 +10,9 @@
 //    el 'state' en tiempo real.
 // 4. Emite eventos en el EventBus cuando los datos cambian.
 //
+// (MODIFICADO - FASE 4.3: Añadida configuración de Pulsos)
+// (MODIFICADO - ETAPA 1: Cambiado color de acento por defecto)
+//
 // ==========================================================================
 
 import { EventBus } from './eventBus.js';
@@ -31,6 +34,9 @@ const estadoInicial = {
   apuntes: [],
   proyectos: [],
 
+  // --- Estado de Pulsos (Añadido en Etapa 6) ---
+  pulsosGenerados: [], // Aquí se guardarán los pulsos del día
+
   // --- Estados de Selección (Locales, no sincronizados) ---
   cursoSeleccionadoId: null,
   proyectoSeleccionadoId: null,
@@ -46,7 +52,9 @@ const estadoInicial = {
   // --- CONFIGURACIÓN POR DEFECTO (Se sincronizará con Firebase) ---
   config: {
     theme: 'light',
-    accent_color: '#0078d7',
+    // ✨ INICIO CAMBIO ETAPA 1: Nuevo color de acento por defecto
+    accent_color: '#2f5580', // Antes: '#0078d7'
+    // ✨ FIN CAMBIO ETAPA 1
     userName: null, // Vendrá de Google Auth
     widgetsVisibles: {
       racha: true,
@@ -70,6 +78,31 @@ const estadoInicial = {
       vencidaFondoColor: '#e74c3c',
       vencidaFondoOpacidad: 0.08,
     },
+    // --- Configuración de Pulsos (Añadido en Etapa 6) ---
+    pulsos: {
+      // Configuración para cada tipo de notificación
+      tareasVencidas: {
+        activo: true,
+      },
+      resumenHoy: {
+        activo: true,
+        hora: '07:00', // 7 AM
+      },
+      eventosSemana: {
+        activo: true,
+        dia: '0', // 0 = Domingo
+        hora: '12:00', // 12 PM
+      },
+      recordatorioRacha: {
+        activo: true,
+        hora: '18:00', // 6 PM
+      },
+      update: {
+        activo: true, // Para mostrar notificaciones de nuevas versiones
+      },
+    },
+    pulsosVistos: [], // Array de IDs de "pulsos de update" ya vistos [cite: 711]
+    // --- Fin Configuración de Pulsos ---
   },
 
   // --- Estados Temporales de UI (Locales, no sincronizados) ---
@@ -116,10 +149,13 @@ export function iniciarSincronizacion(userId) {
   // --- 1. Escuchar Configuración ---
   if (unsubscribeConfig) unsubscribeConfig();
   unsubscribeConfig = escucharConfig((configData) => {
+    // --- Fusión profunda de config (Modificado en Etapa 6) [cite: 712] ---
     // Fusionamos la config de la nube (configData) con la local por defecto
     state.config = {
-      ...estadoInicial.config,
-      ...(configData || {}), // Usar configData si existe, o un objeto vacío
+      ...estadoInicial.config, // 1. Empezamos con la plantilla por defecto
+      ...(configData || {}), // 2. Sobrescribimos con lo que haya en la nube
+
+      // 3. Fusión profunda Nivel 2 (para evitar perder widgets nuevos)
       widgetsVisibles: {
         ...estadoInicial.config.widgetsVisibles,
         ...(configData?.widgetsVisibles || {}),
@@ -128,7 +164,39 @@ export function iniciarSincronizacion(userId) {
         ...estadoInicial.config.muescasColores,
         ...(configData?.muescasColores || {}),
       },
+      // 4. Fusión profunda Nivel 2 (para los nuevos Pulsos)
+      pulsos: {
+        ...estadoInicial.config.pulsos,
+        ...(configData?.pulsos || {}),
+        // 5. Fusión profunda Nivel 3 (para cada sub-configuración de pulsos)
+        tareasVencidas: {
+          ...estadoInicial.config.pulsos.tareasVencidas,
+          ...(configData?.pulsos?.tareasVencidas || {}),
+        },
+        resumenHoy: {
+          ...estadoInicial.config.pulsos.resumenHoy,
+          ...(configData?.pulsos?.resumenHoy || {}),
+        },
+        eventosSemana: {
+          ...estadoInicial.config.pulsos.eventosSemana,
+          ...(configData?.pulsos?.eventosSemana || {}),
+        },
+        recordatorioRacha: {
+          ...estadoInicial.config.pulsos.recordatorioRacha,
+          ...(configData?.pulsos?.recordatorioRacha || {}),
+        },
+        update: {
+          ...estadoInicial.config.pulsos.update,
+          ...(configData?.pulsos?.update || {}),
+        },
+      },
+      // 5. Asegurarnos de que 'pulsosVistos' sea un array
+      pulsosVistos: Array.isArray(configData?.pulsosVistos)
+        ? configData.pulsosVistos
+        : estadoInicial.config.pulsosVistos,
     };
+    // --- Fin Fusión ---
+
     // Emitimos un evento para que main.js aplique el tema
     EventBus.emit('configActualizada');
   });

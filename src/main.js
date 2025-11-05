@@ -2,8 +2,8 @@
 // ==
 // ==                          src/main.js
 // ==
-// ==    (MODIFICADO - FASE P3.4: CONECTADOS BOTONES DE
-// ==     IMPORTAR/EXPORTAR A LAS NUEVAS FUNCIONES DE UTILS.JS)
+// ==    (MODIFICADO - FASE 4.4: Conectados los controles
+// ==     de configuración de Pulsos)
 // ==
 // ==========================================================================
 
@@ -24,6 +24,8 @@ import {
   cerrarModal,
   mostrarModal,
   mostrarModalOnboarding,
+  // (Importado en Etapa 4)
+  inicializarSonido,
 } from './ui.js';
 import {
   updateRgbVariables,
@@ -52,6 +54,12 @@ import {
 } from './pages/calendario.js';
 import { inicializarApuntes } from './pages/apuntes.js';
 import { inicializarProyectos } from './pages/proyectos.js';
+// (Importado en Etapa 4)
+import {
+  inicializarPulsos,
+  generarPulsosDelDia,
+  abrirPanelPulsos,
+} from './pages/pulsos.js';
 
 // Esto se usará para la carga inicial de páginas
 const pageInitializers = {
@@ -61,6 +69,8 @@ const pageInitializers = {
   calendario: inicializarCalendario,
   apuntes: inicializarApuntes,
   proyectos: inicializarProyectos,
+  // (Añadido en Etapa 4)
+  pulsos: inicializarPulsos,
 };
 
 /**
@@ -169,7 +179,7 @@ function inicializarModalConfiguraciones() {
   if (state.config.widgetsVisibles) {
     widgetToggles.forEach((checkbox) => {
       const key = checkbox.dataset.widgetKey;
-      if (state.config.widgetsVisibles.hasOwnProperty(key)) {
+      if (key && state.config.widgetsVisibles.hasOwnProperty(key)) {
         checkbox.checked = state.config.widgetsVisibles[key];
       }
     });
@@ -250,6 +260,48 @@ function inicializarModalConfiguraciones() {
       );
     }
   }
+
+  // ✨ INICIO CAMBIO ETAPA 10: Rellenar controles de Pulsos
+  const configPulsos = state.config?.pulsos;
+  if (configPulsos) {
+    const panelPulsos = document.getElementById('settings-pulsos');
+    if (!panelPulsos) return;
+
+    // 1. Rellenar todos los inputs (checkbox, time, select)
+    const inputs = panelPulsos.querySelectorAll(
+      'input[data-pulso-key], select[data-pulso-key]',
+    );
+    inputs.forEach((input) => {
+      const key = input.dataset.pulsoKey;
+      const subKey = input.dataset.pulsoSubKey;
+      if (configPulsos[key] && configPulsos[key][subKey] !== undefined) {
+        const valor = configPulsos[key][subKey];
+        if (input.type === 'checkbox') {
+          input.checked = valor;
+        } else {
+          input.value = valor;
+        }
+      }
+    });
+
+    // 2. Habilitar/Deshabilitar sub-opciones
+    const subOpciones = panelPulsos.querySelectorAll('.config-sub-option');
+    subOpciones.forEach((sub) => {
+      const parentKey = sub.dataset.pulsoParent;
+      const parentToggle = panelPulsos.querySelector(
+        `#toggle-pulso-${parentKey}`,
+      );
+      if (parentToggle) {
+        const estaActivo = parentToggle.checked;
+        sub.querySelectorAll('input, select').forEach((control) => {
+          control.disabled = !estaActivo;
+        });
+        sub.style.opacity = estaActivo ? 1 : 0.5;
+        sub.style.pointerEvents = estaActivo ? 'auto' : 'none';
+      }
+    });
+  }
+  // ✨ FIN CAMBIO ETAPA 10
 }
 
 // ===============================================
@@ -319,6 +371,10 @@ async function manejarEstadoDeAutenticacion() {
       // ==========================================================
 
       iniciarSincronizacion(user.uid);
+
+      // (Conectado en Etapa 4)
+      inicializarPulsos(); // Prepara los listeners del panel
+      generarPulsosDelDia(); // Genera las notificaciones del día
 
       console.log('[Main] Sincronización iniciada. Inicializando módulos...');
       inicializarDashboard();
@@ -603,6 +659,20 @@ function agregarEventListenersGlobales() {
     if (btnToggleSidebar) {
       btnToggleSidebar.innerHTML = ICONS.menu;
     }
+    // (Añadido en Etapa 4)
+    const btnPulsos = document.getElementById('btn-pulsos-header');
+    if (btnPulsos) {
+      // Asumiendo que tienes un ICONS.pulsos (ícono de campana)
+      btnPulsos.innerHTML =
+        ICONS.pulsos ||
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>';
+      // Re-añadir el contador que el innerHTML borró
+      const contador = document.createElement('span');
+      contador.id = 'pulsos-contador';
+      contador.className = 'pulsos-contador hidden';
+      contador.textContent = '0';
+      btnPulsos.appendChild(contador);
+    }
     const btnConfig = document.getElementById('btn-config-dropdown');
     if (btnConfig) {
       btnConfig.innerHTML = ICONS.settings;
@@ -638,9 +708,17 @@ function agregarEventListenersGlobales() {
         document.getElementById('user-email').textContent =
           auth.currentUser.email;
     }
-    inicializarModalConfiguraciones();
+    inicializarModalConfiguraciones(); // <- AHORA RELLENA LOS CONTROLES DE PULSOS
     mostrarModal('modal-configuraciones');
   });
+
+  // (Añadido en Etapa 4)
+  document
+    .getElementById('btn-pulsos-header')
+    ?.addEventListener('click', (e) => {
+      e.stopPropagation(); // Evita que el listener global de 'document' lo cierre
+      abrirPanelPulsos();
+    });
 
   // Listener del botón Logout
   document
@@ -669,6 +747,7 @@ function agregarEventListenersGlobales() {
       if (e.target.type === 'checkbox') {
         const key = e.target.dataset.widgetKey;
         if (
+          key && // Asegurarnos que no sea un toggle de pulsos
           state.config.widgetsVisibles &&
           state.config.widgetsVisibles.hasOwnProperty(key)
         ) {
@@ -715,6 +794,9 @@ function agregarEventListenersGlobales() {
     ).innerHTML = ICONS.dashboard;
     settingsNavList.querySelector('[data-tab="tareas"] .nav-icon').innerHTML =
       ICONS.tareas;
+    // (Añadido en Etapa 4)
+    settingsNavList.querySelector('[data-tab="pulsos"] .nav-icon').innerHTML =
+      ICONS.pulsos || '🔔'; // Placeholder
   }
   const btnCerrarModalConfig = document.querySelector(
     '#modal-configuraciones .btn-cerrar-modal',
@@ -876,7 +958,7 @@ function agregarEventListenersGlobales() {
       let isMuescaColor = false;
       if (
         target.matches(
-          '.custom-muesca-swatch input[type="color"][data-muesca-key]',
+          '.custom-mmuesca-swatch input[type="color"][data-muesca-key]',
         )
       ) {
         key = target.dataset.muescaKey;
@@ -921,6 +1003,51 @@ function agregarEventListenersGlobales() {
       }
     });
   }
+
+  // ✨ INICIO CAMBIO ETAPA 10: Listener para controles de Pulsos
+  const panelPulsosSettings = document.getElementById('settings-pulsos');
+  if (panelPulsosSettings) {
+    panelPulsosSettings.addEventListener('change', async (e) => {
+      const target = e.target.closest(
+        'input[data-pulso-key], select[data-pulso-key]',
+      );
+      if (!target) return;
+
+      const key = target.dataset.pulsoKey;
+      const subKey = target.dataset.pulsoSubKey;
+      const value = target.type === 'checkbox' ? target.checked : target.value;
+
+      if (
+        state.config.pulsos[key] &&
+        state.config.pulsos[key][subKey] !== undefined
+      ) {
+        // 1. Actualizar el estado local
+        state.config.pulsos[key][subKey] = value;
+
+        // 2. Guardar en Firebase (solo el objeto 'pulsos' completo)
+        await guardarConfig({ pulsos: state.config.pulsos });
+        console.log(
+          `[Main] Configuración de Pulsos guardada: ${key}.${subKey} = ${value}`,
+        );
+
+        // 3. Lógica de habilitar/deshabilitar sub-opciones
+        if (target.type === 'checkbox' && subKey === 'activo') {
+          const subOpciones = panelPulsosSettings.querySelector(
+            `.config-sub-option[data-pulso-parent="${key}"]`,
+          );
+          if (subOpciones) {
+            const estaActivo = target.checked;
+            subOpciones.querySelectorAll('input, select').forEach((control) => {
+              control.disabled = !estaActivo;
+            });
+            subOpciones.style.opacity = estaActivo ? 1 : 0.5;
+            subOpciones.style.pointerEvents = estaActivo ? 'auto' : 'none';
+          }
+        }
+      }
+    });
+  }
+  // ✨ FIN CAMBIO ETAPA 10
 }
 
 // ===============================================
@@ -951,6 +1078,19 @@ EventBus.on('navegarA', (data) => {
 // 2. Iniciar la aplicación en DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[Main] DOMContentLoaded. Inicializando módulos...');
+
+  // (Añadido en Etapa 4)
+  inicializarSonido();
+
+  // (Añadido en Etapa 4)
+  if (
+    'Notification' in window &&
+    Notification.permission !== 'granted' &&
+    Notification.permission !== 'denied'
+  ) {
+    console.log('[Main] Solicitando permiso de notificaciones...');
+    Notification.requestPermission();
+  }
 
   agregarEventListenersGlobales();
 

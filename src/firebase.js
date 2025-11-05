@@ -5,6 +5,9 @@
 // ==    (MODIFICADO - 'migrarDatosDesdeLocalStorage' AHORA ES
 // ==     RETROCOMPATIBLE CON CURSOS GUARDADOS COMO STRINGS)
 // ==
+// ==    (REVISADO - FASE 4.3: No se necesitan cambios. La lógica
+// ==     de importación de 'config' ya es genérica)
+// ==
 // ==========================================================================
 
 import { state } from './state.js';
@@ -326,6 +329,8 @@ export async function migrarDatosDesdeLocalStorage(estadoLocal) {
     const configLimpia = { ...estadoLocal.config };
     if (configLimpia.userName === undefined) delete configLimpia.userName;
     const configRef = doc(db, 'usuarios', userId, 'config', 'userConfig');
+    // Esta línea guarda CUALQUIER configuración que venga en el JSON,
+    // incluyendo 'pulsos' y 'pulsosVistos' si existen. Es correcto.
     batch.set(configRef, configLimpia || {});
 
     // ==========================================================

@@ -78,6 +78,9 @@
 .config-container {
   margin-left: 0; /* Quitamos el margen anterior si lo tenía */
   position: relative; /* Mantenemos position relative */
+  display: flex; /* ✨ AÑADIDO: Para alinear Pulsito y Config */
+  align-items: center;
+  gap: 8px; /* Espacio entre Pulsito y Config */
 }
 
 /* --- General Form Elements --- */
@@ -146,6 +149,7 @@ button:disabled {
   justify-content: center;
   transition: all 0.2s ease;
   color: var(--text-muted);
+  position: relative; /* ✨ AÑADIDO: Para el contador */
 }
 .btn-icon:hover {
   background-color: var(--accent-color-hover);
@@ -521,7 +525,10 @@ button:disabled {
 .config-option {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  /* ✨ INICIO CORRECCIÓN 10.1: Forzar el estiramiento de los hijos */
+  align-items: stretch;
+  margin-bottom: 10px;
+  /* ✨ FIN CORRECCIÓN 10.1 */
 }
 .data-actions-container {
   display: flex;
@@ -930,3 +937,286 @@ button:disabled {
 .btn-peligro:hover {
   background-color: #c0392b;
 }
+
+/* ==========================================================================
+   Estilos del Centro de Pulsos (Añadidos en Etapa 2)
+   ========================================================================== */
+
+/* --- Botón Pulsito (Header) --- */
+.btn-pulsos {
+  width: 40px; /* Igual que el botón de config */
+  height: 40px;
+  color: var(--text-muted); /* Color neutral */
+}
+.btn-pulsos:hover {
+  color: var(--accent-color); /* Hereda el hover de .btn-icon */
+}
+.btn-pulsos.active {
+  /* Cuando el panel está abierto */
+  background-color: var(--accent-color-hover);
+  color: var(--accent-color);
+}
+.btn-pulsos svg {
+  width: 22px; /* Ligeramente más pequeño que el de config */
+  height: 22px;
+}
+
+/* --- Contador de Notificaciones --- */
+.pulsos-contador {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background-color: #e74c3c; /* Rojo para notificaciones */
+  color: white;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 10px;
+  pointer-events: none; /* No interfiere con el clic */
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+  transform: scale(0.8);
+  opacity: 0;
+}
+.pulsos-contador:not(.hidden) {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* --- Panel Pop-over (Base) --- */
+.popover-panel {
+  position: fixed;
+  top: 65px; /* Debajo del header */
+  right: 20px;
+  width: 380px;
+  max-width: 90vw;
+  max-height: 450px;
+  background-color: var(--bg-content);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 25px var(--shadow-color);
+  z-index: 1050; /* Debajo de los modales (1100) pero encima de todo (1000) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transform-origin: top right;
+  transition:
+    visibility 0s linear 0.2s,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.popover-panel:not(.hidden) {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition-delay: 0s;
+}
+
+/* --- Contenido del Pop-over --- */
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+.popover-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-base);
+}
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent-color);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.btn-link:hover {
+  text-decoration: underline;
+}
+
+.popover-content {
+  overflow-y: auto;
+  flex-grow: 1;
+}
+
+/* --- Ítems de Notificación (Pulsos) --- */
+.pulso-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 15px;
+  border-bottom: 1px solid var(--border-color-soft);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  position: relative; /* Para el punto de "nuevo" */
+}
+.pulso-item:hover {
+  background-color: var(--accent-color-hover);
+}
+.pulso-item:last-child {
+  border-bottom: none;
+}
+
+/* (Estilos del popover de pulsos...) */
+.pulso-vacio {
+  cursor: default;
+}
+.pulso-vacio:hover {
+  background-color: transparent;
+}
+.pulso-item.leido .pulso-texto strong,
+.pulso-item.leido .pulso-texto p {
+  opacity: 0.6;
+}
+
+.pulso-punto-nuevo {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-color);
+  border-radius: 50%;
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+.pulso-icono {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.pulso-texto {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+.pulso-texto strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-base);
+  margin-bottom: 2px;
+}
+.pulso-texto p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   Estilos Config Pulsos (Añadidos en Etapa 10.1)
+   ========================================================================== */
+
+/* Quitar bordes redondeados inferiores del toggle CUANDO tiene sub-opciones */
+.config-option > .widget-toggle-item {
+  border-radius: 8px 8px 0 0;
+  border: 1px solid var(--border-color);
+  border-bottom: none; /* Evita doble borde */
+  margin-bottom: 0; /* Asegurarse de que no haya gap */
+}
+
+/* Los toggles que NO tienen sub-opciones (los del grid) sí deben tener bordes */
+.widget-toggle-list .widget-toggle-item {
+  border-radius: 8px;
+  border: 1px solid transparent; /* Para mantener el tamaño */
+}
+
+/* Estilo para el contenedor de las sub-opciones (Hora, Día) */
+.config-sub-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 15px;
+  background-color: rgba(
+    var(--text-base-rgb),
+    0.04
+  ); /* Fondo sutil como el nav */
+  border: 1px solid var(--border-color);
+  border-top: 1px dashed var(--border-color-soft); /* Línea punteada de separación */
+  border-radius: 0 0 8px 8px;
+  transition: all 0.3s ease; /* Para la animación de opacidad */
+}
+
+.config-sub-option label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.config-sub-option input[type='time'],
+.config-sub-option select {
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  background-color: var(--bg-surface);
+}
+
+/* Estilo para los inputs de hora (para que no sean gigantes) */
+.input-pulso-hora {
+  max-width: 110px;
+}
+
+/* ==========================================================================
+   ✨ INICIO CAMBIO ETAPA 3 (NUEVO MODAL)
+   ========================================================================== */
+
+/* Estilos para el nuevo Modal de Actualización */
+.modal-update-pulso {
+  max-width: 600px; /* Un poco más ancho para el contenido */
+  gap: 0; /* Quitamos el gap principal */
+}
+
+/* Contenedor del body con scroll */
+.modal-update-body {
+  padding-right: 15px; /* Espacio para el scrollbar */
+  max-height: 70vh;
+  overflow-y: auto;
+  /* Espaciado interno */
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Espacio entre párrafos y títulos */
+}
+
+/* Estilo de la imagen */
+.update-logo {
+  width: 50%;
+  max-width: 250px;
+  height: auto;
+  margin: 10px auto; /* Centrar la imagen */
+  border-radius: 8px;
+}
+
+.modal-update-body h3 {
+  color: var(--accent-color);
+  border-bottom: 1px solid var(--border-color-soft);
+  padding-bottom: 5px;
+  margin-top: 15px;
+  margin-bottom: 5px;
+}
+
+.modal-update-body p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  margin: 0 0 10px 0;
+}
+
+/* Separar el botón de "Entendido" */
+.modal-update-pulso .modal-actions {
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0; /* Quitar margen superior */
+}
+
+/* ==========================================================================
+   ✨ FIN CAMBIO ETAPA 3
+   ========================================================================== */

@@ -125,7 +125,11 @@ function finalizarCicloPomodoro() {
     proximoModo = `Ciclo ${pomodoroCiclosCompletados + 1} de 4. ¡A enfocarse!`;
     enModoFoco = true;
   }
-  mostrarNotificacion(titulo, { body: cuerpo });
+
+  // ✨ INICIO CAMBIO ETAPA 5: Activar sonido en notificación
+  mostrarNotificacion(titulo, { body: cuerpo, silent: false });
+  // ✨ FIN CAMBIO ETAPA 5
+
   if (statusEl()) statusEl().textContent = proximoModo;
   actualizarDisplayPomodoro();
   if (startBtnEl())
