@@ -2,8 +2,8 @@
 // ==
 // ==                          src/pages/pulsos.js
 // ==
-// ==    (MODIFICADO - CORRECCIÓN: 'marcarPulsosComoLeidos' ahora
-// ==     guarda el estado en localStorage)
+// ==    (MODIFICADO - ETAPA 16: Añadidas funciones "trigger"
+// ==     para el temporizador de tiempo real)
 // ==
 // ==========================================================================
 
@@ -35,8 +35,6 @@ export function abrirPanelPulsos() {
     renderizarPanelPulsos();
     panel.classList.remove('hidden');
     btn.classList.add('active');
-    // Marcar como leídos (visualmente)
-    marcarPulsosComoLeidos();
   }
 }
 
@@ -59,22 +57,24 @@ function renderizarPanelPulsos() {
         </div>
       </div>
     `;
+    const btnMarcarLeidos = document.getElementById('btn-pulsos-marcar-leidos');
+    if (btnMarcarLeidos) btnMarcarLeidos.style.display = 'none';
     return;
   }
 
-  // Ordenar: nuevos (no leídos) primero, luego por fecha (implícito)
-  pulsos.sort((a, b) => (a.leido === b.leido ? 0 : a.leido ? 1 : -1));
+  const btnMarcarLeidos = document.getElementById('btn-pulsos-marcar-leidos');
+  if (btnMarcarLeidos) btnMarcarLeidos.style.display = 'block';
 
   container.innerHTML = pulsos
     .map((pulso) => {
       return `
-      <div class="pulso-item ${pulso.leido ? 'leido' : ''}" data-pulso-id="${pulso.id}">
+      <div class="pulso-item" data-pulso-id="${pulso.id}">
         <span class="pulso-icono">${pulso.icono}</span>
         <div class="pulso-texto">
           <strong>${pulso.titulo}</strong>
           <p>${pulso.preview}</p>
         </div>
-        ${!pulso.leido ? '<div class="pulso-punto-nuevo"></div>' : ''}
+        <div class="pulso-punto-nuevo"></div>
       </div>
     `;
     })
@@ -88,9 +88,7 @@ function renderizarContadorPulsos() {
   const contador = document.getElementById('pulsos-contador');
   if (!contador) return;
 
-  const pulsosNoLeidos = (state.pulsosGenerados || []).filter(
-    (p) => !p.leido,
-  ).length;
+  const pulsosNoLeidos = (state.pulsosGenerados || []).length;
 
   if (pulsosNoLeidos > 0) {
     contador.textContent = pulsosNoLeidos;
@@ -101,34 +99,26 @@ function renderizarContadorPulsos() {
 }
 
 /**
- * Marca todos los pulsos como "leídos" en el estado y actualiza la UI.
+ * (Modificado Etapa 15)
+ * Elimina todos los pulsos.
  */
 function marcarPulsosComoLeidos() {
   if (!state.pulsosGenerados || state.pulsosGenerados.length === 0) return;
 
-  let algunoNoLeido = false;
-  state.pulsosGenerados.forEach((p) => {
-    if (!p.leido) {
-      p.leido = true;
-      algunoNoLeido = true;
-    }
-  });
+  console.log('[Pulsos] Eliminando todos los pulsos...');
 
-  if (algunoNoLeido) {
-    renderizarContadorPulsos();
-    // Re-renderizar el panel si está abierto
-    const panel = document.getElementById('panel-pulsos-popover');
-    if (panel && !panel.classList.contains('hidden')) {
-      renderizarPanelPulsos();
-    }
+  // 1. Borrar del estado
+  state.pulsosGenerados = [];
 
-    // ✨ INICIO CORRECCIÓN: Guardar el estado "leído" en localStorage
-    localStorage.setItem(
-      'planivio_pulsos_generados',
-      JSON.stringify(state.pulsosGenerados),
-    );
-    // ✨ FIN CORRECCIÓN
-  }
+  // 2. Actualizar UI
+  renderizarContadorPulsos(); // Actualiza el contador a 0
+  renderizarPanelPulsos(); // Muestra el panel vacío
+
+  // 3. Guardar el estado vacío en localStorage
+  localStorage.setItem(
+    'planivio_pulsos_generados',
+    JSON.stringify(state.pulsosGenerados),
+  );
 }
 
 // ===================================
@@ -137,10 +127,11 @@ function marcarPulsosComoLeidos() {
 
 /**
  * Función principal que genera todos los pulsos relevantes al iniciar la app.
+ * (Función de "Ponerse al día")
  *
  */
 export async function generarPulsosDelDia() {
-  console.log('[Pulsos] Iniciando generación de Pulsos del Día...');
+  console.log('[Pulsos] Iniciando generación de Pulsos del Día (Catch-up)...');
   const hoy = new Date();
   const hoyStr = hoy.toISOString().split('T')[0];
   const config = state.config.pulsos;
@@ -170,12 +161,15 @@ export async function generarPulsosDelDia() {
 
   // 2. Generar pulsos según configuración
   try {
+    // Generadores "Instantáneos" (se ejecutan siempre al inicio)
     if (config.update.activo) {
       nuevosPulsos.push(...(await generarPulsoUpdate()));
     }
     if (config.tareasVencidas.activo) {
       nuevosPulsos.push(...generarPulsosTareasVencidas());
     }
+
+    // Generadores "Programados" (solo se ejecutan si ya pasó la hora)
     if (config.resumenHoy.activo) {
       nuevosPulsos.push(...generarPulsoResumenHoy(hoy, config.resumenHoy.hora));
     }
@@ -246,7 +240,6 @@ async function generarPulsoUpdate() {
       icono: '🚀', // <-- Nuevo ícono
       titulo: '¡Bienvenido a Planivio: Pulso!', // <-- Nuevo título
       preview: 'Tu app ha evolucionado. Haz clic para ver las novedades.', // <-- Nuevo preview
-      leido: false,
       mostrarNotificacion: true, // Mostrar un push la primera vez
       silent: false, // ¡Ahora suena!
       accion: () => {
@@ -279,7 +272,6 @@ function generarPulsosTareasVencidas() {
         icono: '⏰',
         titulo: `¡Tarea Vencida!`,
         preview: `"${tarea.titulo}" venció el ${tarea.fecha}.`,
-        leido: false,
         mostrarNotificacion: true, // Mostrar notificación
         silent: false, // ¡Ahora suena!
         accion: () => {
@@ -293,7 +285,7 @@ function generarPulsosTareasVencidas() {
 }
 
 /**
- * Genera un pulso de resumen si es después de la hora configurada.
+ * Genera un pulso de resumen si es después de la hora configurada. (Catch-up)
  *
  */
 function generarPulsoResumenHoy(fechaActual, horaConfig) {
@@ -312,7 +304,6 @@ function generarPulsoResumenHoy(fechaActual, horaConfig) {
     (t) => !t.completada && t.fecha === hoyStr,
   ).length;
   const eventosHoy = state.eventos.filter((e) => {
-    // Lógica simple de "hoy": si la fecha de inicio o fin es hoy
     return e.fechaInicio === hoyStr || e.fechaFin === hoyStr;
   }).length;
 
@@ -326,7 +317,6 @@ function generarPulsoResumenHoy(fechaActual, horaConfig) {
       icono: '⚡',
       titulo: 'Resumen de Hoy',
       preview: `¡A pulsar! Tienes ${tareasHoy} tareas y ${eventosHoy} eventos hoy.`,
-      leido: false,
       mostrarNotificacion: true,
       silent: false, // ¡Con sonido! Es el resumen del día
       accion: () => {
@@ -337,7 +327,7 @@ function generarPulsoResumenHoy(fechaActual, horaConfig) {
 }
 
 /**
- * Genera un pulso de resumen semanal el día y hora configurados.
+ * Genera un pulso de resumen semanal el día y hora configurados. (Catch-up)
  *
  */
 function generarPulsoEventosSemana(fechaActual, diaConfig, horaConfig) {
@@ -379,7 +369,6 @@ function generarPulsoEventosSemana(fechaActual, diaConfig, horaConfig) {
       icono: '🗓️',
       titulo: 'Resumen Semanal',
       preview: `¡Prepárate! Tienes ${eventosSemana} eventos la próxima semana.`,
-      leido: false,
       mostrarNotificacion: true,
       silent: false, // Con sonido
       accion: () => {
@@ -390,12 +379,10 @@ function generarPulsoEventosSemana(fechaActual, diaConfig, horaConfig) {
 }
 
 /**
- * Genera un recordatorio de racha si es 0 y es la hora.
+ * Genera un recordatorio de racha si es 0 y es la hora. (Catch-up)
  *
  */
 function generarPulsoRecordatorioRacha(fechaActual, horaConfig) {
-  // (Asumiendo que tienes una función para calcular la racha en otro lado)
-  // Como no la tenemos aquí, simularemos una racha de 0
   const rachaActual = 0; // Reemplazar con: calcularRacha()
   if (rachaActual > 0) {
     return []; // El usuario tiene racha, no molestar
@@ -417,7 +404,6 @@ function generarPulsoRecordatorioRacha(fechaActual, horaConfig) {
       icono: '🔥',
       titulo: '¡No pierdas la racha!',
       preview: '¡Aún puedes completar una tarea hoy para iniciar tu racha!',
-      leido: false,
       mostrarNotificacion: true,
       silent: false, // ¡Ahora suena!
       accion: () => {
@@ -444,14 +430,31 @@ export function inicializarPulsos() {
       marcarPulsosComoLeidos();
     }
 
-    // Listener para clic en un item de pulso
+    // (Modificado Etapa 15) Clic en item ahora también elimina
     const pulsoItem = e.target.closest('.pulso-item[data-pulso-id]');
     if (pulsoItem) {
       const pulsoId = pulsoItem.dataset.pulsoId;
       const pulso = state.pulsosGenerados.find((p) => p.id === pulsoId);
       if (pulso && pulso.accion) {
+        // 1. Ejecutar la acción (navegar, abrir modal)
         pulso.accion();
-        abrirPanelPulsos(); // Cerrar panel después de la acción
+
+        // 2. Eliminar el pulso del estado
+        state.pulsosGenerados = state.pulsosGenerados.filter(
+          (p) => p.id !== pulsoId,
+        );
+
+        // 3. Guardar la lista actualizada en localStorage
+        localStorage.setItem(
+          'planivio_pulsos_generados',
+          JSON.stringify(state.pulsosGenerados),
+        );
+
+        // 4. Actualizar el contador
+        renderizarContadorPulsos();
+
+        // 5. Cerrar el panel
+        abrirPanelPulsos();
       }
     }
   });
@@ -473,4 +476,133 @@ export function inicializarPulsos() {
       btn.classList.remove('active');
     }
   });
+}
+
+// ===================================
+// == ✨ INICIO CAMBIO ETAPA 16: Funciones Trigger para Tiempo Real
+// ===================================
+
+/**
+ * Añade un pulso a la lista, guarda y actualiza la UI.
+ * @param {object} pulso - El objeto de pulso a añadir.
+ */
+function agregarNuevoPulso(pulso) {
+  // 1. Añadir al estado
+  state.pulsosGenerados.push(pulso);
+
+  // 2. Guardar en localStorage
+  localStorage.setItem(
+    'planivio_pulsos_generados',
+    JSON.stringify(state.pulsosGenerados),
+  );
+
+  // 3. Actualizar contador
+  renderizarContadorPulsos();
+
+  // 4. Mostrar notificación push
+  if (pulso.mostrarNotificacion) {
+    mostrarNotificacion(pulso.titulo, {
+      body: pulso.preview,
+      silent: pulso.silent || false,
+    });
+  }
+
+  // 5. Actualizar el panel si está abierto
+  const panel = document.getElementById('panel-pulsos-popover');
+  if (panel && !panel.classList.contains('hidden')) {
+    renderizarPanelPulsos();
+  }
+}
+
+/**
+ * Revisa si un pulso ya existe en el estado.
+ * @param {string} idBase - El ID base del pulso (ej. "resumen-hoy-")
+ */
+function pulsoYaExiste(idBase) {
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const idCompleto = `${idBase}${hoyStr}`;
+  return state.pulsosGenerados.some((p) => p.id === idCompleto);
+}
+
+/**
+ * (Para el temporizador) Revisa y genera el Resumen del Día.
+ */
+export function triggerPulsoResumenHoy() {
+  const config = state.config.pulsos.resumenHoy;
+  if (!config.activo) return;
+
+  const ahora = new Date();
+  const horaActual = ahora.getHours().toString().padStart(2, '0');
+  const minActual = ahora.getMinutes().toString().padStart(2, '0');
+  const horaMinActual = `${horaActual}:${minActual}`; // ej: "07:00"
+
+  // 1. Comprobar si es la hora exacta
+  if (horaMinActual === config.hora) {
+    // 2. Comprobar si ya existe
+    if (pulsoYaExiste('resumen-hoy-')) return;
+
+    // 3. Generar el pulso (usando la función original)
+    const pulsoArray = generarPulsoResumenHoy(ahora, config.hora);
+    if (pulsoArray.length > 0) {
+      console.log('[Pulsos] ¡TRIGGER TIEMPO REAL: Resumen del Día!');
+      agregarNuevoPulso(pulsoArray[0]);
+    }
+  }
+}
+
+/**
+ * (Para el temporizador) Revisa y genera el Resumen Semanal.
+ */
+export function triggerPulsoEventosSemana() {
+  const config = state.config.pulsos.eventosSemana;
+  if (!config.activo) return;
+
+  const ahora = new Date();
+  const diaActual = ahora.getDay().toString(); // "0" = Domingo
+  const horaActual = ahora.getHours().toString().padStart(2, '0');
+  const minActual = ahora.getMinutes().toString().padStart(2, '0');
+  const horaMinActual = `${horaActual}:${minActual}`; // ej: "12:00"
+
+  // 1. Comprobar si es el día Y la hora exacta
+  if (diaActual === config.dia && horaMinActual === config.hora) {
+    // 2. Comprobar si ya existe
+    if (pulsoYaExiste('resumen-semana-')) return;
+
+    // 3. Generar el pulso
+    const pulsoArray = generarPulsoEventosSemana(
+      ahora,
+      config.dia,
+      config.hora,
+    );
+    if (pulsoArray.length > 0) {
+      console.log('[Pulsos] ¡TRIGGER TIEMPO REAL: Resumen Semanal!');
+      agregarNuevoPulso(pulsoArray[0]);
+    }
+  }
+}
+
+/**
+ * (Para el temporizador) Revisa y genera el Recordatorio de Racha.
+ */
+export function triggerPulsoRecordatorioRacha() {
+  const config = state.config.pulsos.recordatorioRacha;
+  if (!config.activo) return;
+
+  const ahora = new Date();
+  const horaActual = ahora.getHours().toString().padStart(2, '0');
+  const minActual = ahora.getMinutes().toString().padStart(2, '0');
+  const horaMinActual = `${horaActual}:${minActual}`; // ej: "18:00"
+
+  // 1. Comprobar si es la hora exacta
+  if (horaMinActual === config.hora) {
+    // 2. Comprobar si ya existe
+    if (pulsoYaExiste('racha-cero-')) return;
+
+    // 3. Generar el pulso
+    const pulsoArray = generarPulsoRecordatorioRacha(ahora, config.hora);
+    if (pulsoArray.length > 0) {
+      console.log('[Pulsos] ¡TRIGGER TIEMPO REAL: Recordatorio de Racha!');
+      agregarNuevoPulso(pulsoArray[0]);
+    }
+  }
 }

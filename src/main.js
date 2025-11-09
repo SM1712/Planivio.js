@@ -2,8 +2,8 @@
 // ==
 // ==                          src/main.js
 // ==
-// ==    (MODIFICADO - FASE 4.4: Conectados los controles
-// ==     de configuración de Pulsos)
+// ==    (MODIFICADO - ETAPA 17: Añadido temporizador (setInterval)
+// ==     para disparar pulsos programados en tiempo real)
 // ==
 // ==========================================================================
 
@@ -24,7 +24,6 @@ import {
   cerrarModal,
   mostrarModal,
   mostrarModalOnboarding,
-  // (Importado en Etapa 4)
   inicializarSonido,
 } from './ui.js';
 import {
@@ -32,7 +31,6 @@ import {
   hexToRgb,
   getTextColorForBg,
   darkenColor,
-  // ¡AHORA SÍ LAS USAMOS!
   exportarDatosJSON,
   importarDatosJSON,
   aplicarColorFondoVencida,
@@ -59,6 +57,11 @@ import {
   inicializarPulsos,
   generarPulsosDelDia,
   abrirPanelPulsos,
+  // ✨ INICIO CAMBIO ETAPA 17: Importar Triggers
+  triggerPulsoResumenHoy,
+  triggerPulsoEventosSemana,
+  triggerPulsoRecordatorioRacha,
+  // ✨ FIN CAMBIO ETAPA 17
 } from './pages/pulsos.js';
 
 // Esto se usará para la carga inicial de páginas
@@ -69,9 +72,12 @@ const pageInitializers = {
   calendario: inicializarCalendario,
   apuntes: inicializarApuntes,
   proyectos: inicializarProyectos,
-  // (Añadido en Etapa 4)
   pulsos: inicializarPulsos,
 };
+
+// ✨ INICIO CAMBIO ETAPA 17: Variable global para el temporizador
+let pulsoTimer = null;
+// ✨ FIN CAMBIO ETAPA 17
 
 /**
  * Carga el HTML de la página y emite un evento
@@ -161,7 +167,7 @@ function aplicarTema() {
   if (state.config && state.config.accent_color) {
     cambiarColorAcento(state.config.accent_color);
   } else {
-    cambiarColorAcento('#0078d7'); // Color por defecto
+    cambiarColorAcento('#2f5580'); // Color por defecto (Actualizado)
   }
   updateRgbVariables();
   aplicarColoresMuescas();
@@ -261,7 +267,7 @@ function inicializarModalConfiguraciones() {
     }
   }
 
-  // ✨ INICIO CAMBIO ETAPA 10: Rellenar controles de Pulsos
+  // Rellenar controles de Pulsos (Añadido en Etapa 10)
   const configPulsos = state.config?.pulsos;
   if (configPulsos) {
     const panelPulsos = document.getElementById('settings-pulsos');
@@ -301,7 +307,6 @@ function inicializarModalConfiguraciones() {
       }
     });
   }
-  // ✨ FIN CAMBIO ETAPA 10
 }
 
 // ===============================================
@@ -374,7 +379,17 @@ async function manejarEstadoDeAutenticacion() {
 
       // (Conectado en Etapa 4)
       inicializarPulsos(); // Prepara los listeners del panel
-      generarPulsosDelDia(); // Genera las notificaciones del día
+      generarPulsosDelDia(); // Genera las notificaciones del día ("catch-up")
+
+      // ✨ INICIO CAMBIO ETAPA 17: Iniciar el temporizador de tiempo real
+      if (pulsoTimer) clearInterval(pulsoTimer); // Limpiar timer anterior si existe
+      pulsoTimer = setInterval(() => {
+        // console.log('[Pulsos] Verificando hora para triggers...');
+        triggerPulsoResumenHoy();
+        triggerPulsoEventosSemana();
+        triggerPulsoRecordatorioRacha();
+      }, 60000); // Cada 60 segundos
+      // ✨ FIN CAMBIO ETAPA 17
 
       console.log('[Main] Sincronización iniciada. Inicializando módulos...');
       inicializarDashboard();
@@ -401,6 +416,14 @@ async function manejarEstadoDeAutenticacion() {
       if (appContainer) appContainer.style.visibility = 'hidden';
 
       detenerSincronizacion();
+
+      // ✨ INICIO CAMBIO ETAPA 17: Detener el temporizador al cerrar sesión
+      if (pulsoTimer) {
+        clearInterval(pulsoTimer);
+        pulsoTimer = null;
+        console.log('[Pulsos] Temporizador detenido.');
+      }
+      // ✨ FIN CAMBIO ETAPA 17
     }
   });
 }
@@ -1004,7 +1027,7 @@ function agregarEventListenersGlobales() {
     });
   }
 
-  // ✨ INICIO CAMBIO ETAPA 10: Listener para controles de Pulsos
+  // (Añadido en Etapa 10)
   const panelPulsosSettings = document.getElementById('settings-pulsos');
   if (panelPulsosSettings) {
     panelPulsosSettings.addEventListener('change', async (e) => {
@@ -1047,7 +1070,6 @@ function agregarEventListenersGlobales() {
       }
     });
   }
-  // ✨ FIN CAMBIO ETAPA 10
 }
 
 // ===============================================
