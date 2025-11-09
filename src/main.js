@@ -2,8 +2,8 @@
 // ==
 // ==                          src/main.js
 // ==
-// ==    (MODIFICADO - ETAPA 17: Añadido temporizador (setInterval)
-// ==     para disparar pulsos programados en tiempo real)
+// ==    (MODIFICADO - ETAPA 0: Añadida lógica de persistencia
+// ==     offline de Firebase en DOMContentLoaded)
 // ==
 // ==========================================================================
 
@@ -1119,6 +1119,31 @@ document.addEventListener('DOMContentLoaded', async () => {
   btnGoogleLogin.addEventListener('click', handleGoogleLogin);
 
   aplicarTema();
+
+  // ======================================================================
+  // ==     INICIO ETAPA 0: HABILITAR PERSISTENCIA OFFLINE
+  // ======================================================================
+  try {
+    await window.firebaseServices.enablePersistence(window.firebaseServices.db);
+    console.log(
+      '[Main - ETAPA 0] Persistencia offline de Firebase habilitada.',
+    );
+  } catch (error) {
+    if (error.code == 'failed-precondition') {
+      console.warn(
+        '[Main - ETAPA 0] Error al habilitar persistencia: Múltiples pestañas abiertas. La persistencia ya está activa en otra pestaña.',
+      );
+    } else if (error.code == 'unimplemented') {
+      console.warn(
+        '[Main - ETAPA 0] Error al habilitar persistencia: Navegador no compatible.',
+      );
+    } else {
+      console.error('[Main - ETAPA 0] Error al habilitar persistencia:', error);
+    }
+  }
+  // ======================================================================
+  // ==     FIN ETAPA 0
+  // ======================================================================
 
   manejarEstadoDeAutenticacion();
 });
