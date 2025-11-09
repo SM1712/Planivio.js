@@ -10,13 +10,16 @@
 //    el 'state' en tiempo real.
 // 4. Emite eventos en el EventBus cuando los datos cambian.
 //
-// (MODIFICADO - FASE 4.3: Añadida configuración de Pulsos)
-// (MODIFICADO - ETAPA 1: Cambiado color de acento por defecto)
+// (MODIFICADO - ETAPA 0.5: Añadido listener para 'grupos')
 //
 // ==========================================================================
 
 import { EventBus } from './eventBus.js';
-import { escucharConfig, escucharColeccion } from './firebase.js';
+import {
+  escucharConfig,
+  escucharColeccion,
+  escucharGruposDelUsuario, // <-- AÑADIDO (ETAPA 0.5)
+} from './firebase.js';
 
 // ===================================
 // ==        ESTADO INICIAL         ==
@@ -33,6 +36,7 @@ const estadoInicial = {
   eventos: [],
   apuntes: [],
   proyectos: [],
+  grupos: [], // <-- AÑADIDO (ETAPA 0.5)
 
   // --- Estado de Pulsos (Añadido en Etapa 6) ---
   pulsosGenerados: [], // Aquí se guardarán los pulsos del día
@@ -101,7 +105,7 @@ const estadoInicial = {
         activo: true, // Para mostrar notificaciones de nuevas versiones
       },
     },
-    pulsosVistos: [], // Array de IDs de "pulsos de update" ya vistos [cite: 711]
+    pulsosVistos: [], // Array de IDs de "pulsos de update" ya vistos
     // --- Fin Configuración de Pulsos ---
   },
 
@@ -137,6 +141,7 @@ let unsubscribeTareas = null;
 let unsubscribeApuntes = null;
 let unsubscribeProyectos = null;
 let unsubscribeEventos = null;
+let unsubscribeGrupos = null; // <-- AÑADIDO (ETAPA 0.5)
 
 /**
  * Inicia la escucha de datos desde Firestore para TODAS las colecciones.
@@ -149,7 +154,7 @@ export function iniciarSincronizacion(userId) {
   // --- 1. Escuchar Configuración ---
   if (unsubscribeConfig) unsubscribeConfig();
   unsubscribeConfig = escucharConfig((configData) => {
-    // --- Fusión profunda de config (Modificado en Etapa 6) [cite: 712] ---
+    // --- Fusión profunda de config (Modificado en Etapa 6) ---
     // Fusionamos la config de la nube (configData) con la local por defecto
     state.config = {
       ...estadoInicial.config, // 1. Empezamos con la plantilla por defecto
@@ -245,6 +250,23 @@ export function iniciarSincronizacion(userId) {
     EventBus.emit('eventosActualizados');
   });
   console.log('[State] Escuchando cambios en "eventos"...');
+
+  // ==========================================================
+  // ==     INICIO ETAPA 0.5: SINCRONIZAR GRUPOS
+  // ==========================================================
+  if (unsubscribeGrupos) unsubscribeGrupos();
+  // Esta función debe existir en firebase.js (según Fase 5 del PDF )
+  unsubscribeGrupos = escucharGruposDelUsuario((gruposData) => {
+    state.grupos = gruposData;
+    // No emitimos un evento global 'gruposActualizados'
+    // porque ningún módulo se suscribe a él todavía.
+    // 'tareas.js' lo leerá pasivamente cuando sea necesario.
+    console.log(`[State] Sincronizados ${gruposData.length} grupos.`);
+  });
+  console.log('[State] Escuchando cambios en "grupos"...');
+  // ==========================================================
+  // ==     FIN ETAPA 0.5
+  // ==========================================================
 }
 
 /**
@@ -258,6 +280,7 @@ export function detenerSincronizacion() {
   if (unsubscribeApuntes) unsubscribeApuntes();
   if (unsubscribeProyectos) unsubscribeProyectos();
   if (unsubscribeEventos) unsubscribeEventos();
+  if (unsubscribeGrupos) unsubscribeGrupos(); // <-- AÑADIDO (ETAPA 0.5)
 
   // Reseteamos el estado al estado inicial
   Object.keys(state).forEach((key) => delete state[key]);

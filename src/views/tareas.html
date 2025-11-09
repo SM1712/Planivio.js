@@ -159,6 +159,13 @@
             title="Editar Tarea"
             disabled
           ></button>
+
+          <button
+            id="btn-enviar-a-grupo"
+            class="btn-icon"
+            title="Enviar a Grupo"
+            disabled
+          ></button>
           <button
             id="btn-eliminar-tarea"
             class="btn-icon btn-eliminar-item"
@@ -198,4 +205,41 @@
     </div>
   </section>
   <button id="btn-abrir-creacion-movil" class="btn-flotante-agregar"></button>
+</div>
+
+<div id="modal-enviar-a-grupo" class="modal-overlay" style="display: none">
+  <div class="modal-container modal-pequeno">
+    <div class="modal-header">
+      <h3>Enviar Tarea a Grupo</h3>
+      <button
+        class="btn-icon btn-cerrar-modal"
+        data-action="cerrar-modal"
+        aria-label="Cerrar modal"
+      ></button>
+    </div>
+    <div class="modal-content">
+      <p class="text-muted" style="margin-bottom: 16px">
+        Esto creará una nueva tarea de grupo ("hilo") basada en esta tarea
+        privada.
+      </p>
+      <form id="form-enviar-a-grupo" onsubmit="return false;">
+        <div class="form-group">
+          <label for="select-enviar-a-grupo">Selecciona un grupo:</label>
+          <select id="select-enviar-a-grupo" required></select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button
+        class="btn-secondary"
+        data-action="cerrar-modal"
+        id="btn-cancelar-enviar-a-grupo"
+      >
+        Cancelar
+      </button>
+      <button class="btn-accent" id="btn-confirmar-enviar-a-grupo">
+        Enviar a Grupo
+      </button>
+    </div>
+  </div>
 </div>

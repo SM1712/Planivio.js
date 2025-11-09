@@ -3,7 +3,8 @@
 // ==========================================================================
 //
 // Módulo de Tareas, migrado a la arquitectura "Pulso".
-// (Versión 2 - CORREGIDA para importar 'db' y 'doc' para los Batches)
+// (MODIFICADO - ETAPA 1: Añadida lógica del "Puente" para
+//  enviar tareas a grupos)
 //
 // ==========================================================================
 
@@ -20,6 +21,7 @@ import {
   actualizarDocumento,
   eliminarDocumento,
   crearBatch,
+  agregarDocumentoAGrupo, // <-- AÑADIDO (ETAPA 1)
 } from '../firebase.js'; // <-- Importamos de firebase.js
 // --- FIN NUEVAS IMPORTACIONES FIREBASE ---
 import {
@@ -31,6 +33,7 @@ import {
   cerrarModal,
   mostrarConfirmacion,
   cargarIconos,
+  mostrarAlerta, // <-- AÑADIDO (ETAPA 1)
 } from '../ui.js';
 import { ICONS } from '../icons.js';
 
@@ -447,6 +450,7 @@ function renderizarDetalles() {
   const descripcion = document.getElementById('det-descripcion');
   const btnCompletar = document.getElementById('btn-completar-tarea');
   const btnEditar = document.getElementById('btn-editar-tarea');
+  const btnEnviarAGrupo = document.getElementById('btn-enviar-a-grupo'); // <-- ETAPA 1
   const btnEliminar = document.getElementById('btn-eliminar-tarea');
   const subtareasContainer = document.querySelector('.subtareas-container');
   const listaSubtareas = document.getElementById('lista-subtareas');
@@ -468,6 +472,12 @@ function renderizarDetalles() {
       btnCompletar.disabled = false;
     }
     if (btnEditar) btnEditar.disabled = false;
+    // --- INICIO ETAPA 1: Lógica de visibilidad del botón ---
+    if (btnEnviarAGrupo) {
+      // El botón solo se activa si hay grupos
+      btnEnviarAGrupo.disabled = !(state.grupos && state.grupos.length > 0);
+    }
+    // --- FIN ETAPA 1 ---
     if (btnEliminar) btnEliminar.disabled = false;
     if (proyectoContainer && proyectoNombre) {
       if (tarea.proyectold) {
@@ -497,6 +507,7 @@ function renderizarDetalles() {
       btnCompletar.disabled = true;
     }
     if (btnEditar) btnEditar.disabled = true;
+    if (btnEnviarAGrupo) btnEnviarAGrupo.disabled = true; // <-- ETAPA 1
     if (btnEliminar) btnEliminar.disabled = true;
     if (proyectoContainer) proyectoContainer.style.display = 'none';
     if (subtareasContainer) subtareasContainer.style.display = 'none';
@@ -846,6 +857,95 @@ function toggleSeleccionTarea(tareaId) {
   }
 }
 
+// ========================================================
+// ==     INICIO ETAPA 1: FUNCIONES "ENVIAR A GRUPO"
+// ========================================================
+
+/**
+ * ETAPA 1: Abre y puebla el modal "Enviar a Grupo"
+ */
+function abrirModalEnviarAGrupo() {
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald), // Typo 'ld'
+  );
+  if (!tarea) return;
+
+  const modal = document.getElementById('modal-enviar-a-grupo');
+  const select = document.getElementById('select-enviar-a-grupo');
+
+  if (!modal || !select) {
+    console.error('[Tareas] Modal de Enviar a Grupo no encontrado.');
+    return;
+  }
+
+  // Poblar selector de grupos
+  select.innerHTML = '<option value="">Selecciona un grupo...</option>';
+  if (state.grupos && state.grupos.length > 0) {
+    state.grupos.forEach((grupo) => {
+      const option = document.createElement('option');
+      option.value = grupo.id;
+      option.textContent = grupo.nombre || 'Grupo sin nombre';
+      select.appendChild(option);
+    });
+  } else {
+    // Esto no debería pasar si el botón está habilitado, pero por si acaso.
+    select.innerHTML = '<option value="">No se encontraron grupos</option>';
+  }
+
+  mostrarModal('modal-enviar-a-grupo');
+}
+
+/**
+ * ETAPA 1: Lógica para "Enviar Tarea a Grupo"
+ */
+async function handleEnviarAGrupo() {
+  const tarea = state.tareas.find(
+    (t) => String(t.id) === String(state.tareaSeleccionadald), // Typo 'ld'
+  );
+  const selectGrupo = document.getElementById('select-enviar-a-grupo');
+  if (!tarea || !selectGrupo) return;
+
+  const grupoId = selectGrupo.value;
+  if (!grupoId) {
+    mostrarAlerta('Error', 'Debes seleccionar un grupo.');
+    return;
+  }
+
+  // 1. Crear el objeto "Dato Clave" (padrePrivado)
+  const padrePrivado = {
+    id: tarea.id,
+    ownerId: state.currentUserId,
+  };
+
+  // 2. Crear la nueva tarea de grupo (copia de la privada)
+  const tareaDeGrupo = {
+    titulo: tarea.titulo,
+    descripcion: tarea.descripcion,
+    prioridad: tarea.prioridad,
+    // Datos específicos del "Foro"
+    padrePrivado: padrePrivado,
+    isCompleted: tarea.completada, // Sincronizar estado actual
+    creadaPor: state.currentUserId,
+    fechaCreacion: new Date().toISOString(),
+    asignados: [], // Se deja vacío (Principio #1 - No Complicarse)
+    comentarios: [],
+  };
+
+  // 3. Llamar a la nueva función de firebase
+  try {
+    await agregarDocumentoAGrupo(grupoId, 'tareas', tareaDeGrupo);
+    mostrarAlerta('¡Éxito!', `Tarea "${tarea.titulo}" enviada al grupo.`);
+    cerrarModal('modal-enviar-a-grupo');
+  } catch (error) {
+    console.error('Error al enviar tarea a grupo:', error);
+    mostrarAlerta('Error', 'No se pudo enviar la tarea.');
+  }
+}
+
+// ========================================================
+// ==     FIN ETAPA 1
+// ========================================================
+
 /**
  * MODIFICADO: Inicializa la página de Tareas, suscribiéndose a eventos.
  */
@@ -881,6 +981,12 @@ export function inicializarTareas() {
   };
   EventBus.on('cursosActualizados', refrescarDependencias);
   EventBus.on('proyectosActualizados', refrescarDependencias);
+  // AÑADIDO (ETAPA 1): Refrescar detalles si cambian los grupos
+  EventBus.on('gruposActualizados', () => {
+    if (state.paginaActual === 'tareas') {
+      renderizarDetalles(); // Para habilitar/deshabilitar el botón "Enviar"
+    }
+  });
 
   // --- SUSCRIPCIÓN AL EVENTO DE CARGA DE PÁGINA ---
   EventBus.on('paginaCargada:tareas', (data) => {
@@ -987,8 +1093,18 @@ export function inicializarTareas() {
       if (btnCerrarDetalles) btnCerrarDetalles.innerHTML = ICONS.close;
       const btnEditar = document.getElementById('btn-editar-tarea');
       if (btnEditar) btnEditar.innerHTML = ICONS.edit;
+      // --- INICIO ETAPA 1: Cargar ícono ---
+      const btnEnviarAGrupo = document.getElementById('btn-enviar-a-grupo');
+      if (btnEnviarAGrupo) btnEnviarAGrupo.innerHTML = ICONS.group;
+      // --- FIN ETAPA 1 ---
       const btnEliminar = document.getElementById('btn-eliminar-tarea');
       if (btnEliminar) btnEliminar.innerHTML = ICONS.delete;
+      // --- INICIO ETAPA 1: Cargar ícono modal ---
+      const btnCerrarModalGrupo = document.querySelector(
+        '#modal-enviar-a-grupo .btn-cerrar-modal',
+      );
+      if (btnCerrarModalGrupo) btnCerrarModalGrupo.innerHTML = ICONS.close;
+      // --- FIN ETAPA 1 ---
 
       renderizarTareas();
       renderizarDetalles();
@@ -1047,6 +1163,7 @@ export function inicializarTareas() {
         if (panelDetalles && panelDetalles.contains(e.target)) {
           const completarBtn = e.target.closest('#btn-completar-tarea');
           const editarBtn = e.target.closest('#btn-editar-tarea');
+          const enviarBtn = e.target.closest('#btn-enviar-a-grupo'); // <-- ETAPA 1
           const eliminarBtn = e.target.closest('#btn-eliminar-tarea');
           const addSubtareaBtn = e.target.closest('#btn-agregar-subtarea');
           const deleteSubtaskBtn = e.target.closest('.btn-delete-subtask');
@@ -1079,6 +1196,12 @@ export function inicializarTareas() {
             iniciarEdicionTarea();
             return;
           }
+          // --- INICIO ETAPA 1: Listener del botón ---
+          if (enviarBtn && !enviarBtn.disabled) {
+            abrirModalEnviarAGrupo();
+            return;
+          }
+          // --- FIN ETAPA 1 ---
           if (eliminarBtn && !eliminarBtn.disabled) {
             const tarea = state.tareas.find(
               (t) => String(t.id) === String(state.tareaSeleccionadald),
@@ -1658,6 +1781,17 @@ export function inicializarTareas() {
         }
       });
     }
+
+    // --- INICIO ETAPA 1: Listeners para el nuevo modal ---
+    const btnConfirmarEnviar = document.getElementById(
+      'btn-confirmar-enviar-a-grupo',
+    );
+    if (btnConfirmarEnviar && !btnConfirmarEnviar.dataset.listenerAttached) {
+      btnConfirmarEnviar.dataset.listenerAttached = 'true';
+      btnConfirmarEnviar.addEventListener('click', handleEnviarAGrupo);
+    }
+    // (El botón de cancelar ya es manejado por el listener global 'data-action="cerrar-modal"')
+    // --- FIN ETAPA 1 ---
 
     // --- LISTENER DEL FAB (Móvil) ---
     const btnAbrirCreacionMovil = document.getElementById(
