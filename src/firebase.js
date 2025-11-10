@@ -2,8 +2,7 @@
 // ==
 // ==                          src/firebase.js
 // ==
-// ==    (MODIFICADO - ETAPA 2 Rediseño: Añadida 'agregarDocumentoRaiz'
-// ==     y la función específica 'crearGrupo')
+// ==    (MODIFICADO - ETAPA 11.1: Añadido 'ownerId' a 'crearGrupo')
 // ==
 // ==========================================================================
 
@@ -306,7 +305,7 @@ export function escucharColeccionDeGrupo(
 }
 
 /**
- * ETAPA 2 (Rediseño): Crea un nuevo documento de grupo
+ * ETAPA 11.1 (Rediseño): Crea un nuevo documento de grupo
  */
 export async function crearGrupo(nombreGrupo) {
   if (!userId) throw new Error(`[Firebase] No autenticado.`);
@@ -315,7 +314,10 @@ export async function crearGrupo(nombreGrupo) {
     nombre: nombreGrupo,
     // El creador es el primer miembro
     miembros: [userId],
-    // Aquí puedes añadir más campos por defecto si quieres
+    // --- INICIO ETAPA 11.1 ---
+    // Guardamos quién es el dueño para la administración
+    ownerId: userId,
+    // --- FIN ETAPA 11.1 ---
     fechaCreacion: Timestamp.now(),
   };
 

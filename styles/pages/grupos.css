@@ -372,3 +372,79 @@
     flex: 1 1 100%;
   }
 }
+
+/* ==================================================================
+  ==  INICIO ETAPA 11.2: Estilos Admin Miembros
+  ==================================================================
+*/
+
+/* Estilo para el botón de admin en el header del foro */
+#btn-foro-admin {
+  margin-left: auto; /* Empuja a la derecha */
+  color: var(--text-base);
+}
+#btn-foro-admin:hover {
+  color: var(--accent-color);
+}
+
+/* Estilos para la lista de miembros en el modal */
+.lista-miembros-admin {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 200px; /* Límite de altura */
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.miembro-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+.miembro-item:last-child {
+  border-bottom: none;
+}
+
+.miembro-item span {
+  font-weight: 500;
+  color: var(--text-base);
+  /* Para truncar texto largo */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miembro-item .miembro-email {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+.miembro-item .miembro-owner {
+  font-size: 0.9em;
+  color: var(--accent-color);
+  font-weight: bold;
+  margin-left: 8px;
+  flex-shrink: 0; /* Evita que "Dueño" se corte */
+}
+
+/* Botón de expulsar */
+.btn-expulsar-miembro {
+  /* Hereda de .btn-icon */
+  width: 28px;
+  height: 28px;
+  background-color: rgba(231, 76, 60, 0.1); /* Fondo rojo sutil */
+  color: #e74c3c; /* Color rojo (peligro) */
+  flex-shrink: 0; /* Evita que se encoja */
+}
+.btn-expulsar-miembro:hover {
+  background-color: #e74c3c;
+  color: white;
+}
+/* ==================================================================
+  ==  FIN ETAPA 11.2
+  ==================================================================
+*/

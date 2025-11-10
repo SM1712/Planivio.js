@@ -2,9 +2,10 @@
 // ==                      src/pages/grupos.js                           ==
 // ==========================================================================
 //
-// ETAPA 10 (Diseño de Tarjeta Profesional):
-// - 'renderizarVistaGrid' crea una estructura de header y footer
-//   para la tarjeta, con los miembros en la esquina superior derecha.
+// ETAPA 11.3 (Admin Miembros - Lógica UI):
+// - Añadida lógica para MOSTRAR el botón de admin si el user es 'ownerId'.
+// - Añadida función 'abrirModalAdminMiembros' que abre el nuevo modal.
+// - Conectados los listeners e iconos del nuevo modal.
 //
 // ==========================================================================
 
@@ -15,7 +16,9 @@ import {
   escucharColeccionDeGrupo,
   agregarDocumentoAGrupo,
 } from '../firebase.js';
-import { mostrarAlerta, mostrarPrompt } from '../ui.js';
+// --- INICIO ETAPA 11.3: Importar funciones de UI ---
+import { mostrarAlerta, mostrarPrompt, mostrarModal } from '../ui.js';
+// --- FIN ETAPA 11.3 ---
 import { ICONS } from '../icons.js';
 
 // Estado local aislado
@@ -130,6 +133,18 @@ function mostrarVistaForo(grupoId) {
   document.getElementById('grupos-foro-titulo-principal').textContent =
     grupo.nombre;
 
+  // --- INICIO ETAPA 11.3: Lógica de Visibilidad del Botón Admin ---
+  const btnAdmin = document.getElementById('btn-foro-admin');
+  if (btnAdmin) {
+    // Comparamos el ID del usuario actual con el 'ownerId' del grupo
+    if (state.currentUserId === grupo.ownerId) {
+      btnAdmin.style.display = 'flex'; // Mostrar botón
+    } else {
+      btnAdmin.style.display = 'none'; // Ocultar botón
+    }
+  }
+  // --- FIN ETAPA 11.3 ---
+
   seleccionarGrupo(grupo.id);
 }
 
@@ -147,6 +162,13 @@ function mostrarVistaGrid() {
   const page = document.getElementById('page-grupos');
   page.classList.remove('vista-foro-activa');
   page.classList.remove('chat-activo-movil');
+
+  // --- INICIO ETAPA 11.3: Ocultar botón admin al salir ---
+  const btnAdmin = document.getElementById('btn-foro-admin');
+  if (btnAdmin) {
+    btnAdmin.style.display = 'none';
+  }
+  // --- FIN ETAPA 11.3 ---
 
   renderizarVistaGrid();
 }
@@ -392,6 +414,30 @@ async function crearNuevoHiloForo() {
   }
 }
 
+// --- INICIO ETAPA 11.3: Nuevas funciones de Admin ---
+
+/**
+ * Abre el modal de administración de miembros.
+ * Por ahora, solo muestra un placeholder.
+ */
+function abrirModalAdminMiembros() {
+  console.log('[Grupos] Abriendo modal de administración...');
+  const listaUI = document.getElementById('lista-admin-miembros');
+  if (listaUI) {
+    listaUI.innerHTML =
+      '<li class="lista-placeholder" style="padding: 10px">Cargando...</li>';
+  }
+
+  mostrarModal('modal-admin-miembros');
+
+  // TODO (ETAPA 11.4):
+  // 1. Implementar una función en firebase.js para buscar N perfiles de usuario.
+  // 2. Llamar a esa función con los IDs de localState.grupoSeleccionado.miembros.
+  // 3. Poblar la listaUI con los nombres, emails y un botón de "Expulsar".
+}
+
+// --- FIN ETAPA 11.3 ---
+
 /**
  * Limpia todos los listeners locales
  */
@@ -425,6 +471,19 @@ export function inicializarGrupos() {
     document.getElementById('btn-foro-atras').innerHTML = ICONS.collapse || '←';
     document.getElementById('btn-enviar-comentario').innerHTML =
       ICONS.send || '➤';
+
+    // --- INICIO ETAPA 11.3: Cargar iconos de admin ---
+    const btnAdmin = document.getElementById('btn-foro-admin');
+    if (btnAdmin) {
+      btnAdmin.innerHTML = ICONS.settings || '⚙️';
+    }
+    const btnCerrarAdmin = document.querySelector(
+      '#modal-admin-miembros .btn-cerrar-modal',
+    );
+    if (btnCerrarAdmin) {
+      btnCerrarAdmin.innerHTML = ICONS.close || 'X';
+    }
+    // --- FIN ETAPA 11.3 ---
 
     mostrarVistaGrid();
 
@@ -464,6 +523,13 @@ export function inicializarGrupos() {
       document
         .getElementById('btn-foro-nuevo-hilo')
         .addEventListener('click', crearNuevoHiloForo);
+
+      // --- INICIO ETAPA 11.3: Listener del botón de admin ---
+      const btnAdminListener = document.getElementById('btn-foro-admin');
+      if (btnAdminListener) {
+        btnAdminListener.addEventListener('click', abrirModalAdminMiembros);
+      }
+      // --- FIN ETAPA 11.3 ---
 
       document
         .getElementById('foro-panel-hilos')
