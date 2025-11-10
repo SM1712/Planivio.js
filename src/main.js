@@ -2,8 +2,8 @@
 // ==
 // ==                          src/main.js
 // ==
-// ==    (MODIFICADO - ETAPA 0: Añadida lógica de persistencia
-// ==     offline de Firebase en DOMContentLoaded)
+// ==    (MODIFICADO - ETAPA 0 (CORREGIDO): Corregido el nombre de
+// ==     'enablePersistence' a 'enableIndexedDbPersistence')
 // ==
 // ==========================================================================
 
@@ -52,6 +52,7 @@ import {
 } from './pages/calendario.js';
 import { inicializarApuntes } from './pages/apuntes.js';
 import { inicializarProyectos } from './pages/proyectos.js';
+import { inicializarGrupos } from './pages/grupos.js'; // <-- AÑADIDO (ETAPA 2)
 // (Importado en Etapa 4)
 import {
   inicializarPulsos,
@@ -72,6 +73,7 @@ const pageInitializers = {
   calendario: inicializarCalendario,
   apuntes: inicializarApuntes,
   proyectos: inicializarProyectos,
+  grupos: inicializarGrupos, // <-- AÑADIDO (ETAPA 2)
   pulsos: inicializarPulsos,
 };
 
@@ -398,6 +400,7 @@ async function manejarEstadoDeAutenticacion() {
       inicializarCalendario();
       inicializarApuntes();
       inicializarProyectos();
+      inicializarGrupos(); // <-- AÑADIDO (ETAPA 2)
 
       if (document.getElementById('user-photo'))
         document.getElementById('user-photo').src = user.photoURL;
@@ -671,6 +674,10 @@ function agregarEventListenersGlobales() {
         ICONS.apuntes;
       mainNav.querySelector('li[data-page="proyectos"] .nav-icon').innerHTML =
         ICONS.proyectos;
+      // --- INICIO ETAPA 2: Cargar ícono ---
+      mainNav.querySelector('li[data-page="grupos"] .nav-icon').innerHTML =
+        ICONS.group;
+      // --- FIN ETAPA 2 ---
     } catch (error) {
       console.error('[Main] Error al cargar iconos de navegación:', error);
     }
@@ -1121,10 +1128,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   aplicarTema();
 
   // ======================================================================
-  // ==     INICIO ETAPA 0: HABILITAR PERSISTENCIA OFFLINE
+  // ==     INICIO ETAPA 0 (CORREGIDO): HABILITAR PERSISTENCIA OFFLINE
   // ======================================================================
   try {
-    await window.firebaseServices.enablePersistence(window.firebaseServices.db);
+    // CORRECCIÓN: Usar 'enableIndexedDbPersistence' en lugar de 'enablePersistence'
+    await window.firebaseServices.enableIndexedDbPersistence(
+      window.firebaseServices.db,
+    );
     console.log(
       '[Main - ETAPA 0] Persistencia offline de Firebase habilitada.',
     );
@@ -1142,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
   // ======================================================================
-  // ==     FIN ETAPA 0
+  // ==     FIN ETAPA 0 (CORREGIDO)
   // ======================================================================
 
   manejarEstadoDeAutenticacion();

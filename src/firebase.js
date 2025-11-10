@@ -2,8 +2,8 @@
 // ==
 // ==                          src/firebase.js
 // ==
-// ==    (MODIFICADO - ETAPA 1: Añadida la función
-// ==     'agregarDocumentoAGrupo' para el "Puente")
+// ==    (MODIFICADO - ETAPA 2 Rediseño: Añadida 'agregarDocumentoRaiz'
+// ==     y la función específica 'crearGrupo')
 // ==
 // ==========================================================================
 
@@ -23,6 +23,8 @@ const {
   query,
   where,
   getDocs,
+  orderBy, // <-- AÑADIDO (ETAPA 2)
+  Timestamp, // <-- AÑADIDO (ETAPA 2)
 } = window.firebaseServices;
 
 export { db, doc };
@@ -135,53 +137,6 @@ export function escucharColeccion(nombreColeccion, callback) {
   return unsubscribe;
 }
 
-// ==========================================================================
-// ==     INICIO ETAPA 0.5 B: FUNCIÓN PARA ESCUCHAR GRUPOS (Raíz)
-// ==========================================================================
-/**
- * Escucha la colección RAÍZ /grupos para encontrar
- * aquellos donde el usuario actual es miembro.
- * (Basado en la Fase 5 del PDF)
- */
-export function escucharGruposDelUsuario(callback) {
-  if (!userId) {
-    console.warn(`[Firebase] User ID no seteado, no se puede escuchar grupos.`);
-    return () => {};
-  }
-
-  // 1. Apuntar a la colección raíz '/grupos'
-  const coleccionRef = collection(db, 'grupos');
-
-  // 2. Crear la consulta 'array-contains'
-  const q = query(coleccionRef, where('miembros', 'array-contains', userId));
-
-  // 3. Crear el listener
-  const unsubscribe = onSnapshot(
-    q,
-    (querySnapshot) => {
-      const datosArray = [];
-      querySnapshot.forEach((doc) => {
-        // Asumimos que la estructura del doc de grupo incluye 'nombre' y 'miembros'
-        datosArray.push({ ...doc.data(), id: doc.id });
-      });
-      console.log(
-        `[Firebase] Grupos (raíz) recibidos:`,
-        datosArray.length,
-        'documentos',
-      );
-      callback(datosArray);
-    },
-    (error) => {
-      console.error(`[Firebase] Error al escuchar /grupos: `, error);
-    },
-  );
-
-  return unsubscribe;
-}
-// ==========================================================================
-// ==     FIN ETAPA 0.5 B
-// ==========================================================================
-
 export async function agregarDocumento(nombreColeccion, datos) {
   if (!userId)
     throw new Error(
@@ -205,9 +160,71 @@ export async function agregarDocumento(nombreColeccion, datos) {
   }
 }
 
-// ==========================================================
-// ==     INICIO ETAPA 1: FUNCIÓN PARA AGREGAR A GRUPO
-// ==========================================================
+// ==========================================================================
+// ==     FUNCIONES PARA COLECCIONES RAÍZ (GRUPOS)
+// ==========================================================================
+
+/**
+ * Agrega un documento a una colección RAÍZ (ej. /grupos)
+ */
+async function agregarDocumentoRaiz(nombreColeccion, datos) {
+  if (!userId)
+    throw new Error(
+      `[Firebase] No autenticado. No se puede agregar a ${nombreColeccion}.`,
+    );
+
+  try {
+    const coleccionRef = collection(db, nombreColeccion);
+    const docRef = await addDoc(coleccionRef, datos);
+    console.log(
+      `[Firebase] Documento agregado a /${nombreColeccion} con ID:`,
+      docRef.id,
+    );
+    return docRef.id;
+  } catch (error) {
+    console.error(
+      `[Firebase] Error al agregar documento a /${nombreColeccion}:`,
+      error,
+    );
+    throw error;
+  }
+}
+
+/**
+ * Escucha la colección RAÍZ /grupos para encontrar
+ * aquellos donde el usuario actual es miembro.
+ */
+export function escucharGruposDelUsuario(callback) {
+  if (!userId) {
+    console.warn(`[Firebase] User ID no seteado, no se puede escuchar grupos.`);
+    return () => {};
+  }
+
+  const coleccionRef = collection(db, 'grupos');
+  const q = query(coleccionRef, where('miembros', 'array-contains', userId));
+
+  const unsubscribe = onSnapshot(
+    q,
+    (querySnapshot) => {
+      const datosArray = [];
+      querySnapshot.forEach((doc) => {
+        datosArray.push({ ...doc.data(), id: doc.id });
+      });
+      console.log(
+        `[Firebase] Grupos (raíz) recibidos:`,
+        datosArray.length,
+        'documentos',
+      );
+      callback(datosArray);
+    },
+    (error) => {
+      console.error(`[Firebase] Error al escuchar /grupos: `, error);
+    },
+  );
+
+  return unsubscribe;
+}
+
 /**
  * Agrega un documento a una subcolección de un grupo en la raíz.
  * (p.ej. /grupos/{grupoId}/tareas)
@@ -220,9 +237,12 @@ export async function agregarDocumentoAGrupo(grupoId, nombreColeccion, datos) {
   if (!grupoId) throw new Error(`[Firebase] ID de grupo inválido.`);
 
   try {
-    // Construir la referencia a la subcolección en la RAÍZ
+    const datosConTimestamp = {
+      ...datos,
+      fechaCreacion: Timestamp.now(),
+    };
     const coleccionRef = collection(db, 'grupos', grupoId, nombreColeccion);
-    const docRef = await addDoc(coleccionRef, datos);
+    const docRef = await addDoc(coleccionRef, datosConTimestamp);
     console.log(
       `[Firebase] Documento agregado a /grupos/${grupoId}/${nombreColeccion} con ID:`,
       docRef.id,
@@ -236,9 +256,83 @@ export async function agregarDocumentoAGrupo(grupoId, nombreColeccion, datos) {
     throw error;
   }
 }
-// ==========================================================
-// ==     FIN ETAPA 1
-// ==========================================================
+
+/**
+ * Escucha una subcolección de un grupo específico.
+ * (p.ej. /grupos/{grupoId}/tareas)
+ */
+export function escucharColeccionDeGrupo(
+  grupoId,
+  nombreColeccion,
+  callback,
+  campoOrden,
+  direccionOrden = 'asc',
+) {
+  if (!userId) {
+    console.warn(
+      `[Firebase] User ID no seteado, no se puede escuchar ${grupoId}/${nombreColeccion}.`,
+    );
+    return () => {};
+  }
+  if (!grupoId) {
+    console.warn(`[Firebase] ID de grupo inválido, no se puede escuchar.`);
+    return () => {};
+  }
+
+  const coleccionRef = collection(db, 'grupos', grupoId, nombreColeccion);
+
+  const q = campoOrden
+    ? query(coleccionRef, orderBy(campoOrden, direccionOrden))
+    : query(coleccionRef);
+
+  const unsubscribe = onSnapshot(
+    q,
+    (querySnapshot) => {
+      const datosArray = [];
+      querySnapshot.forEach((doc) => {
+        datosArray.push({ ...doc.data(), id: doc.id });
+      });
+      callback(datosArray);
+    },
+    (error) => {
+      console.error(
+        `[Firebase] Error al escuchar /grupos/${grupoId}/${nombreColeccion}: `,
+        error,
+      );
+    },
+  );
+
+  return unsubscribe;
+}
+
+/**
+ * ETAPA 2 (Rediseño): Crea un nuevo documento de grupo
+ */
+export async function crearGrupo(nombreGrupo) {
+  if (!userId) throw new Error(`[Firebase] No autenticado.`);
+
+  const nuevoGrupo = {
+    nombre: nombreGrupo,
+    // El creador es el primer miembro
+    miembros: [userId],
+    // Aquí puedes añadir más campos por defecto si quieres
+    fechaCreacion: Timestamp.now(),
+  };
+
+  try {
+    const docId = await agregarDocumentoRaiz('grupos', nuevoGrupo);
+    console.log(`[Firebase] Nuevo grupo creado con ID: ${docId}`);
+    return docId;
+  } catch (error) {
+    console.error(`[Firebase] Error al crear grupo:`, error);
+    throw error;
+  }
+}
+
+// ==========================================================================
+// ==     FUNCIONES DE CRUD PRIVADAS (Actualizar, Eliminar, etc.)
+// ==========================================================================
+// (Aquí van el resto de tus funciones: actualizarDocumento, eliminarDocumento, etc.)
 
 export async function actualizarDocumento(
   nombreColeccion,

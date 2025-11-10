@@ -1,0 +1,79 @@
+<div id="page-grupos" class="page">
+  <div id="grupos-vista-grid" class="page-content-grid">
+    <div class="panel-header">
+      <div class="search-container">
+        <input
+          type="text"
+          id="input-buscar-grupos"
+          placeholder="Buscar grupos..."
+        />
+      </div>
+      <button
+        id="btn-crear-grupo"
+        class="btn-icon btn-accent"
+        title="Crear Nuevo Grupo"
+      ></button>
+    </div>
+
+    <div class="grid-container" id="grupos-grid-container"></div>
+  </div>
+
+  <div id="grupos-vista-foro" class="page-grupos-foro">
+    <div class="panel-header">
+      <button
+        id="btn-foro-atras"
+        class="btn-icon"
+        title="Volver a Grupos"
+      ></button>
+      <h2 id="grupos-foro-titulo-principal" class="titulo-panel accent">
+        Nombre del Grupo
+      </h2>
+      <button
+        id="btn-foro-nuevo-hilo"
+        class="btn-accent"
+        title="Crear Nuevo Hilo"
+      >
+        Nuevo Hilo
+      </button>
+    </div>
+
+    <div class="foro-main-content">
+      <div id="foro-panel-hilos" class="foro-panel">
+        <div
+          id="foro-hilo-general"
+          class="hilo-item hilo-general"
+          data-id="general"
+        >
+          <span class="hilo-icono">💬</span>
+          <div class="hilo-info">
+            <span class="hilo-titulo">Chat General</span>
+            <span class="hilo-meta">Conversación de todo el grupo</span>
+          </div>
+        </div>
+        <ul id="foro-hilos-lista" class="lista-items-hilos"></ul>
+      </div>
+
+      <div id="foro-panel-chat" class="foro-panel">
+        <h3 id="foro-chat-titulo">Selecciona un hilo</h3>
+        <div
+          id="foro-chat-comentarios"
+          class="foro-comentarios-container"
+        ></div>
+        <form id="form-nuevo-comentario" class="foro-input-container">
+          <textarea
+            id="input-nuevo-comentario"
+            placeholder="Escribe un comentario..."
+            rows="3"
+            disabled
+          ></textarea>
+          <button
+            id="btn-enviar-comentario"
+            type="submit"
+            class="btn-icon"
+            disabled
+          ></button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

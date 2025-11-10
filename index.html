@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Planivio JS</title>
     <link rel="stylesheet" href="./styles/main.css" />
+    <link rel="stylesheet" href="./styles/pages/grupos.css" />
     <script
       src="https://cdn.tiny.cloud/1/yvqo406oprv0iv03hor0kxr8gd5nndshs4pxo73exu75yq59/tinymce/6/tinymce.min.js"
       referrerpolicy="origin"
@@ -72,6 +73,9 @@
             <li data-page="proyectos" class="nav-item">
               <span class="nav-icon"></span
               ><span class="nav-text">Proyectos</span>
+            </li>
+            <li data-page="grupos" class="nav-item">
+              <span class="nav-icon"></span><span class="nav-text">Grupos</span>
             </li>
           </ul>
         </div>
@@ -164,6 +168,42 @@
       </form>
     </div>
 
+    <div id="modal-enviar-a-grupo" class="modal-overlay">
+      <div class="modal-content modal-compacto">
+        <button
+          class="btn-icon btn-cerrar-modal"
+          data-action="cerrar-modal"
+          style="position: absolute; top: 10px; right: 10px"
+        ></button>
+        <h2>Enviar Tarea a Grupo</h2>
+        <p>
+          Esto creará una copia de la tarea como un nuevo "hilo" en el grupo que
+          selecciones.
+        </p>
+        <div class="form-group">
+          <label for="select-enviar-a-grupo">Selecciona un grupo:</label>
+          <select id="select-enviar-a-grupo" required>
+            <option value="">Cargando grupos...</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button
+            type="button"
+            data-action="cerrar-modal"
+            class="btn-secondary"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            id="btn-confirmar-enviar-a-grupo"
+            class="btn-accent"
+          >
+            Enviar a Grupo
+          </button>
+        </div>
+      </div>
+    </div>
     <div id="modal-nuevo-curso" class="modal-overlay">
       <form id="form-nuevo-curso" class="modal-content modal-curso-edit">
         <h2>Agregar Nuevo Curso</h2>
@@ -1298,6 +1338,9 @@
         query, // <-- FALTABA ESTA
         where, // <-- FALTABA ESTA
         getDocs, // <-- FALTABA ESTA
+        orderBy, // <-- AÑADIDO (ETAPA 2)
+        Timestamp, // <-- AÑADIDO (ETAPA 2)
+        enableIndexedDbPersistence, // <-- CORREGIDO (ETAPA 0)
       } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
       // --- FIN: CORRECCIÓN ---
 
@@ -1341,6 +1384,9 @@
         query: query, // <-- AÑADIDO
         where: where, // <-- AÑADIDO
         getDocs: getDocs, // <-- AÑADIDO
+        orderBy: orderBy, // <-- AÑADIDO (ETAPA 2)
+        Timestamp: Timestamp, // <-- AÑADIDO (ETAPA 2)
+        enableIndexedDbPersistence: enableIndexedDbPersistence, // <-- CORREGIDO (ETAPA 0)
         // --- FIN: CORRECCIÓN ---
       };
     </script>
