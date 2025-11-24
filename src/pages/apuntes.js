@@ -91,44 +91,51 @@ async function descargarApuntesSeleccionados(
 ) {
   if (ids.length === 0) return;
 
-  // Verifica que jsPDF esté cargado antes de usarlo
-  if (!window.jspdf || !window.jspdf.jsPDF) {
-    console.error('Error: La biblioteca jsPDF no está cargada.');
-    // Assuming mostrarAlerta is globally available or imported
+  // Verifica que pdfmake y html-to-pdfmake estén cargados
+  if (!window.pdfMake || !window.htmlToPdfmake) {
+    console.error('Error: Las bibliotecas pdfMake o html-to-pdfmake no están cargadas.');
     if (typeof mostrarAlerta === 'function') {
       mostrarAlerta(
         'Error',
-        'No se pudo generar el PDF. La biblioteca jsPDF no está disponible.',
+        'No se pudo generar el PDF. Las bibliotecas necesarias no están disponibles.',
       );
     } else {
-      alert('Error: La biblioteca jsPDF no está disponible.'); // Fallback alert
-    }
-    return;
-  }
-  // Verifica que jsPDF-AutoTable esté cargado
-  if (typeof window.jspdf.jsPDF.API?.autoTable !== 'function') {
-    // Use optional chaining for safety
-    console.error('Error: El plugin jsPDF-AutoTable no está cargado.');
-    if (typeof mostrarAlerta === 'function') {
-      mostrarAlerta(
-        'Error',
-        'No se pudo generar la tabla del PDF. El plugin jsPDF-AutoTable no está disponible.',
-      );
-    } else {
-      alert('Error: El plugin jsPDF-AutoTable no está disponible.'); // Fallback alert
+      alert('Error: Las bibliotecas necesarias para PDF no están disponibles.');
     }
     return;
   }
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const apuntesADescargar = state.apuntes.filter((apunte) =>
     ids.includes(apunte.id),
   );
-  const accentColor = state.config.accent_color;
+  const accentColor = state.config.accent_color || '#0078d7';
 
-  const body = [];
-  apuntesADescargar.forEach((apunte) => {
+  // Definición base del documento
+  const docDefinition = {
+    content: [],
+    styles: {
+      titulo: {
+        fontSize: 18,
+        bold: true,
+        color: accentColor,
+        margin: [0, 0, 0, 10]
+      },
+      meta: {
+        fontSize: 10,
+        color: '#555555',
+        margin: [0, 0, 0, 15]
+      },
+      htmlContent: {
+        fontSize: 11,
+        color: '#333333'
+      }
+    },
+    defaultStyle: {
+      font: 'Roboto' // pdfmake usa Roboto por defecto en vfs_fonts
+    }
+  };
+
+  apuntesADescargar.forEach((apunte, index) => {
     const fecha = new Date(apunte.fechaModificacion).toLocaleDateString(
       'es-ES',
     );
@@ -146,77 +153,43 @@ async function descargarApuntesSeleccionados(
     }
     meta += ` | Última Modificación: ${fecha}`;
 
-    // Usar DIV temporal para extraer texto
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = apunte.contenido;
-    const contenidoTexto = tempDiv.textContent || tempDiv.innerText || '';
+    // 1. Título del apunte
+    docDefinition.content.push({ text: titulo, style: 'titulo' });
 
-    body.push([
-      {
-        content: titulo,
-        styles: {
-          fontStyle: 'bold',
-          fontSize: 14,
-          textColor: accentColor,
-        },
-      },
-    ]);
-    body.push([
-      {
-        content: meta,
-        styles: {
-          fontSize: 9,
-          textColor: [100, 100, 100],
-          cellPadding: { bottom: 4 },
-        },
-      },
-    ]);
-    body.push([
-      {
-        content: contenidoTexto,
-        styles: {
-          fontSize: 11,
-          textColor: [50, 50, 50],
-          cellPadding: { bottom: 10 },
-        },
-      },
-    ]);
-  }); // Fin forEach
+    // 2. Metadatos
+    docDefinition.content.push({ text: meta, style: 'meta' });
 
-  try {
-    doc.autoTable({
-      head: [
-        [
-          {
-            content: 'Planivio - Apuntes Exportados',
-            styles: {
-              fillColor: false,
-              textColor: accentColor,
-              fontSize: 18,
-              fontStyle: 'bold',
-            },
-          },
-        ],
-      ],
-      body: body,
-      theme: 'plain',
-      startY: 25,
-      styles: { cellPadding: { top: 2, right: 0, bottom: 0, left: 0 } },
-      columnStyles: { 0: { cellWidth: 'auto' } },
-      didDrawPage: (data) => {
-        doc.setLineWidth(0.5);
-        doc.setDrawColor(accentColor);
-        doc.line(
-          data.settings.margin.left,
-          20,
-          doc.internal.pageSize.width - data.settings.margin.right,
-          20,
-        );
-        addPageNumbers(doc); // Assuming addPageNumbers is defined elsewhere
-      },
-      margin: { top: 30, left: 15, right: 15 },
+    // 3. Contenido HTML convertido a pdfmake
+    // htmlToPdfmake espera un string HTML o un elemento DOM.
+    // Usamos el contenido HTML directo del apunte.
+    // Es importante manejar estilos básicos que html-to-pdfmake soporta.
+    const htmlContent = htmlToPdfmake(apunte.contenido, {
+      defaultStyles: {
+        // Estilos por defecto para elementos HTML
+        p: { margin: [0, 0, 0, 10] },
+        ul: { margin: [0, 0, 0, 10] },
+        ol: { margin: [0, 0, 0, 10] },
+        li: { margin: [0, 0, 0, 5] },
+        h1: { fontSize: 16, bold: true, margin: [0, 10, 0, 5] },
+        h2: { fontSize: 14, bold: true, margin: [0, 10, 0, 5] },
+        h3: { fontSize: 12, bold: true, margin: [0, 10, 0, 5] },
+        strong: { bold: true },
+        b: { bold: true },
+        em: { italics: true },
+        i: { italics: true },
+        u: { decoration: 'underline' }
+      }
     });
 
+    docDefinition.content.push(htmlContent);
+
+    // 4. Salto de página si no es el último apunte
+    if (index < apuntesADescargar.length - 1) {
+      docDefinition.content.push({ text: '', pageBreak: 'after' });
+    }
+  });
+
+  try {
     let fileName;
     if (apuntesADescargar.length === 1) {
       fileName = (apuntesADescargar[0].titulo || 'Apunte')
@@ -226,19 +199,21 @@ async function descargarApuntesSeleccionados(
     } else {
       fileName = `Planivio-Apuntes-${Date.now()}`;
     }
-    doc.save(`${fileName}.pdf`);
+    
+    pdfMake.createPdf(docDefinition).download(`${fileName}.pdf`);
+    console.log('[Apuntes] PDF generado y descargado con pdfmake.');
+
   } catch (error) {
-    console.error('Error al generar la tabla PDF con jsPDF-AutoTable:', error);
-    // Assuming mostrarAlerta is globally available or imported
+    console.error('Error al generar el PDF con pdfmake:', error);
     if (typeof mostrarAlerta === 'function') {
       mostrarAlerta(
         'Error PDF',
-        'Ocurrió un error al generar la tabla del documento PDF.',
+        'Ocurrió un error al generar el documento PDF.',
       );
     } else {
       alert(
-        'Error PDF: Ocurrió un error al generar la tabla del documento PDF.',
-      ); // Fallback alert
+        'Error PDF: Ocurrió un error al generar el documento PDF.',
+      );
     }
   }
 }

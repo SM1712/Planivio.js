@@ -15,9 +15,14 @@ import {
   crearGrupo,
   escucharColeccionDeGrupo,
   agregarDocumentoAGrupo,
+  // --- INICIO ETAPA 11.4: Nuevas importaciones ---
+  buscarUsuarioPorEmail,
+  agregarMiembroAGrupo,
+  obtenerDetallesMiembros,
+  // --- FIN ETAPA 11.4 ---
 } from '../firebase.js';
 // --- INICIO ETAPA 11.3: Importar funciones de UI ---
-import { mostrarAlerta, mostrarPrompt, mostrarModal } from '../ui.js';
+import { mostrarAlerta, mostrarPrompt, mostrarModal, mostrarConfirmacion } from '../ui.js';
 // --- FIN ETAPA 11.3 ---
 import { ICONS } from '../icons.js';
 
@@ -33,6 +38,139 @@ let localState = {
 // Unsubscribe functions
 let unsubscribeHilos = () => {};
 let unsubscribeComentarios = () => {};
+
+// ... (resto del código)
+
+// --- INICIO ETAPA 11.3: Nuevas funciones de Admin ---
+
+/**
+ * Abre el modal de administración de miembros.
+ * Carga y muestra la lista de miembros y gestiona invitaciones.
+ */
+async function abrirModalAdminMiembros() {
+  console.log('[Grupos] Abriendo modal de administración...');
+  const listaUI = document.getElementById('lista-admin-miembros');
+  const inputEmail = document.getElementById('input-invitar-email');
+  const btnInvitar = document.getElementById('btn-enviar-invitacion');
+  
+  if (!listaUI || !inputEmail || !btnInvitar) return;
+
+  // 1. Resetear UI
+  listaUI.innerHTML = '<li class="lista-placeholder" style="padding: 10px">Cargando miembros...</li>';
+  inputEmail.value = '';
+  inputEmail.disabled = false;
+  btnInvitar.disabled = false;
+
+  mostrarModal('modal-admin-miembros');
+
+  // 2. Cargar miembros
+  await cargarListaMiembros(listaUI);
+
+  // 3. Configurar listener de invitación (evitar duplicados)
+  // Clonamos el botón para limpiar listeners anteriores
+  const nuevoBtnInvitar = btnInvitar.cloneNode(true);
+  btnInvitar.parentNode.replaceChild(nuevoBtnInvitar, btnInvitar);
+  
+  nuevoBtnInvitar.addEventListener('click', async () => {
+    const email = inputEmail.value.trim();
+    if (!email) return;
+    
+    if (email === state.config.email) {
+        mostrarAlerta('Error', 'No te puedes invitar a ti mismo.');
+        return;
+    }
+
+    try {
+      nuevoBtnInvitar.disabled = true;
+      inputEmail.disabled = true;
+      nuevoBtnInvitar.textContent = 'Buscando...';
+
+      // A. Buscar usuario
+      const usuarioEncontrado = await buscarUsuarioPorEmail(email);
+      
+      if (!usuarioEncontrado) {
+        mostrarAlerta('Usuario no encontrado', 'No existe ningún usuario con ese email en Planivio. Asegúrate de que se haya registrado e iniciado sesión al menos una vez.');
+        nuevoBtnInvitar.disabled = false;
+        inputEmail.disabled = false;
+        nuevoBtnInvitar.textContent = 'Invitar';
+        return;
+      }
+
+      // B. Confirmar
+      const confirmar = await mostrarConfirmacion(
+        'Usuario Encontrado', 
+        `¿Quieres agregar a <strong>${usuarioEncontrado.nombre}</strong> al grupo?`,
+        'Sí, agregar',
+        'Cancelar'
+      );
+
+      if (confirmar) {
+        // C. Agregar
+        await agregarMiembroAGrupo(localState.grupoSeleccionado.id, usuarioEncontrado.uid);
+        mostrarAlerta('¡Éxito!', `${usuarioEncontrado.nombre} ha sido agregado al grupo.`);
+        inputEmail.value = '';
+        
+        // D. Recargar lista (y actualizar estado local si es necesario)
+        // Actualizamos el array de miembros localmente para reflejar el cambio inmediato
+        if (!localState.grupoSeleccionado.miembros.includes(usuarioEncontrado.uid)) {
+            localState.grupoSeleccionado.miembros.push(usuarioEncontrado.uid);
+        }
+        await cargarListaMiembros(listaUI);
+      }
+
+    } catch (error) {
+      console.error('Error al invitar:', error);
+      mostrarAlerta('Error', error.message || 'Ocurrió un error al invitar.');
+    } finally {
+      nuevoBtnInvitar.disabled = false;
+      inputEmail.disabled = false;
+      nuevoBtnInvitar.textContent = 'Invitar';
+    }
+  });
+}
+
+/**
+ * Helper para cargar y renderizar la lista de miembros
+ */
+async function cargarListaMiembros(listaUI) {
+    if (!localState.grupoSeleccionado || !localState.grupoSeleccionado.miembros) return;
+    
+    const miembrosIds = localState.grupoSeleccionado.miembros;
+    const detalles = await obtenerDetallesMiembros(miembrosIds);
+    
+    listaUI.innerHTML = '';
+    
+    detalles.forEach(miembro => {
+        const li = document.createElement('li');
+        li.className = 'miembro-item'; // Asegúrate de tener estilos para esto
+        li.style.display = 'flex';
+        li.style.justifyContent = 'space-between';
+        li.style.alignItems = 'center';
+        li.style.padding = '8px 0';
+        li.style.borderBottom = '1px solid var(--border-color)';
+        
+        const esOwner = miembro.id === localState.grupoSeleccionado.ownerId;
+        const esYo = miembro.id === state.currentUserId;
+        
+        li.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="avatar-placeholder" style="width: 32px; height: 32px; background: var(--accent-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                    ${miembro.nombre.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <div style="font-weight: 500;">${miembro.nombre} ${esYo ? '(Tú)' : ''}</div>
+                    <div style="font-size: 0.8em; opacity: 0.7;">${miembro.email}</div>
+                </div>
+            </div>
+            <div>
+                ${esOwner ? '<span class="badge badge-accent">Admin</span>' : ''}
+            </div>
+        `;
+        listaUI.appendChild(li);
+    });
+}
+
+
 
 // --- 1. LÓGICA DE VISTA GRID (CUADRÍCULA) ---
 
@@ -85,10 +223,6 @@ function renderizarVistaGrid() {
       
       <div class="card-stats-container">
          <span class="notificacion-dot" style="display: ${hayNotificacion ? 'block' : 'none'}"></span>
-         <div class="stat-item">
-           <span class="stat-icon">💬</span>
-           <span class="stat-texto">${numHilos} Hilos</span>
-         </div>
       </div>
     `;
     // --- FIN ETAPA 10 ---
@@ -420,21 +554,7 @@ async function crearNuevoHiloForo() {
  * Abre el modal de administración de miembros.
  * Por ahora, solo muestra un placeholder.
  */
-function abrirModalAdminMiembros() {
-  console.log('[Grupos] Abriendo modal de administración...');
-  const listaUI = document.getElementById('lista-admin-miembros');
-  if (listaUI) {
-    listaUI.innerHTML =
-      '<li class="lista-placeholder" style="padding: 10px">Cargando...</li>';
-  }
 
-  mostrarModal('modal-admin-miembros');
-
-  // TODO (ETAPA 11.4):
-  // 1. Implementar una función en firebase.js para buscar N perfiles de usuario.
-  // 2. Llamar a esa función con los IDs de localState.grupoSeleccionado.miembros.
-  // 3. Poblar la listaUI con los nombres, emails y un botón de "Expulsar".
-}
 
 // --- FIN ETAPA 11.3 ---
 

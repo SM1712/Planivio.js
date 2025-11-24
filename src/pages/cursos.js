@@ -211,11 +211,17 @@ async function agregarCurso(nombre, emoji) {
   };
 
   try {
+    // UX Optimista: Cerrar modal inmediatamente para que parezca instantáneo
+    // Si falla, mostraremos alerta después.
+    cerrarModal('modal-nuevo-curso');
+    const inputNombre = document.getElementById('input-nombre-curso');
+    if (inputNombre) inputNombre.value = ''; // Limpiar input para evitar doble envío si el usuario reabre rápido
+
     const nuevoId = await agregarDocumento('cursos', nuevoCurso);
     console.log('[Cursos] Nuevo curso guardado en Firestore con ID:', nuevoId);
   } catch (error) {
     console.error('[Cursos] Error al agregar curso a Firestore:', error);
-    mostrarAlerta('Error', 'No se pudo guardar el nuevo curso.');
+    mostrarAlerta('Error', 'No se pudo guardar el nuevo curso. Verifica tu conexión si es la primera vez.');
   }
 }
 

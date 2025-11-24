@@ -14,6 +14,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <!-- ✨ NUEVO: Librerías para PDF con texto seleccionable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-pdfmake/2.4.1/html-to-pdfmake.min.js"></script>
   </head>
   <body>
     <header class="app-header">
@@ -230,9 +234,7 @@
               Invitar
             </button>
           </div>
-          <small style="color: var(--text-muted); margin-top: 5px"
-            >(Función de invitación pendiente de implementación)</small
-          >
+
         </div>
 
         <hr
@@ -1088,6 +1090,14 @@
                 cuándo.
               </p>
 
+              <!-- Botón para activar notificaciones si no están permitidas -->
+              <div id="container-permiso-notificaciones" style="margin-bottom: 15px; display: none;">
+                <div class="alert-box" style="background: var(--bg-secondary); padding: 10px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                  <span>⚠️ Las notificaciones están desactivadas.</span>
+                  <button id="btn-activar-notificaciones" class="btn-accent btn-sm">Activar</button>
+                </div>
+              </div>
+
               <div class="widget-toggle-list" style="margin-bottom: 20px">
                 <div class="widget-toggle-item">
                   <input
@@ -1399,7 +1409,8 @@
         getDocs, // <-- FALTABA ESTA
         orderBy, // <-- AÑADIDO (ETAPA 2)
         Timestamp, // <-- AÑADIDO (ETAPA 2)
-        enableIndexedDbPersistence, // <-- CORREGIDO (ETAPA 0)
+        enableMultiTabIndexedDbPersistence, // <-- MEJORADO (ETAPA 6)
+        collectionGroup, // <-- AÑADIDO (ETAPA 11.4)
       } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
       // --- FIN: CORRECCIÓN ---
 
@@ -1445,7 +1456,7 @@
         getDocs: getDocs, // <-- AÑADIDO
         orderBy: orderBy, // <-- AÑADIDO (ETAPA 2)
         Timestamp: Timestamp, // <-- AÑADIDO (ETAPA 2)
-        enableIndexedDbPersistence: enableIndexedDbPersistence, // <-- CORREGIDO (ETAPA 0)
+        enableMultiTabIndexedDbPersistence: enableMultiTabIndexedDbPersistence, // <-- MEJORADO (ETAPA 6)
         // --- FIN: CORRECCIÓN ---
       };
     </script>

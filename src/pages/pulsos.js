@@ -458,24 +458,35 @@ export function inicializarPulsos() {
       }
     }
   });
+  
+  // --- INICIO ETAPA 17: Gestión de Permisos ---
+  verificarPermisosNotificaciones();
+  
+  const btnActivar = document.getElementById('btn-activar-notificaciones');
+  if (btnActivar) {
+    btnActivar.addEventListener('click', () => {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          mostrarNotificacion('¡Notificaciones Activas!', { body: 'Ahora recibirás los pulsos de Planivio.' });
+          verificarPermisosNotificaciones();
+        } else {
+          mostrarAlerta('Permiso Denegado', 'No podremos enviarte notificaciones. Revisa la configuración de tu navegador.');
+        }
+      });
+    });
+  }
+  // --- FIN ETAPA 17 ---
+}
 
-  // Listener global para cerrar el panel si se hace clic fuera
-  document.addEventListener('click', (e) => {
-    const panel = document.getElementById('panel-pulsos-popover');
-    const btn = document.getElementById('btn-pulsos-header');
-
-    if (!panel || !btn) return;
-    if (panel.classList.contains('hidden')) return; // Ya está cerrado
-
-    // Si el clic NO fue en el botón Y NO fue dentro del panel... ciérralo.
-    const clicEnBoton = btn.contains(e.target);
-    const clicEnPanel = panel.contains(e.target);
-
-    if (!clicEnBoton && !clicEnPanel) {
-      panel.classList.add('hidden');
-      btn.classList.remove('active');
-    }
-  });
+function verificarPermisosNotificaciones() {
+  const container = document.getElementById('container-permiso-notificaciones');
+  if (!container) return;
+  
+  if (Notification.permission === 'granted') {
+    container.style.display = 'none';
+  } else {
+    container.style.display = 'block';
+  }
 }
 
 // ===================================

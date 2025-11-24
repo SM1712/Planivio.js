@@ -24,6 +24,7 @@ const {
   getDocs,
   orderBy, // <-- AÑADIDO (ETAPA 2)
   Timestamp, // <-- AÑADIDO (ETAPA 2)
+  collectionGroup, // <-- AÑADIDO (ETAPA 11.4)
 } = window.firebaseServices;
 
 export { db, doc };
@@ -33,6 +34,32 @@ let userId = null;
 export function setFirebaseUserId(uid) {
   userId = uid;
   console.log('[Firebase] User ID establecido:', uid);
+}
+
+// ==========================================================================
+// ==      ETAPA 6: PERSISTENCIA OFFLINE (Habilitar)
+// ==========================================================================
+try {
+  if (window.firebaseServices.enableMultiTabIndexedDbPersistence) {
+    window.firebaseServices.enableMultiTabIndexedDbPersistence(db)
+      .then(() => {
+        console.log('[Firebase] Persistencia offline (Multi-Tab) habilitada.');
+      })
+      .catch((err) => {
+        if (err.code == 'failed-precondition') {
+          console.warn('[Firebase] Persistencia falló: Múltiples pestañas abiertas (aunque usamos Multi-Tab?).');
+        } else if (err.code == 'unimplemented') {
+          console.warn('[Firebase] El navegador no soporta persistencia.');
+        }
+      });
+  } else if (window.firebaseServices.enableIndexedDbPersistence) {
+     // Fallback por si acaso
+     window.firebaseServices.enableIndexedDbPersistence(db)
+      .then(() => console.log('[Firebase] Persistencia offline (Single-Tab) habilitada.'))
+      .catch((err) => console.warn('[Firebase] Persistencia Single-Tab falló:', err));
+  }
+} catch (e) {
+  console.warn('[Firebase] Error al intentar habilitar persistencia:', e);
 }
 
 // ==========================================================================
@@ -329,6 +356,136 @@ export async function crearGrupo(nombreGrupo) {
     console.error(`[Firebase] Error al crear grupo:`, error);
     throw error;
   }
+}
+
+// ==========================================================================
+// ==     ETAPA 11.4: FUNCIONES DE GESTIÓN DE MIEMBROS (Backend)
+// ==========================================================================
+
+/**
+ * Busca un usuario por su email exacto usando collectionGroup en 'config'.
+ * Requiere que el email esté guardado en el documento 'userConfig'.
+ */
+export async function buscarUsuarioPorEmail(email) {
+  if (!userId) throw new Error(`[Firebase] No autenticado.`);
+  
+  console.log(`[Firebase] Buscando usuario por email: ${email}`);
+  
+  // Buscando en TODAS las subcolecciones llamadas 'config'
+  // donde el documento (userConfig) tenga el campo 'email' igual al buscado.
+  // NOTA: Esto requiere un índice de exención de collectionGroup si 'config' es muy común,
+  // pero para este caso de uso debería funcionar o pedir índice.
+  // El documento específico es 'userConfig', pero collectionGroup busca en la colección.
+  
+  try {
+    const q = query(
+      collectionGroup(db, 'config'),
+      where('email', '==', email)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      console.log('[Firebase] No se encontró usuario con ese email.');
+      return null;
+    }
+    
+    // Debería haber solo uno, pero tomamos el primero
+    const docSnap = querySnapshot.docs[0];
+    const data = docSnap.data();
+    
+    // El ID del documento es 'userConfig', pero necesitamos el ID del USUARIO (padre del padre)
+    // Estructura: usuarios/{userId}/config/userConfig
+    const userDocRef = docSnap.ref.parent.parent; 
+    const foundUserId = userDocRef.id;
+    
+    return {
+      uid: foundUserId,
+      nombre: data.userName || 'Usuario',
+      email: data.email,
+      photoURL: data.photoURL || null // Si lo guardamos
+    };
+    
+  } catch (error) {
+    console.error('[Firebase] Error al buscar usuario:', error);
+    throw error;
+  }
+}
+
+/**
+ * Agrega un UID al array 'miembros' de un grupo.
+ */
+export async function agregarMiembroAGrupo(grupoId, nuevoMiembroId) {
+  if (!userId) throw new Error(`[Firebase] No autenticado.`);
+  
+  try {
+    const grupoRef = doc(db, 'grupos', grupoId);
+    const grupoSnap = await getDoc(grupoRef);
+    
+    if (!grupoSnap.exists()) {
+      throw new Error('El grupo no existe.');
+    }
+    
+    const grupoData = grupoSnap.data();
+    
+    // Verificar permisos (solo el dueño puede agregar por ahora, o cualquier miembro?)
+    // Por ahora permitimos que cualquier miembro agregue, o restringimos al owner.
+    // El requisito decía "administrar los grupos", asumimos owner.
+    if (grupoData.ownerId && grupoData.ownerId !== userId) {
+       throw new Error('Solo el administrador del grupo puede agregar miembros.');
+    }
+    
+    const miembrosActuales = grupoData.miembros || [];
+    
+    if (miembrosActuales.includes(nuevoMiembroId)) {
+      throw new Error('El usuario ya es miembro del grupo.');
+    }
+    
+    const nuevosMiembros = [...miembrosActuales, nuevoMiembroId];
+    
+    await updateDoc(grupoRef, { miembros: nuevosMiembros });
+    console.log(`[Firebase] Miembro ${nuevoMiembroId} agregado al grupo ${grupoId}`);
+    
+  } catch (error) {
+    console.error('[Firebase] Error al agregar miembro:', error);
+    throw error;
+  }
+}
+
+/**
+ * Obtiene los detalles (nombre, email) de una lista de UIDs.
+ * Nota: Esto hace N lecturas, optimizar si son muchos.
+ */
+export async function obtenerDetallesMiembros(memberIds) {
+  if (!userId) return [];
+  
+  const detalles = [];
+  
+  for (const mid of memberIds) {
+    try {
+      // Leemos su config pública
+      const configRef = doc(db, 'usuarios', mid, 'config', 'userConfig');
+      const configSnap = await getDoc(configRef);
+      
+      if (configSnap.exists()) {
+        const data = configSnap.data();
+        detalles.push({
+          id: mid,
+          nombre: data.userName || 'Usuario',
+          email: data.email || 'Sin email',
+          photoURL: data.photoURL || null,
+          esOwner: false // Se calculará fuera
+        });
+      } else {
+        detalles.push({ id: mid, nombre: 'Usuario Desconocido', email: '---' });
+      }
+    } catch (e) {
+      console.warn(`Error al leer detalles de ${mid}`, e);
+      detalles.push({ id: mid, nombre: 'Error', email: '---' });
+    }
+  }
+  
+  return detalles;
 }
 
 // ==========================================================================

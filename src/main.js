@@ -25,6 +25,7 @@ import {
   mostrarModal,
   mostrarModalOnboarding,
   inicializarSonido,
+  mostrarPasoTour, // ✨ IMPORTAR
 } from './ui.js';
 import {
   updateRgbVariables,
@@ -142,8 +143,10 @@ async function cambiarTemaBase() {
 /**
  * Llama a guardarConfig (async)
  */
-async function cambiarColorAcento(color) {
-  state.config.accent_color = color;
+/**
+ * Aplica visualmente el color de acento al DOM (SIN GUARDAR).
+ */
+function _aplicarColorAcentoVisualmente(color) {
   const root = document.documentElement;
   root.style.setProperty('--accent-color', color);
   const activeColor = darkenColor(color, 15);
@@ -158,18 +161,28 @@ async function cambiarColorAcento(color) {
     );
     root.style.setProperty('--accent-color-rgb', rgb.join(', '));
   }
+}
+
+/**
+ * Llama a guardarConfig (async) y aplica visualmente.
+ * Usar esta función cuando el USUARIO cambia el color manualmente.
+ */
+async function cambiarColorAcento(color) {
+  state.config.accent_color = color;
+  _aplicarColorAcentoVisualmente(color);
   await guardarConfig({ accent_color: state.config.accent_color }); // Guarda solo este cambio
 }
 
 /**
  * (Aplica estilos basados en el state.config actual)
+ * NO DEBE LLAMAR A GUARDAR CONFIG.
  */
 function aplicarTema() {
   document.body.classList.toggle('dark-theme', state.config.theme === 'dark');
   if (state.config && state.config.accent_color) {
-    cambiarColorAcento(state.config.accent_color);
+    _aplicarColorAcentoVisualmente(state.config.accent_color);
   } else {
-    cambiarColorAcento('#2f5580'); // Color por defecto (Actualizado)
+    _aplicarColorAcentoVisualmente('#2f5580'); // Color por defecto
   }
   updateRgbVariables();
   aplicarColoresMuescas();
@@ -315,6 +328,8 @@ function inicializarModalConfiguraciones() {
 // == R1.4: LÓGICA DE AUTENTICACIÓN (MODIFICADA)  ==
 // ===============================================
 
+import { inicializarNotificacionesGlobales } from './notifications.js'; // ✨ IMPORTAR
+
 const {
   auth,
   GoogleAuthProvider,
@@ -360,7 +375,9 @@ async function manejarEstadoDeAutenticacion() {
       const isMigrationUser = !configData && datosLocalesString;
       const isNewUser = !configData && !datosLocalesString;
       const isExistingUserWithMissingInfo =
-        configData && (!configData.userName || !configData.userBirthday);
+        configData && 
+        !configData.onboardingCompletado && // ✨ FIX: Solo pedir si NO ha completado onboarding
+        (!configData.userName); // El cumpleaños es opcional, no debe bloquear
 
       let prefillName = configData ? configData.userName : null;
       let prefillBirthday = configData ? configData.userBirthday : null;
@@ -368,10 +385,14 @@ async function manejarEstadoDeAutenticacion() {
       if (isMigrationUser) {
         await handleMigrationFlow(prefillName, prefillBirthday);
       } else if (isNewUser) {
-        await handleNewUserOnboarding();
+        // ✨ FIX: Pasar el nombre de Google como default
+        await handleNewUserOnboarding(user.displayName);
       } else if (isExistingUserWithMissingInfo) {
-        await handleExistingUserUpdate(prefillName, prefillBirthday);
+        // ✨ FIX: Pasar el nombre de Google si no hay uno guardado
+        const nameToUse = prefillName || user.displayName;
+        await handleExistingUserUpdate(nameToUse, prefillBirthday);
       }
+
 
       // ==========================================================
       // ==        FIN DE LÓGICA ONBOARDING/MIGRACIÓN (P3.1)
@@ -393,6 +414,20 @@ async function manejarEstadoDeAutenticacion() {
       }, 60000); // Cada 60 segundos
       // ✨ FIN CAMBIO ETAPA 17
 
+// --- INICIO ETAPA 17: Service Worker ---
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(registration => {
+        console.log('[Service Worker] Registrado con éxito:', registration.scope);
+      })
+      .catch(error => {
+        console.log('[Service Worker] Falló el registro:', error);
+      });
+  });
+}
+// --- FIN ETAPA 17 ---
+
       console.log('[Main] Sincronización iniciada. Inicializando módulos...');
       inicializarDashboard();
       inicializarTareas();
@@ -408,6 +443,13 @@ async function manejarEstadoDeAutenticacion() {
         document.getElementById('user-name').textContent = user.displayName;
       if (document.getElementById('user-email'))
         document.getElementById('user-email').textContent = user.email;
+
+      // --- INICIO CAMBIO ETAPA 11.4: Asegurar que el email esté en config ---
+      // Esto es vital para que otros usuarios puedan encontrarnos
+      if (user.email) {
+         guardarConfig({ email: user.email });
+      }
+      // --- FIN CAMBIO ETAPA 11.4 ---
 
       await cambiarPagina(state.paginaActual || 'dashboard');
     } else {
@@ -480,14 +522,15 @@ async function handleMigrationFlow(prefillName, prefillBirthday) {
   }
 }
 
+
 /**
  * Flujo para usuarios 100% nuevos (Tour de Pulsito)
  */
-async function handleNewUserOnboarding() {
+async function handleNewUserOnboarding(googleDisplayName = '') {
   console.log('[Main] Iniciando Flujo de Onboarding para Usuario Nuevo...');
   const { nombre, fechaCumple } = await mostrarModalOnboarding(
     '¡HOOOLA! 👋 ¡Soy Pulsito!',
-    null,
+    googleDisplayName, // ✨ Usar nombre de Google
     null,
   );
   await guardarDatosOnboarding(nombre, fechaCumple, null);
@@ -528,54 +571,77 @@ async function handleExistingUserUpdate(prefillName, prefillBirthday) {
  * El tour de 5 pasos de Pulsito
  */
 async function runOnboardingTour(nombre) {
+  // Paso 1: Dashboard
   EventBus.emit('navegarA', { pagina: 'dashboard' });
-  await mostrarAlerta(
-    'Paso 1: El Dashboard 🏠',
-    '¡Vamos! 🚀 Esta es tu **Torre de Control**. Aquí verás un resumen de tus tareas urgentes, eventos próximos y tu progreso. ¡Ideal para empezar el día!',
+  await new Promise((r) => setTimeout(r, 800)); // Esperar renderizado
+  await mostrarPasoTour(
+    '.widget-racha', // O algún widget visible
+    '¡BUM-BUM! 💓 ¡Este es el corazón!',
+    `¡Hola ${nombre}! Aquí en el **Dashboard** verás tu Racha Diaria. ¡Es el pulso de tu productividad! Mantenla viva entrando todos los días. ¡Tú puedes! 🔥`,
   );
 
+  // Paso 2: Cursos
   EventBus.emit('navegarA', { pagina: 'cursos' });
-  await mostrarAlerta(
-    'Paso 2: Los Cursos 🧠',
-    '¡El paso más importante! Todo en Planivio se organiza por **Cursos** (o materias, o proyectos... ¡lo que quieras!).<br><br>Aquí es donde los crearás. ¡Te sugiero crear tu primer curso cuando terminemos!',
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '#btn-nuevo-curso', // Botón flotante o header
+    '¡Aquí nace todo! 🌱',
+    'Todo empieza con un **Curso**. Matemáticas, Proyecto X, Vida... ¡Lo que quieras! Dale al botón + y crea tu primer universo. ¡Es súper fácil! ✨',
   );
 
+  // Paso 3: Tareas
   EventBus.emit('navegarA', { pagina: 'tareas' });
-  await mostrarAlerta(
-    'Paso 3: Las Tareas 📝',
-    'Una vez que tengas cursos, aquí añadirás tus tareas. Puedes asignarles fechas, prioridades y ¡hasta subtareas! Es el corazón de tu organización.',
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '#panel-creacion',
+    '¡Acción! 🎬',
+    'Aquí es donde las cosas suceden. Crea **Tareas**, ponles fecha y ¡destrúyelas! 💥 Nada se siente mejor que marcar una tarea como completada.',
   );
 
+  // Paso 4: Proyectos
   EventBus.emit('navegarA', { pagina: 'proyectos' });
-  await mostrarAlerta(
-    'Paso 4: Los Proyectos 🗂️',
-    '¡Esta página es genial! Un **Proyecto** te deja agrupar tareas de *diferentes* cursos. Perfecto para un "Trabajo Final" o "Metas del Mes".',
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '#btn-nuevo-proyecto',
+    '¡Tus Grandes Metas! 🚀',
+    '¿Tienes algo grande en mente? Un **Proyecto** agrupa tareas de varios cursos. ¡Perfecto para organizar ese viaje o tu tesis! 🌍',
   );
 
+  // Paso 5: Apuntes
   EventBus.emit('navegarA', { pagina: 'apuntes' });
-  await mostrarAlerta(
-    'Paso 5: Los Apuntes ✍️',
-    '¡No más notas perdidas! Aquí puedes escribir apuntes rápidos, vincularlos a tus cursos y proyectos, y tener todo en un solo lugar.',
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '#btn-nuevo-apunte',
+    '¡No lo olvides! 🧠',
+    'Tus ideas vuelan... ¡atrápalas aquí! Escribe notas rápidas, resúmenes o lo que se te ocurra. ¡Tu segundo cerebro está listo! 📝',
   );
 
+  // Paso 6: Calendario
   EventBus.emit('navegarA', { pagina: 'calendario' });
-  await mostrarAlerta(
-    'Paso 6: El Calendario 🗓️',
-    '¡La vista mágica! ✨ Aquí es donde todo se junta. Verás todas tus tareas y eventos en una vista mensual. ¡Tu cumpleaños ya debería estar aquí! 😉',
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '.calendar-grid',
+    '¡El Futuro! 🔮',
+    '¡Mira todo tu mes de un vistazo! Aquí verás tus tareas, eventos y... ¡sí! ¡Tu cumpleaños! 🎂 ¡Organízate como un pro!',
   );
 
-  await mostrarAlerta(
-    'Paso 7: ¡Hazlo Tuyo! 🎨',
-    '¡Casi terminamos! Planivio se adapta a ti. Puedes cambiar el tema (claro/oscuro) y tu color de acento favorito. ¡Te mostraré dónde!',
-  );
+  // Paso 7: Configuración
   mostrarModal('modal-configuraciones');
   document.querySelector('[data-tab="personalizacion"]')?.click();
-
-  await mostrarAlerta(
-    '¡Tour completado! 🥳',
-    `¡Eso es todo, ${nombre}! Ya tienes todo para empezar a conquistar tu día.<br><br>¡Ah! Y un reto: en el Dashboard verás tu **Racha Diaria**. ¡Intenta llegar a los 100 días seguidos! ¡A PULSAR! ❤️`,
+  await new Promise((r) => setTimeout(r, 800));
+  await mostrarPasoTour(
+    '#theme-toggle-btn', // O el panel de personalización
+    '¡Hazlo Tuyo! 🎨',
+    '¿Modo Oscuro? ¿Azul Eléctrico? ¡Tú mandas! Personaliza Planivio para que se vea tan genial como tú. 😎',
   );
+  cerrarModal('modal-configuraciones');
+
+  // Final
   EventBus.emit('navegarA', { pagina: 'dashboard' });
+  await mostrarAlerta(
+    '¡A PULSAR! ❤️',
+    `¡Ya eres un experto, ${nombre}! 🎓<br><br>Ahora te toca a ti. Empieza creando tu primer curso y... ¡a conquistar el mundo! 🌍💪`,
+  );
 }
 
 /**
@@ -584,6 +650,16 @@ async function runOnboardingTour(nombre) {
 async function guardarDatosOnboarding(nombre, fechaCumple, prefillBirthday) {
   state.config.userName = nombre;
   const configUpdates = { userName: nombre };
+  
+  // --- INICIO CAMBIO ETAPA 11.4: Guardar Email ---
+  if (auth.currentUser && auth.currentUser.email) {
+    configUpdates.email = auth.currentUser.email;
+  }
+  // --- FIN CAMBIO ETAPA 11.4 ---
+
+  // ✨ FIX: Marcar onboarding como completado para evitar bucle
+  state.config.onboardingCompletado = true;
+  configUpdates.onboardingCompletado = true;
 
   if (fechaCumple) {
     state.config.userBirthday = fechaCumple;
@@ -608,11 +684,63 @@ async function guardarDatosOnboarding(nombre, fechaCumple, prefillBirthday) {
 /**
  * Inicia el pop-up de login con Google
  */
+/**
+ * Inicia el pop-up de login con Google
+ */
 async function handleGoogleLogin() {
   const provider = new GoogleAuthProvider();
+  // ✨ NUEVO: Pedir acceso al cumpleaños
+  provider.addScope('https://www.googleapis.com/auth/user.birthday.read');
+
   try {
     const result = await signInWithPopup(auth, provider);
     console.log('Inicio de sesión exitoso:', result.user.displayName);
+
+    // ✨ NUEVO: Obtener Access Token y pedir cumpleaños
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    const token = credential.accessToken;
+
+    if (token) {
+      try {
+        const response = await fetch(
+          'https://people.googleapis.com/v1/people/me?personFields=birthdays',
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: 'application/json',
+            },
+          }
+        );
+        const data = await response.json();
+        
+        if (data.birthdays && data.birthdays.length > 0) {
+          // Buscar el cumpleaños con fecha completa (año, mes, día)
+          const birthday = data.birthdays.find(b => b.date && b.date.year && b.date.month && b.date.day);
+          
+          if (birthday) {
+            const { year, month, day } = birthday.date;
+            // Formato YYYY-MM-DD (Mes y día con ceros a la izquierda)
+            const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            console.log('[Google] Cumpleaños obtenido:', formattedDate);
+            
+            // Guardar en estado temporal para el onboarding
+            state.tempGoogleBirthday = formattedDate;
+
+            // Si el modal de onboarding ya está abierto, intentar rellenarlo
+            const inputCumple = document.getElementById('input-onboarding-cumple');
+            if (inputCumple) {
+              inputCumple.value = formattedDate;
+              console.log('[Google] Input de cumpleaños actualizado dinámicamente.');
+            }
+          } else {
+             console.log('[Google] No se encontró una fecha de nacimiento completa.');
+          }
+        }
+      } catch (fetchError) {
+        console.warn('[Google] Error al obtener cumpleaños:', fetchError);
+      }
+    }
+
   } catch (error) {
     console.error('Error al iniciar sesión con Google:', error);
     alert('Hubo un error al iniciar sesión. Intenta de nuevo.');
@@ -693,9 +821,7 @@ function agregarEventListenersGlobales() {
     const btnPulsos = document.getElementById('btn-pulsos-header');
     if (btnPulsos) {
       // Asumiendo que tienes un ICONS.pulsos (ícono de campana)
-      btnPulsos.innerHTML =
-        ICONS.pulsos ||
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>';
+      btnPulsos.innerHTML = ICONS.pulsos;
       // Re-añadir el contador que el innerHTML borró
       const contador = document.createElement('span');
       contador.id = 'pulsos-contador';
@@ -815,10 +941,10 @@ function agregarEventListenersGlobales() {
   const settingsNavList = document.getElementById('settings-nav-list');
   if (settingsNavList) {
     settingsNavList.querySelector('[data-tab="usuario"] .nav-icon').innerHTML =
-      ICONS.settings;
+      ICONS.user;
     settingsNavList.querySelector(
       '[data-tab="personalizacion"] .nav-icon',
-    ).innerHTML = ICONS.edit;
+    ).innerHTML = ICONS.palette;
     settingsNavList.querySelector(
       '[data-tab="dashboard"] .nav-icon',
     ).innerHTML = ICONS.dashboard;
@@ -826,7 +952,7 @@ function agregarEventListenersGlobales() {
       ICONS.tareas;
     // (Añadido en Etapa 4)
     settingsNavList.querySelector('[data-tab="pulsos"] .nav-icon').innerHTML =
-      ICONS.pulsos || '🔔'; // Placeholder
+      ICONS.pulsos;
   }
   const btnCerrarModalConfig = document.querySelector(
     '#modal-configuraciones .btn-cerrar-modal',

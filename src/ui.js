@@ -16,10 +16,23 @@ export function inicializarSonido() {
   //
   sonidoNotificacion = new Howl({
     src: ['assets/notification.mp3'],
-    preload: true, //
-    html5: true, // Ayuda a la compatibilidad
-    onerror: (id, err) => {
-      console.error('[Audio] Error al cargar el sonido de notificación:', err);
+    preload: true,
+    // html5: true, // <-- ELIMINADO: Web Audio API es mejor para efectos cortos y autoplay
+    onloaderror: (id, err) => {
+      console.error(
+        '[Audio] Error CRÍTICO al cargar el sonido de notificación:',
+        err,
+      );
+    },
+    onplayerror: (id, err) => {
+      console.warn(
+        '[Audio] Bloqueo de autoplay detectado. El sonido se habilitará tras la primera interacción.',
+        err,
+      );
+      sonidoNotificacion.once('unlock', () => {
+        console.log('[Audio] Audio desbloqueado. Reproduciendo...');
+        sonidoNotificacion.play();
+      });
     },
     onload: () => {
       console.log('[Audio] Sonido de notificación cargado exitosamente.');
@@ -38,28 +51,19 @@ export function inicializarSonido() {
  *
  */
 export function reproducirSonidoNotificacion() {
-  // ✨ INICIO CORRECCIÓN ETAPA 14: Lógica simplificada
-  // Ya no necesitamos revisar Howler.ctx.state ni usar 'sonidoPendiente'.
-  // Simplemente intentamos reproducir. Howler pondrá en cola la reproducción
-  // si el audio está bloqueado y lo ejecutará tras el primer clic.
-  if (sonidoNotificacion && sonidoNotificacion.loaded()) {
-    console.log('[Audio] Intentando reproducir sonido...');
+  // Intento 1: Usar Howler si está listo
+  if (sonidoNotificacion && sonidoNotificacion.state() === 'loaded') {
     sonidoNotificacion.play();
-  } else if (sonidoNotificacion) {
-    // Si no está cargado, intenta cargarlo y reproducirlo
-    console.warn(
-      '[Audio] El sonido no estaba cargado, intentando reproducir...',
-    );
-    sonidoNotificacion.once('load', () => {
-      sonidoNotificacion.play();
-    });
-    sonidoNotificacion.load();
-  } else {
-    console.error(
-      '[Audio] Error: se intentó reproducir un sonido no inicializado.',
-    );
+    return;
   }
-  // ✨ FIN CORRECCIÓN ETAPA 14
+
+  // Intento 2: Fallback nativo HTML5 Audio (más confiable a veces)
+  try {
+    const audio = new Audio('assets/notification.mp3');
+    audio.play().catch(e => console.warn('[Audio] Fallback nativo bloqueado:', e));
+  } catch (e) {
+    console.error('[Audio] Error fatal reproduciendo sonido:', e);
+  }
 }
 
 // ===============================================
@@ -191,6 +195,32 @@ export function mostrarAlerta(titulo, msg, callback) {
 
     mostrarModal('modal-confirmacion');
   });
+}
+
+/**
+ * Muestra un paso del tour, resaltando un elemento y mostrando una alerta.
+ * @param {string} selector - Selector CSS del elemento a resaltar.
+ * @param {string} titulo - Título de la alerta.
+ * @param {string} mensaje - Mensaje de la alerta.
+ * @returns {Promise<void>}
+ */
+export async function mostrarPasoTour(selector, titulo, mensaje) {
+  const elemento = document.querySelector(selector);
+  if (elemento) {
+    elemento.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    elemento.classList.add('tour-highlight');
+  } else {
+    console.warn(`[Tour] No se encontró el elemento: ${selector}`);
+  }
+
+  // Esperar un poco para que el scroll termine y el usuario se ubique
+  await new Promise((r) => setTimeout(r, 600));
+
+  await mostrarAlerta(titulo, mensaje);
+
+  if (elemento) {
+    elemento.classList.remove('tour-highlight');
+  }
 }
 
 export function mostrarPrompt(titulo, msg, defaultValue = '') {
@@ -460,6 +490,13 @@ export function mostrarModalOnboarding(
  * @param {string} [opciones.body] - El texto del cuerpo de la notificación.
  * @param {boolean} [opciones.silent=false] - Si es true, no reproduce sonido.
  */
+/**
+ * Muestra una notificación de navegador y reproduce un sonido.
+ * @param {string} titulo - El título de la notificación.
+ * @param {object} [opciones={}] - Opciones.
+ * @param {string} [opciones.body] - El texto del cuerpo de la notificación.
+ * @param {boolean} [opciones.silent=false] - Si es true, no reproduce sonido.
+ */
 export function mostrarNotificacion(titulo, opciones = {}) {
   const { body = '', silent = false } = opciones;
 
@@ -469,49 +506,42 @@ export function mostrarNotificacion(titulo, opciones = {}) {
   }
 
   // 2. Lógica de Notificación del Navegador
-  // Primero, verificamos que el navegador soporte la API
   if (!('Notification' in window)) {
     console.warn('Este navegador no soporta notificaciones de escritorio.');
     return;
   }
 
-  // Opciones estándar para la notificación
   const notificationOptions = {
     body: body,
-    icon: 'assets/pulsito-icon.png', //
-    badge: 'assets/pulsito-icon.png', // Para Android
-    tag: `planivio-notif-${Date.now()}`, // Un tag para evitar duplicados si se llama rápido
+    icon: 'assets/pulsito-icon.png',
+    badge: 'assets/pulsito-icon.png',
+    tag: `planivio-notif-${Date.now()}`,
     renotify: true,
   };
 
-  // Si tenemos permiso, creamos la notificación
-  if (Notification.permission === 'granted') {
-    try {
-      new Notification(titulo, notificationOptions);
-    } catch (err) {
-      console.error('Error al crear notificación:', err);
+  const triggerNotification = () => {
+    // Intentar usar Service Worker primero (para Push/Android)
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(titulo, notificationOptions);
+      });
+    } else {
+      // Fallback a notificación estándar
+      try {
+        new Notification(titulo, notificationOptions);
+      } catch (err) {
+        console.error('Error al crear notificación estándar:', err);
+      }
     }
-  }
-  // Si el permiso no ha sido denegado (es 'default'), lo pedimos.
-  // No lo pedimos si fue 'denied'.
-  else if (Notification.permission === 'default') {
-    console.log('[UI] Permiso de notificación no solicitado. Se pedirá ahora.');
-    // - El plan original decía pedirlo en main.js,
-    // pero pedirlo aquí (justo cuando se necesita) es mejor
-    // y más probable que el usuario acepte.
+  };
+
+  if (Notification.permission === 'granted') {
+    triggerNotification();
+  } else if (Notification.permission === 'default') {
     Notification.requestPermission().then((permission) => {
-      // Si el usuario lo concede, creamos la notificación
       if (permission === 'granted') {
-        console.log('[UI] Permiso de notificación concedido.');
-        try {
-          new Notification(titulo, notificationOptions);
-        } catch (err) {
-          console.error('Error al crear notificación (post-permiso):', err);
-        }
-      } else {
-        console.warn('[UI] Permiso de notificación denegado.');
+        triggerNotification();
       }
     });
   }
-  // Si el permiso fue 'denied', no podemos hacer nada.
 }

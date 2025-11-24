@@ -14,6 +14,7 @@ import {
   mostrarNotificacion,
 } from '../ui.js';
 import { calcularEstadisticasProyecto } from './proyectos.js';
+import { ICONS } from '../icons.js';
 
 // ... (El resto de las funciones: widgetSelectors, frasesDashboard, Lógica Pomodoro, calcularRacha, renderizarWidgets, etc. NO CAMBIAN) ...
 // (Estas funciones solo LEEN del 'state', lo cual es correcto)
@@ -49,8 +50,11 @@ const DURACION_FOCO = 25 * 60;
 const DURACION_DESCANSO_CORTO = 5 * 60;
 const DURACION_DESCANSO_LARGO = 15 * 60;
 const timerEl = () => document.getElementById('pomodoro-timer');
+const timerOverlayEl = () => document.getElementById('pomodoro-timer-overlay');
 const statusEl = () => document.getElementById('pomodoro-status');
+const statusOverlayEl = () => document.getElementById('pomodoro-status-overlay');
 const startBtnEl = () => document.getElementById('btn-pomodoro-start');
+const startBtnOverlayEl = () => document.getElementById('btn-pomodoro-start-overlay');
 
 function obtenerSaludoYFrase() {
   const hora = new Date().getHours();
@@ -63,19 +67,34 @@ function obtenerSaludoYFrase() {
     frasesDashboard[Math.floor(Math.random() * frasesDashboard.length)];
   return { saludo: saludoBase, frase: fraseAleatoria };
 }
+
 function actualizarDisplayPomodoro() {
-  const display = timerEl();
-  if (!display) return;
   const minutos = Math.floor(tiempoRestante / 60);
   const segundos = tiempoRestante % 60;
-  display.textContent = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+  const texto = `${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+  
+  if (timerEl()) timerEl().textContent = texto;
+  if (timerOverlayEl()) timerOverlayEl().textContent = texto;
+  
+  // Actualizar título de la pestaña
+  document.title = `${texto} - Planivio`;
 }
+
+function actualizarEstadoUI(textoEstado, textoBoton) {
+  if (statusEl()) statusEl().textContent = textoEstado;
+  if (statusOverlayEl()) statusOverlayEl().textContent = textoEstado;
+  
+  if (startBtnEl()) startBtnEl().textContent = textoBoton;
+  if (startBtnOverlayEl()) startBtnOverlayEl().textContent = textoBoton;
+}
+
 function iniciarPomodoro() {
   if (Notification.permission === 'default') {
     Notification.requestPermission();
   }
   estaCorriendo = true;
-  if (startBtnEl()) startBtnEl().textContent = 'Pausar';
+  actualizarEstadoUI(statusEl()?.textContent || 'Enfocado', 'Pausar');
+  
   clearInterval(pomodoroInterval);
   pomodoroInterval = setInterval(() => {
     tiempoRestante--;
@@ -83,20 +102,22 @@ function iniciarPomodoro() {
     if (tiempoRestante < 0) finalizarCicloPomodoro();
   }, 1000);
 }
+
 function pausarPomodoro() {
   estaCorriendo = false;
-  if (startBtnEl()) startBtnEl().textContent = 'Reanudar';
+  actualizarEstadoUI(statusEl()?.textContent || 'Pausado', 'Reanudar');
   clearInterval(pomodoroInterval);
 }
+
 function reiniciarPomodoro() {
   pausarPomodoro();
   pomodoroCiclosCompletados = 0;
   enModoFoco = true;
   tiempoRestante = DURACION_FOCO;
   actualizarDisplayPomodoro();
-  if (statusEl()) statusEl().textContent = `Ciclo 1 de 4. ¡A enfocarse!`;
-  if (startBtnEl()) startBtnEl().textContent = 'Iniciar Foco';
+  actualizarEstadoUI(`Ciclo 1 de 4. ¡A enfocarse!`, 'Iniciar Foco');
 }
+
 function finalizarCicloPomodoro() {
   clearInterval(pomodoroInterval);
   estaCorriendo = false;
@@ -126,24 +147,78 @@ function finalizarCicloPomodoro() {
     enModoFoco = true;
   }
 
-  // ✨ INICIO CAMBIO ETAPA 5: Activar sonido en notificación
   mostrarNotificacion(titulo, { body: cuerpo, silent: false });
-  // ✨ FIN CAMBIO ETAPA 5
 
-  if (statusEl()) statusEl().textContent = proximoModo;
+  actualizarEstadoUI(proximoModo, enModoFoco ? 'Iniciar Foco' : 'Iniciar Descanso');
   actualizarDisplayPomodoro();
-  if (startBtnEl())
-    startBtnEl().textContent = enModoFoco ? 'Iniciar Foco' : 'Iniciar Descanso';
 }
+
+function toggleFullscreenPomodoro() {
+  const overlay = document.getElementById('pomodoro-overlay');
+  if (overlay) {
+    overlay.classList.toggle('hidden');
+  }
+}
+
 function inicializarPomodoroListeners() {
   const startBtn = startBtnEl();
   const resetBtn = document.getElementById('btn-pomodoro-reset');
-  if (!startBtn || !resetBtn || startBtn.dataset.initialized === 'true') return;
-  startBtn.addEventListener('click', () => {
+  const maximizeBtn = document.getElementById('btn-pomodoro-maximize');
+  
+  // Overlay elements
+  const startBtnOverlay = startBtnOverlayEl();
+  const resetBtnOverlay = document.getElementById('btn-pomodoro-reset-overlay');
+  const minimizeBtn = document.getElementById('btn-pomodoro-minimize');
+  const timerDisplay = timerEl();
+  const timerDisplayOverlay = timerOverlayEl();
+
+  if (!startBtn || startBtn.dataset.initialized === 'true') return;
+
+  const handleStart = () => {
     if (estaCorriendo) pausarPomodoro();
     else iniciarPomodoro();
-  });
+  };
+
+  startBtn.addEventListener('click', handleStart);
+  if (startBtnOverlay) startBtnOverlay.addEventListener('click', handleStart);
+
   resetBtn.addEventListener('click', reiniciarPomodoro);
+  if (resetBtnOverlay) resetBtnOverlay.addEventListener('click', reiniciarPomodoro);
+
+  if (maximizeBtn) {
+    maximizeBtn.innerHTML = ICONS.maximize || '[ ]';
+    maximizeBtn.addEventListener('click', toggleFullscreenPomodoro);
+  }
+  
+  if (minimizeBtn) {
+    minimizeBtn.innerHTML = ICONS.minimize || 'X';
+    minimizeBtn.addEventListener('click', toggleFullscreenPomodoro);
+  }
+
+  // Click en el timer del widget para maximizar
+  if (timerDisplay) {
+    timerDisplay.addEventListener('click', toggleFullscreenPomodoro);
+    timerDisplay.style.cursor = 'pointer'; // Asegurar cursor pointer
+    timerDisplay.title = 'Clic para pantalla completa';
+  }
+
+  // Click en el timer del overlay para minimizar (cerrar)
+  if (timerDisplayOverlay) {
+    timerDisplayOverlay.addEventListener('click', toggleFullscreenPomodoro);
+    timerDisplayOverlay.style.cursor = 'pointer'; // Asegurar cursor pointer
+    timerDisplayOverlay.title = 'Clic para salir de pantalla completa';
+  }
+
+  // Click en el fondo del overlay para cerrar
+  const overlay = document.getElementById('pomodoro-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        toggleFullscreenPomodoro();
+      }
+    });
+  }
+
   startBtn.dataset.initialized = 'true';
 }
 function renderizarWidgetRacha() {
@@ -779,10 +854,7 @@ function conectarUIDashboard() {
 
   try {
     const pomodoroWidget = document.querySelector(widgetSelectors.pomodoro);
-    if (
-      pomodoroWidget &&
-      window.getComputedStyle(pomodoroWidget).display !== 'none'
-    ) {
+    if (pomodoroWidget) {
       inicializarPomodoroListeners();
       actualizarDisplayPomodoro();
     }

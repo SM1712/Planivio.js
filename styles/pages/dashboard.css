@@ -17,6 +17,41 @@
   overflow-y: auto;
 }
 
+.widget-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.widget-header-actions h3 {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.btn-icon-small {
+  background: none;
+  border: none;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+}
+
+.btn-icon-small:hover {
+  background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+  color: var(--text-base);
+}
+
 .widget h3 {
   margin: 0 0 8px 0;
   padding-bottom: 8px;
@@ -237,14 +272,24 @@ p.contador-progreso {
   text-align: center;
 }
 
+/* ✨ FIX: Asegurar que el header ocupe todo el ancho aunque el widget esté centrado */
+.widget-pomodoro .widget-header-actions {
+  width: 100%;
+}
+
 .pomodoro-timer-display {
-  font-size: 4.5rem; /* Hacemos el número bien grande */
+  font-size: 3.5rem; /* ✨ REDUCIDO: De 4.5rem a 3.5rem para que no se vea tan "abultado" */
   font-weight: bold;
   color: var(--accent-color);
   line-height: 1.1;
   margin: 10px 0;
   font-family:
     'Inter', monospace; /* Una fuente monoespaciada se ve bien en contadores */
+  cursor: pointer; /* ✨ AÑADIDO: Indica que es clickeable */
+  transition: transform 0.2s ease;
+}
+.pomodoro-timer-display:hover {
+  transform: scale(1.05); /* ✨ AÑADIDO: Efecto hover */
 }
 
 .pomodoro-status {
@@ -465,5 +510,103 @@ p.contador-progreso {
   .widget-eventos {
     /* Los widgets más largos ocupan todo el ancho */
     grid-column: 1 / -1;
+  }
+}
+/* --- Estilos Overlay Pomodoro Fullscreen --- */
+.pomodoro-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-content);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.pomodoro-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.pomodoro-overlay-content {
+  text-align: center;
+  max-width: 600px;
+  width: 90%;
+}
+
+.pomodoro-overlay h2 {
+  font-size: 2rem;
+  color: var(--text-base);
+  margin-bottom: 2rem;
+}
+
+.timer-overlay {
+  font-size: 12rem; /* Gigante */
+  font-weight: bold;
+  color: var(--accent-color);
+  font-family: 'Inter', monospace;
+  line-height: 1;
+  margin-bottom: 3rem;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  cursor: pointer; /* ✨ AÑADIDO: Indica que es clickeable */
+  transition: transform 0.2s ease;
+}
+.timer-overlay:hover {
+  transform: scale(1.02); /* ✨ AÑADIDO: Efecto hover sutil */
+}
+
+.pomodoro-controls-overlay {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.btn-large {
+  padding: 15px 40px;
+  font-size: 1.2rem;
+  border-radius: 12px;
+}
+
+.btn-icon-overlay {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 2rem;
+  cursor: pointer;
+  padding: 10px;
+  border-radius: 50%;
+  transition: background 0.2s;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon-overlay:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-base);
+}
+
+/* Responsive Overlay */
+@media (max-width: 600px) {
+  .timer-overlay {
+    font-size: 6rem;
+  }
+  .pomodoro-overlay h2 {
+    font-size: 1.5rem;
+  }
+  .btn-large {
+    padding: 12px 24px;
+    font-size: 1rem;
   }
 }

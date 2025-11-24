@@ -1,0 +1,270 @@
+/* ============================================= */
+/* ==       ESTILOS MODAL CONFIGURACIÓN       == */
+/* ============================================= */
+
+/* El modal en sí (.modal-config) hereda de .modal-content pero con ajustes */
+.modal-config {
+  width: 95%;
+  max-width: 800px;
+  height: 80vh;
+  max-height: 700px;
+  padding: 0; /* Padding interno manejado por grid */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* El scroll va dentro */
+}
+
+.settings-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* --- Sidebar de Navegación --- */
+.settings-nav {
+  width: 220px;
+  background-color: var(--bg-surface-alt, #f8f9fa); /* Fondo ligeramente distinto */
+  border-right: 1px solid var(--border-color);
+  padding: 20px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow-y: auto;
+}
+
+/* Tema oscuro ajuste */
+[data-theme="dark"] .settings-nav {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.settings-main-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 15px 10px;
+  color: var(--text-primary);
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 15px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.settings-nav-item:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.settings-nav-item.active {
+  background-color: var(--accent-light);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+/* --- Área de Contenido --- */
+.settings-content {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+  background-color: var(--bg-surface);
+}
+
+.settings-pane {
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-pane.active {
+  display: block;
+}
+
+.settings-pane h3 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 1.3rem;
+  color: var(--accent-color);
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+/* --- Elementos de Configuración --- */
+.config-option {
+  margin-bottom: 25px;
+}
+
+.config-option p {
+  margin-bottom: 10px;
+  color: var(--text-secondary);
+}
+
+.perfil-usuario-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: var(--bg-surface-alt, rgba(0,0,0,0.02));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+}
+
+#user-photo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-color);
+}
+
+.perfil-usuario-info {
+  display: flex;
+  flex-direction: column;
+}
+
+#user-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+#user-email {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Paleta de Colores */
+.color-palette {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.color-swatch {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.color-swatch.active {
+  border-color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.custom-color-swatch {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-color-swatch input[type="color"] {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  border: none;
+}
+
+/* Widget Toggles */
+.widget-toggle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.widget-toggle-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background-color: var(--bg-input);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+/* Botones de Acción de Datos */
+.data-actions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* --- Responsive Mobile --- */
+@media (max-width: 768px) {
+  .modal-config {
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+
+  .settings-container {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    width: 100%;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 10px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+  }
+
+  .settings-main-title {
+    display: none; /* Ahorrar espacio */
+  }
+
+  .settings-nav-item {
+    padding: 8px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+  }
+
+  .nav-text {
+    display: inline; /* Mostrar texto en móvil horizontal */
+  }
+
+  .settings-content {
+    padding: 20px;
+  }
+
+  .perfil-usuario-container {
+    flex-direction: column;
+    text-align: center;
+    padding: 15px;
+  }
+  
+  .btn-cerrar-modal {
+    top: 10px;
+    right: 10px;
+    z-index: 10;
+    background-color: rgba(0,0,0,0.1); /* Fondo para visibilidad */
+  }
+}

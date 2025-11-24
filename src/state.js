@@ -116,6 +116,7 @@ const estadoInicial = {
   filtroCursoApuntes: 'todos',
   filtroProyecto: 'todos',
   fechaPreseleccionada: null, // La que discutimos
+  tempGoogleBirthday: null, // Almacena temporalmente el cumpleaños de Google
 };
 
 // ===================================
