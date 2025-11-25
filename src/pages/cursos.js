@@ -194,12 +194,13 @@ async function agregarCurso(nombre, emoji) {
     return;
   }
 
-  if (
-    !nombre ||
-    state.cursos
-      .map((c) => c.nombre.toLowerCase())
-      .includes(nombre.toLowerCase())
-  ) {
+  // Validación segura: verificar si ya existe un curso con ese nombre (ignorando mayúsculas/minúsculas)
+  // Se añade chequeo 'c.nombre' para evitar errores si existen cursos corruptos en la BD
+  const nombreYaExiste = state.cursos.some(
+    (c) => c.nombre && c.nombre.toLowerCase() === nombre.toLowerCase()
+  );
+
+  if (!nombre || nombreYaExiste) {
     console.warn('[Cursos] Nombre inválido o duplicado:', nombre);
     alert('El nombre del curso no puede estar vacío o ya existe.');
     return;
@@ -263,12 +264,14 @@ async function renombrarCurso(cursoId, nuevoNombre) {
   if (!curso) return;
   const nombreOriginal = curso.nombre;
 
+  // Validación segura en renombrarCurso
+  const nombreYaExiste = state.cursos.some(
+    (c) => c.nombre && c.nombre.toLowerCase() === nuevoNombre.toLowerCase()
+  );
+
   if (
     !nuevoNombre ||
-    (nuevoNombre.toLowerCase() !== nombreOriginal.toLowerCase() &&
-      state.cursos
-        .map((c) => c.nombre.toLowerCase())
-        .includes(nuevoNombre.toLowerCase()))
+    (nuevoNombre.toLowerCase() !== nombreOriginal.toLowerCase() && nombreYaExiste)
   ) {
     alert('El nuevo nombre del curso no puede estar vacío o ya existe.');
     return;
@@ -1032,6 +1035,7 @@ export function inicializarCursos() {
         }
       };
 
+    // ... (código anterior del handler de página) ...
       pageCursos.addEventListener('click', clickHandler);
       pageCursos.addEventListener('input', inputHandler);
       pageCursos.addEventListener('change', changeHandler);
@@ -1039,61 +1043,73 @@ export function inicializarCursos() {
       pageCursos._inputHandler = inputHandler;
       pageCursos._changeHandler = changeHandler;
     }
-
-    // --- Listeners para Modales (se adjuntan una sola vez) ---
-    const formNuevoCurso = document.getElementById('form-nuevo-curso');
-    if (formNuevoCurso && !formNuevoCurso.dataset.listenerAttached) {
-      formNuevoCurso.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const inputNombre = document.getElementById('input-nombre-curso');
-        if (inputNombre) {
-          await agregarCurso(inputNombre.value.trim());
-        }
-        cerrarModal('modal-nuevo-curso');
-      });
-      const btnEmojiNuevo = document.getElementById('btn-emoji-curso');
-      const inputEmojiHiddenNuevo = document.getElementById(
-        'input-emoji-curso-hidden',
-      );
-      if (btnEmojiNuevo && inputEmojiHiddenNuevo) {
-        btnEmojiNuevo.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showEmojiPicker(btnEmojiNuevo, inputEmojiHiddenNuevo);
-        });
-      }
-      formNuevoCurso.dataset.listenerAttached = 'true';
-    }
-
-    const formRenombrarCurso = document.getElementById('form-renombrar-curso');
-    if (formRenombrarCurso && !formRenombrarCurso.dataset.listenerAttached) {
-      formRenombrarCurso.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const cursoId = document.getElementById(
-          'input-renombrar-curso-id',
-        ).value;
-        const nuevoNombre = document
-          .getElementById('input-renombrar-curso-nombre')
-          .value.trim();
-        if (cursoId) {
-          await renombrarCurso(cursoId, nuevoNombre);
-        }
-        cerrarModal('modal-renombrar-curso');
-      });
-      const btnEmojiRenombrar = document.getElementById(
-        'btn-renombrar-emoji-curso',
-      );
-      const inputEmojiHiddenRenombrar = document.getElementById(
-        'input-renombrar-emoji-curso-hidden',
-      );
-      if (btnEmojiRenombrar && inputEmojiHiddenRenombrar) {
-        btnEmojiRenombrar.addEventListener('click', (e) => {
-          e.stopPropagation();
-          showEmojiPicker(btnEmojiRenombrar, inputEmojiHiddenRenombrar);
-        });
-      }
-      formRenombrarCurso.dataset.listenerAttached = 'true';
-    }
   }); // Fin de 'paginaCargada:cursos'
+
+  // --- Listeners para Modales (se adjuntan una sola vez al iniciar el módulo) ---
+  // MOVIDO FUERA DE 'paginaCargada:cursos' PARA MAYOR ROBUSTEZ
+  const formNuevoCurso = document.getElementById('form-nuevo-curso');
+  console.log('[Cursos] Buscando form-nuevo-curso para listener (Global):', formNuevoCurso);
+
+  if (formNuevoCurso && !formNuevoCurso.dataset.listenerAttached) {
+    console.log('[Cursos] Adjuntando listener SUBMIT a form-nuevo-curso (Global)');
+    formNuevoCurso.addEventListener('submit', async (e) => {
+      console.log('[Cursos] ¡SUBMIT DETECTADO en form-nuevo-curso!');
+      e.preventDefault();
+      const inputNombre = document.getElementById('input-nombre-curso');
+      if (inputNombre) {
+        console.log('[Cursos] Llamando a agregarCurso con:', inputNombre.value);
+        await agregarCurso(inputNombre.value.trim());
+      } else {
+        console.error('[Cursos] No se encontró input-nombre-curso');
+      }
+      cerrarModal('modal-nuevo-curso');
+    });
+    const btnEmojiNuevo = document.getElementById('btn-emoji-curso');
+    const inputEmojiHiddenNuevo = document.getElementById(
+      'input-emoji-curso-hidden',
+    );
+    if (btnEmojiNuevo && inputEmojiHiddenNuevo) {
+      btnEmojiNuevo.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showEmojiPicker(btnEmojiNuevo, inputEmojiHiddenNuevo);
+      });
+    }
+    formNuevoCurso.dataset.listenerAttached = 'true';
+  } else if (formNuevoCurso && formNuevoCurso.dataset.listenerAttached) {
+      console.log('[Cursos] Listener ya estaba adjunto a form-nuevo-curso.');
+  } else {
+      console.error('[Cursos] No se encontró el elemento form-nuevo-curso.');
+  }
+
+  const formRenombrarCurso = document.getElementById('form-renombrar-curso');
+  if (formRenombrarCurso && !formRenombrarCurso.dataset.listenerAttached) {
+    formRenombrarCurso.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const cursoId = document.getElementById(
+        'input-renombrar-curso-id',
+      ).value;
+      const nuevoNombre = document
+        .getElementById('input-renombrar-curso-nombre')
+        .value.trim();
+      if (cursoId) {
+        await renombrarCurso(cursoId, nuevoNombre);
+      }
+      cerrarModal('modal-renombrar-curso');
+    });
+    const btnEmojiRenombrar = document.getElementById(
+      'btn-renombrar-emoji-curso',
+    );
+    const inputEmojiHiddenRenombrar = document.getElementById(
+      'input-renombrar-emoji-curso-hidden',
+    );
+    if (btnEmojiRenombrar && inputEmojiHiddenRenombrar) {
+      btnEmojiRenombrar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showEmojiPicker(btnEmojiRenombrar, inputEmojiHiddenRenombrar);
+      });
+    }
+    formRenombrarCurso.dataset.listenerAttached = 'true';
+  }
 
   // 2. Escuchar cuándo cambian los datos de cursos
   EventBus.on('cursosActualizados', () => {
