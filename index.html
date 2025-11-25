@@ -4,8 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Planivio JS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="./styles/main.css" />
     <link rel="stylesheet" href="./styles/pages/grupos.css" />
+    <link rel="stylesheet" href="./styles/pages/update-modal.css" />
     <script
       src="https://cdn.tiny.cloud/1/yvqo406oprv0iv03hor0kxr8gd5nndshs4pxo73exu75yq59/tinymce/6/tinymce.min.js"
       referrerpolicy="origin"
@@ -18,6 +25,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-pdfmake/2.4.1/html-to-pdfmake.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   </head>
   <body>
     <header class="app-header">
@@ -36,6 +44,9 @@
           </svg>
           <span id="pulsos-contador" class="pulsos-contador hidden">0</span>
         </button>
+        <div id="header-streak-container" class="streak-container hidden">
+          <!-- Se inyectará por JS: 🔥 12 | 👑 -->
+        </div>
         <button id="btn-config-dropdown" class="config-btn"></button>
       </div>
     </header>
@@ -689,7 +700,15 @@
             >
               <h3>Mi Cuenta</h3>
               <div class="perfil-usuario-container">
-                <img id="user-photo" src="" alt="Foto de perfil" />
+                <div class="profile-photo-wrapper">
+                  <img id="user-photo" src="" alt="Foto de perfil" />
+                  <label for="input-foto-perfil" class="btn-cambiar-foto" title="Cambiar foto">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 4V1H5V4H8V6H5V9H3V6H0V4H3ZM6 10V7H9V4H7V1.8C7 1.3 7.4 1 8 1H16C16.6 1 17 1.4 17 2V5H18C19.1 5 20 5.9 20 7V19C20 20.1 19.1 21 18 21H2C0.9 21 0 20.1 0 19V8H2V19H18V7H6V10ZM10 13C10 11.3 11.3 10 13 10C14.7 10 16 11.3 16 13C16 14.7 14.7 16 13 16C11.3 16 10 14.7 10 13Z" />
+                    </svg>
+                  </label>
+                  <input type="file" id="input-foto-perfil" accept="image/*" style="display: none;" />
+                </div>
                 <div class="perfil-usuario-info">
                   <strong id="user-name">Cargando...</strong>
                   <span id="user-email">Cargando...</span>
@@ -1464,6 +1483,55 @@
       type="module"
       src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"
     ></script>
+    <!-- ✨ NUEVO: Modal de Actualización (Rich Content) -->
+    <div id="modal-update-pulso" class="modal-overlay">
+      <div class="modal-content modal-grande modal-update-content">
+        <button
+          class="btn-icon btn-cerrar-modal"
+          data-action="cerrar-modal"
+          style="position: absolute; top: 15px; right: 15px; z-index: 10;"
+        ></button>
+        
+        <div class="update-hero">
+          <div class="update-badge">Novedades v2.0</div>
+          <h2>¡Planivio ha evolucionado! 🚀</h2>
+          <p>Descubre las nuevas herramientas diseñadas para potenciar tu productividad.</p>
+        </div>
+
+        <div class="update-grid">
+          <div class="update-card">
+            <div class="update-icon">🔥</div>
+            <h3>Sistema de Rachas</h3>
+            <p>Mantén tu constancia diaria. Completa tareas para encender la llama y desbloquea la corona 👑 al llegar a 100 días.</p>
+          </div>
+
+          <div class="update-card">
+            <div class="update-icon">⚡</div>
+            <h3>Pulsos en Tiempo Real</h3>
+            <p>Tu asistente personal ahora está vivo. Recibe notificaciones inteligentes sobre tareas vencidas, resúmenes del día y más.</p>
+          </div>
+
+          <div class="update-card">
+            <div class="update-icon">🎨</div>
+            <h3>UI Renovada</h3>
+            <p>Disfruta de una experiencia más fluida con nuevas animaciones, mejor contraste y un diseño más limpio.</p>
+          </div>
+
+          <div class="update-card">
+            <div class="update-icon">📚</div>
+            <h3>Gestión de Cursos</h3>
+            <p>Ahora puedes archivar cursos antiguos y renombrarlos con total seguridad. Todo se mantiene sincronizado.</p>
+          </div>
+        </div>
+
+        <div class="modal-actions centered">
+          <button type="button" data-action="cerrar-modal" class="btn-accent btn-large">
+            ¡Entendido, a trabajar!
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="./src/main.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

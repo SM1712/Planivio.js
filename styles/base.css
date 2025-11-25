@@ -1,35 +1,75 @@
 /* --- VARIABLES DE TEMA Y RESET BÁSICO --- */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --font-family:
-    'Roboto', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Oxygen,
-    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  --bg-start: #e0f2f7;
-  --bg-end: #f5f5f5;
+  /* --- Typography --- */
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+  /* --- Colors (HSL) --- */
+  /* Light Mode Palette - "Fresh & Stable" */
+  /* Backgrounds */
+  --bg-start: #f0f4f8; /* Cool grey/blue tint */
+  --bg-end: #d9e2ec;   /* Slightly darker cool grey */
   --bg-content: #ffffff;
-  --text-base: #000000;
-  --text-muted: #888888;
-  --border-color: #d0d0d0;
-  --shadow-color: rgba(0, 0, 0, 0.08);
-  --accent-color: #0078d7;
-  --accent-color-active: #005a9e;
-  --accent-text-color: white;
-  --accent-color-hover: rgba(0, 120, 215, 0.15); /* Color para hover */
-  --transition-speed: 0.3s;
-  --transition-easing: ease-in-out;
-  --border-radius-small: 4px; /* Ejemplo */
-  --border-radius-medium: 8px; /* Ejemplo */
-  --border-radius-large: 12px;
+  --bg-surface: #f8fafc; /* For cards/inputs on white */
+
+  /* Text */
+  --text-base: #1e293b;  /* Slate 800 - Softer than pure black */
+  --text-muted: #64748b; /* Slate 500 */
+  --text-light: #94a3b8; /* Slate 400 */
+
+  /* Accent - Royal Blue */
+  --accent-color: #2563eb;       /* Blue 600 */
+  --accent-color-active: #1d4ed8; /* Blue 700 */
+  --accent-text-color: #ffffff;
+  --accent-color-hover: rgba(37, 99, 235, 0.1);
+
+  /* Borders & Shadows */
+  --border-color: #e2e8f0; /* Slate 200 */
+  --shadow-color: rgba(15, 23, 42, 0.08); /* Slate 900 with low opacity */
+
+  /* --- Shadows (Elevation) --- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* --- Animation & Transition --- */
+  --transition-speed: 0.2s;
+  --transition-easing: cubic-bezier(0.4, 0, 0.2, 1); /* Standard ease */
+  --transition-spring: cubic-bezier(0.16, 1, 0.3, 1); /* Springy for modals/popups */
+
+  /* --- Spacing & Radius --- */
+  --border-radius-small: 6px;
+  --border-radius-medium: 10px;
+  --border-radius-large: 16px;
+
+  /* --- Glassmorphism --- */
+  --backdrop-blur: blur(12px);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.5);
 }
+
 body.dark-theme {
-  --bg-start: #1c2a38;
-  --bg-end: #2b2b2b;
-  --bg-content: #3c3c3c;
-  --text-base: #e0e0e0;
-  --text-muted: #a0a0a0;
-  --border-color: #555555;
-  --shadow-color: rgba(0, 0, 0, 0.25);
+  /* Dark Mode Palette - "Deep Slate" */
+  --bg-start: #0f172a; /* Slate 900 */
+  --bg-end: #020617;   /* Slate 950 */
+  --bg-content: #1e293b; /* Slate 800 */
+  --bg-surface: #334155; /* Slate 700 */
+
+  --text-base: #f1f5f9;  /* Slate 100 */
+  --text-muted: #94a3b8; /* Slate 400 */
+  --text-light: #64748b; /* Slate 500 */
+
+  --border-color: #334155; /* Slate 700 */
+  --shadow-color: rgba(0, 0, 0, 0.4);
+
+  --accent-color: #3b82f6;       /* Blue 500 - Brighter for dark mode */
+  --accent-color-active: #2563eb; /* Blue 600 */
+  --accent-color-hover: rgba(59, 130, 246, 0.15);
+
+  --glass-bg: rgba(30, 41, 59, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 /* --- RESETEO UNIVERSAL Y ESTILOS BASE --- */
@@ -137,4 +177,9 @@ body.dark-theme {
   100% {
     box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0), 0 0 0 4000px rgba(0, 0, 0, 0.75);
   }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }

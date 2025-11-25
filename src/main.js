@@ -24,6 +24,9 @@ import {
   cerrarModal,
   mostrarModal,
   mostrarModalOnboarding,
+  inicializarFotoPerfil, // <-- AÑADIDO
+  actualizarIconosRachaHeader, // <-- AÑADIDO
+  verificarCumpleanos, // <-- AÑADIDO
   inicializarSonido,
   mostrarPasoTour, // ✨ IMPORTAR
 } from './ui.js';
@@ -437,17 +440,38 @@ if ('serviceWorker' in navigator) {
       inicializarProyectos();
       inicializarGrupos(); // <-- AÑADIDO (ETAPA 2)
 
-      if (document.getElementById('user-photo'))
-        document.getElementById('user-photo').src = user.photoURL;
+      // Inicializar elementos de UI que dependen del usuario y su configuración
+      actualizarIconosRachaHeader(); // <-- AÑADIDO
+      inicializarFotoPerfil(); // <-- AÑADIDO
+      verificarCumpleanos(); // <-- AÑADIDO
+
+      if (document.getElementById('user-photo')) {
+        const localPhoto = localStorage.getItem('userProfilePhoto');
+        if (localPhoto) {
+          document.getElementById('user-photo').src = localPhoto;
+        } else if (user.photoURL) {
+          document.getElementById('user-photo').src = user.photoURL;
+        }
+      }
       if (document.getElementById('user-name'))
         document.getElementById('user-name').textContent = user.displayName;
       if (document.getElementById('user-email'))
         document.getElementById('user-email').textContent = user.email;
 
-      // --- INICIO CAMBIO ETAPA 11.4: Asegurar que el email esté en config ---
-      // Esto es vital para que otros usuarios puedan encontrarnos
-      if (user.email) {
-         guardarConfig({ email: user.email });
+      // --- INICIO CAMBIO ETAPA 11.4: Asegurar que el email y nombre estén en config ---
+      // Esto es vital para que otros usuarios puedan encontrarnos y para el saludo
+      const configUpdates = {};
+      if (user.email && state.config.email !== user.email) {
+         configUpdates.email = user.email;
+      }
+      // Si tenemos nombre de Google y no tenemos uno configurado (o es diferente), lo guardamos
+      if (user.displayName && state.config.userName !== user.displayName) {
+         configUpdates.userName = user.displayName;
+         state.config.userName = user.displayName; // Actualizar estado local inmediatamente para el saludo
+      }
+
+      if (Object.keys(configUpdates).length > 0) {
+         guardarConfig(configUpdates);
       }
       // --- FIN CAMBIO ETAPA 11.4 ---
 
@@ -1229,6 +1253,18 @@ EventBus.on('navegarA', (data) => {
     cambiarPagina(data.pagina, data);
   }
 });
+
+// ✨ INICIO CORRECCIÓN: Actualizar iconos de racha en tiempo real
+EventBus.on('tareasActualizadas', () => {
+  console.log('[Main] Tareas actualizadas -> Actualizando racha header...');
+  actualizarIconosRachaHeader();
+});
+
+EventBus.on('cursosActualizados', () => {
+  console.log('[Main] Cursos actualizados -> Actualizando racha header...');
+  actualizarIconosRachaHeader();
+});
+// ✨ FIN CORRECCIÓN
 
 // 2. Iniciar la aplicación en DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {

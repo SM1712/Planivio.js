@@ -8,13 +8,18 @@
 .widget {
   background-color: var(--bg-content);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 5px var(--shadow-color);
-  transition: all 0.3s ease;
+  border-radius: var(--border-radius-medium);
+  padding: 24px; /* More padding */
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s var(--transition-easing);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+}
+
+.widget:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 
 .widget-header-actions {
@@ -222,7 +227,7 @@ p.contador-progreso {
   justify-content: flex-end; /* ✨ CAMBIO: Alinea el contenido (letra+barra) ABAJO */
   position: relative;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--border-radius-small);
   height: 100%; /* Asegura que el contenedor del día ocupe todo el alto disponible */
 }
 
@@ -323,15 +328,17 @@ p.contador-progreso {
 
 /* ✨ CAMBIOS CLAVE AQUÍ: Más redondeado */
 .widget-list li {
-  padding: 10px 15px; /* Añadimos padding horizontal para que no se pegue el texto */
-  margin-bottom: 5px; /* Espacio entre los elementos de la lista */
+  padding: 12px 16px; /* Añadimos padding horizontal para que no se pegue el texto */
+  margin-bottom: 6px; /* Espacio entre los elementos de la lista */
   border-bottom: none; /* Quitamos el borde inferior, ahora cada item es una "caja" */
-  border-radius: 8px; /* <-- Hacemos las esquinas redondeadas */
+  border-radius: var(--border-radius-medium); /* <-- Hacemos las esquinas redondeadas */
   cursor: pointer;
-  background-color: rgba(var(--accent-color-rgb), 0.08);
+  background-color: var(--bg-surface); /* Use surface color instead of accent opacity */
+  border: 1px solid transparent;
   transition:
     background-color 0.2s ease,
-    transform 0.1s ease; /* Añadimos transform para un pequeño efecto */
+    transform 0.1s ease,
+    box-shadow 0.2s ease;
 }
 
 .widget-list li:last-child {
@@ -339,9 +346,10 @@ p.contador-progreso {
 }
 
 .widget-list li:hover {
-  background-color: var(--accent-color-hover);
+  background-color: var(--bg-content);
+  border-color: var(--border-color);
   transform: translateY(-1px); /* Pequeño levantamiento al pasar el ratón */
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* Sutil sombra al hacer hover */
+  box-shadow: var(--shadow-sm); /* Sutil sombra al hacer hover */
 }
 /* FIN DE CAMBIOS CLAVE */
 

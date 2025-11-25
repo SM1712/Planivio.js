@@ -186,17 +186,21 @@ function actualizarBotonEmoji(buttonEl, emoji) {
  * Guarda un nuevo curso en Firestore.
  */
 async function agregarCurso(nombre, emoji) {
+  console.log('[Cursos] Intentando agregar curso:', { nombre, emoji });
+  
   if (!state.currentUserId) {
-    console.error('[Cursos] No hay User ID para guardar el curso.');
-    mostrarAlerta('Error', 'No se pudo guardar el curso. Intenta recargar.');
+    console.error('[Cursos] ERROR CRÍTICO: No hay User ID (state.currentUserId es null/undefined).');
+    mostrarAlerta('Error', 'No estás autenticado correctamente. Recarga la página.');
     return;
   }
+
   if (
     !nombre ||
     state.cursos
       .map((c) => c.nombre.toLowerCase())
       .includes(nombre.toLowerCase())
   ) {
+    console.warn('[Cursos] Nombre inválido o duplicado:', nombre);
     alert('El nombre del curso no puede estar vacío o ya existe.');
     return;
   }
@@ -217,8 +221,9 @@ async function agregarCurso(nombre, emoji) {
     const inputNombre = document.getElementById('input-nombre-curso');
     if (inputNombre) inputNombre.value = ''; // Limpiar input para evitar doble envío si el usuario reabre rápido
 
+    console.log('[Cursos] Enviando a Firestore...', nuevoCurso);
     const nuevoId = await agregarDocumento('cursos', nuevoCurso);
-    console.log('[Cursos] Nuevo curso guardado en Firestore con ID:', nuevoId);
+    console.log('[Cursos] ¡ÉXITO! Nuevo curso guardado en Firestore con ID:', nuevoId);
   } catch (error) {
     console.error('[Cursos] Error al agregar curso a Firestore:', error);
     mostrarAlerta('Error', 'No se pudo guardar el nuevo curso. Verifica tu conexión si es la primera vez.');

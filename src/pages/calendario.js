@@ -19,6 +19,7 @@ import {
 } from '../ui.js';
 import { ICONS } from '../icons.js';
 import { abrirModalNuevaTarea } from './dashboard.js';
+import { obtenerFechaLocalISO } from '../utils.js'; // <-- AÑADIDO
 // import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
 
 // ... (generarEventosRecurrentes y otras funciones SIN CAMBIOS) ...
@@ -1054,7 +1055,7 @@ function conectarUICalendario() {
             try {
               await actualizarDocumento('tareas', String(tareaId), {
                 completada: true,
-                fechaCompletado: new Date().toISOString().split('T')[0],
+                fechaCompletado: obtenerFechaLocalISO(),
               });
               console.log(`[Calendario] Tarea ${tareaId} completada.`);
             } catch (error) {

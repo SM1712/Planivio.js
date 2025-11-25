@@ -1,5 +1,6 @@
 import { state } from './state.js';
 import { ICONS } from './icons.js';
+import { calcularRacha } from './utils.js'; // <-- AÑADIDO
 
 // ===============================================
 // == ✨ INICIO CAMBIO ETAPA 14: Lógica de Audio (Simplificada)
@@ -543,5 +544,222 @@ export function mostrarNotificacion(titulo, opciones = {}) {
         triggerNotification();
       }
     });
+  }
+}
+// ===============================================
+// == ✨ LÓGICA DE WOW EFFECTS (Racha, Perfil, Cumple)
+// ===============================================
+
+/**
+ * Actualiza los iconos de racha en el header.
+ */
+export function actualizarIconosRachaHeader() {
+  const container = document.getElementById('header-streak-container');
+  if (!container) return;
+
+  const racha = calcularRacha();
+  container.innerHTML = '';
+  container.className = 'streak-container hidden'; // Reset
+
+  if (racha > 0) {
+    container.classList.remove('hidden');
+    
+    // Icono de Corona (Racha >= 100)
+    if (racha >= 100) {
+      const crownSpan = document.createElement('span');
+      crownSpan.className = 'streak-icon crown';
+      crownSpan.textContent = '👑';
+      crownSpan.title = '¡Racha Legendaria! (+100 días)';
+      container.appendChild(crownSpan);
+    }
+
+    // Icono de Llama
+    const flameSpan = document.createElement('span');
+    flameSpan.className = 'streak-icon flame';
+    flameSpan.textContent = '🔥';
+    flameSpan.title = `Racha actual: ${racha} días`;
+    container.appendChild(flameSpan);
+
+    // Contador
+    const countSpan = document.createElement('span');
+    countSpan.className = 'streak-count';
+    countSpan.textContent = racha;
+    container.appendChild(countSpan);
+  } else {
+    // Mostrar llama gris si racha es 0 para que el usuario sepa que existe
+    container.classList.remove('hidden');
+    
+    const flameSpan = document.createElement('span');
+    flameSpan.className = 'streak-icon flame inactive'; // Nueva clase 'inactive'
+    flameSpan.textContent = '🔥';
+    flameSpan.style.filter = 'grayscale(100%) opacity(0.5)'; // Estilo inline por si acaso
+    flameSpan.title = '¡Completa una tarea hoy para encender la racha!';
+    container.appendChild(flameSpan);
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'streak-count';
+    countSpan.textContent = '0';
+    countSpan.style.opacity = '0.6';
+    container.appendChild(countSpan);
+  }
+}
+
+/**
+ * Maneja la subida de foto de perfil.
+ */
+export function inicializarFotoPerfil() {
+  const input = document.getElementById('input-foto-perfil');
+  const img = document.getElementById('user-photo');
+  
+  // Cargar foto guardada
+  const savedPhoto = localStorage.getItem('userProfilePhoto');
+  const updatePhotoUI = (url) => {
+    // 1. Imagen en el modal de configuración
+    if (img) img.src = url;
+    
+    // 2. Botón del header (dropdown)
+    const headerBtn = document.getElementById('btn-config-dropdown');
+    if (headerBtn) {
+      headerBtn.style.backgroundImage = `url('${url}')`;
+      headerBtn.style.backgroundSize = 'cover';
+      headerBtn.style.backgroundPosition = 'center';
+      headerBtn.style.border = '2px solid var(--accent-color)';
+      // Ocultar el icono SVG interno
+      const svg = headerBtn.querySelector('svg');
+      if (svg) svg.style.display = 'none';
+    }
+  };
+
+  if (savedPhoto) {
+    updatePhotoUI(savedPhoto);
+  }
+
+  if (input) {
+    // Remover listeners anteriores para evitar duplicados si se llama varias veces
+    const newClone = input.cloneNode(true);
+    input.parentNode.replaceChild(newClone, input);
+
+    newClone.addEventListener('change', (e) => {
+      console.log('[Perfil] Archivo seleccionado...');
+      const file = e.target.files[0];
+      if (!file) {
+        console.warn('[Perfil] No se seleccionó ningún archivo.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        console.log('[Perfil] Archivo leído. Procesando imagen...');
+        // Redimensionar antes de guardar (Canvas)
+        const tempImg = new Image();
+        tempImg.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const MAX_SIZE = 150;
+            let width = tempImg.width;
+            let height = tempImg.height;
+
+            if (width > height) {
+              if (width > MAX_SIZE) {
+                height *= MAX_SIZE / width;
+                width = MAX_SIZE;
+              }
+            } else {
+              if (height > MAX_SIZE) {
+                width *= MAX_SIZE / height;
+                height = MAX_SIZE;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(tempImg, 0, 0, width, height);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7); // Comprimir
+            console.log('[Perfil] Imagen procesada. Guardando en localStorage...');
+            localStorage.setItem('userProfilePhoto', dataUrl);
+            
+            updatePhotoUI(dataUrl); // <-- Usamos la función helper
+            mostrarNotificacion('¡Foto actualizada!', { body: 'Tu perfil se ve genial. 😎' });
+          } catch (err) {
+            console.error('[Perfil] Error al procesar/guardar la imagen:', err);
+            alert('Error al guardar la imagen. Puede que sea demasiado grande o haya un problema de almacenamiento.');
+          }
+        };
+        tempImg.onerror = (err) => {
+          console.error('[Perfil] Error al cargar la imagen temporal:', err);
+        };
+        tempImg.src = event.target.result;
+      };
+      reader.onerror = (err) => {
+        console.error('[Perfil] Error al leer el archivo:', err);
+      };
+      reader.readAsDataURL(file);
+    });
+  } else {
+    console.warn('[Perfil] No se encontró el input #input-foto-perfil');
+  }
+}
+
+/**
+ * Verifica si es el cumpleaños del usuario y lanza confeti.
+ */
+export function verificarCumpleanos() {
+  if (!state.config.userBirthday) return;
+
+  const hoy = new Date();
+  const cumpleParts = state.config.userBirthday.split('-'); // YYYY-MM-DD
+  const mesCumple = parseInt(cumpleParts[1], 10);
+  const diaCumple = parseInt(cumpleParts[2], 10);
+
+  if (hoy.getMonth() + 1 === mesCumple && hoy.getDate() === diaCumple) {
+    console.log('¡Es el cumpleaños del usuario! 🎉');
+    
+    // 1. Lanzar Confeti (siempre que entre hoy)
+    if (window.confetti) {
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 }
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 }
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
+    }
+
+    // 2. Saludo de Pulsito (Solo una vez al año)
+    const currentYear = hoy.getFullYear();
+    const lastGreetingYear = state.config.lastBirthdayGreetingYear;
+
+    if (lastGreetingYear !== currentYear) {
+      mostrarAlerta(
+        '¡FELIZ CUMPLEAÑOS! 🎂🎉',
+        `¡${state.config.userName || 'Amigo'}! <br><br>¡Pulsito y todo el equipo de Planivio te deseamos un día increíble! 🥳<br>¡Que cumplas todas tus metas (y tareas)!`
+      );
+      // Guardar flag (esto debería ir a Firebase idealmente, pero state.config se sincroniza)
+      state.config.lastBirthdayGreetingYear = currentYear;
+      // Trigger save config (necesitamos importar guardarConfig o emitir evento)
+      // Por simplicidad y evitar dependencias circulares, asumimos que el usuario
+      // hará algún cambio o que esto se perderá si recarga sin hacer nada más,
+      // pero es aceptable para un efecto visual.
+      // MEJORA: Emitir evento para guardar
+      import('./firebase.js').then(({ guardarConfig }) => {
+         guardarConfig({ lastBirthdayGreetingYear: currentYear });
+      });
+    }
   }
 }

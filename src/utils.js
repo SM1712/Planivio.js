@@ -293,3 +293,77 @@ export function aplicarColoresMuescas() {
     );
   }
 }
+// ==========================================================================
+// ==    FUNCIONES DE LÓGICA DE NEGOCIO (GLOBALES)
+// ==========================================================================
+
+/**
+ * Calcula la racha actual de días consecutivos completando tareas.
+ * Excluye tareas de cursos archivados.
+/**
+ * Devuelve la fecha local en formato YYYY-MM-DD.
+ * @returns {string} Fecha local formateada.
+ */
+export function obtenerFechaLocalISO() {
+  const hoy = new Date();
+  const year = hoy.getFullYear();
+  const month = String(hoy.getMonth() + 1).padStart(2, '0');
+  const day = String(hoy.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function calcularRacha() {
+  console.log('[Racha] Calculando racha...');
+  const tareasRealmenteCompletadas = state.tareas.filter((t) => {
+    if (!t.completada || !t.fechaCompletado) return false;
+    const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
+    return !cursoAsociado?.isArchivado;
+  });
+
+  if (tareasRealmenteCompletadas.length === 0) {
+    console.log('[Racha] No hay tareas completadas. Racha: 0');
+    return 0;
+  }
+
+  const fechasDeCompletado = new Set(
+    tareasRealmenteCompletadas.map((t) => t.fechaCompletado),
+  );
+  console.log('[Racha] Fechas completadas:', [...fechasDeCompletado]);
+
+  let racha = 0;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  
+  for (let i = 0; ; i++) {
+    const fechaAComprobar = new Date(hoy);
+    fechaAComprobar.setDate(hoy.getDate() - i);
+    
+    // Usamos construcción manual para asegurar YYYY-MM-DD local
+    const year = fechaAComprobar.getFullYear();
+    const month = String(fechaAComprobar.getMonth() + 1).padStart(2, '0');
+    const day = String(fechaAComprobar.getDate()).padStart(2, '0');
+    const fechaFormateada = `${year}-${month}-${day}`;
+    
+    console.log(`[Racha] Comprobando día -${i} (${fechaFormateada}): ${fechasDeCompletado.has(fechaFormateada)}`);
+
+    if (fechasDeCompletado.has(fechaFormateada)) {
+      racha++;
+    } else {
+      // Corrección lógica racha: si el día actual no cuenta, NO rompemos la racha inmediatamente.
+      // Permitimos que la racha se mantenga si el último día completado fue ayer.
+      // Usamos obtenerFechaLocalISO() para comparar con "hoy"
+      if (i === 0 && !fechasDeCompletado.has(obtenerFechaLocalISO())) {
+        console.log('[Racha] Hoy no se completó, pero permitimos continuar a ayer.');
+        continue;
+      }
+      if (i > 0) {
+        console.log('[Racha] Racha rota en día -' + i);
+        break;
+      }
+    }
+    if (i > 366) break;
+  }
+  console.log('[Racha] Racha final:', racha);
+  return racha;
+}
+

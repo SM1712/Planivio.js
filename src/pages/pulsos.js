@@ -2,8 +2,8 @@
 // ==
 // ==                          src/pages/pulsos.js
 // ==
-// ==    (MODIFICADO - ETAPA 16: Añadidas funciones "trigger"
-// ==     para el temporizador de tiempo real)
+// ==    (MODIFICADO - ETAPA 18: Refactorización a actionType/payload
+// ==     para persistencia en localStorage y contenido rico)
 // ==
 // ==========================================================================
 
@@ -99,7 +99,6 @@ function renderizarContadorPulsos() {
 }
 
 /**
- * (Modificado Etapa 15)
  * Elimina todos los pulsos.
  */
 function marcarPulsosComoLeidos() {
@@ -224,7 +223,7 @@ export async function generarPulsosDelDia() {
  *
  */
 async function generarPulsoUpdate() {
-  const PULSO_ID = 'update-pulso-v2-con-modal'; // <-- Nuevo ID
+  const PULSO_ID = 'update-pulso-v2-rich-content'; // <-- ID Único para esta versión
   if (state.config.pulsosVistos.includes(PULSO_ID)) {
     return []; // El usuario ya vio este pulso
   }
@@ -237,14 +236,13 @@ async function generarPulsoUpdate() {
   return [
     {
       id: PULSO_ID,
-      icono: '🚀', // <-- Nuevo ícono
-      titulo: '¡Bienvenido a Planivio: Pulso!', // <-- Nuevo título
-      preview: 'Tu app ha evolucionado. Haz clic para ver las novedades.', // <-- Nuevo preview
-      mostrarNotificacion: true, // Mostrar un push la primera vez
-      silent: false, // ¡Ahora suena!
-      accion: () => {
-        mostrarModal('modal-update-pulso');
-      },
+      icono: '🚀',
+      titulo: '¡Planivio ha evolucionado!',
+      preview: 'Descubre las nuevas herramientas: Rachas, Pulsos y más.',
+      mostrarNotificacion: true,
+      silent: false,
+      actionType: 'modal', // <-- Tipo de acción serializable
+      payload: 'modal-update-pulso', // <-- ID del modal
     },
   ];
 }
@@ -272,11 +270,10 @@ function generarPulsosTareasVencidas() {
         icono: '⏰',
         titulo: `¡Tarea Vencida!`,
         preview: `"${tarea.titulo}" venció el ${tarea.fecha}.`,
-        mostrarNotificacion: true, // Mostrar notificación
-        silent: false, // ¡Ahora suena!
-        accion: () => {
-          EventBus.emit('navegarA', { pagina: 'tareas', id: tarea.id });
-        },
+        mostrarNotificacion: true,
+        silent: false,
+        actionType: 'navigate', // <-- Tipo de acción serializable
+        payload: { pagina: 'tareas', id: tarea.id }, // <-- Datos para navegar
       });
     });
   }
@@ -318,10 +315,9 @@ function generarPulsoResumenHoy(fechaActual, horaConfig) {
       titulo: 'Resumen de Hoy',
       preview: `¡A pulsar! Tienes ${tareasHoy} tareas y ${eventosHoy} eventos hoy.`,
       mostrarNotificacion: true,
-      silent: false, // ¡Con sonido! Es el resumen del día
-      accion: () => {
-        EventBus.emit('navegarA', { pagina: 'dashboard' });
-      },
+      silent: false,
+      actionType: 'navigate',
+      payload: { pagina: 'dashboard' },
     },
   ];
 }
@@ -370,10 +366,9 @@ function generarPulsoEventosSemana(fechaActual, diaConfig, horaConfig) {
       titulo: 'Resumen Semanal',
       preview: `¡Prepárate! Tienes ${eventosSemana} eventos la próxima semana.`,
       mostrarNotificacion: true,
-      silent: false, // Con sonido
-      accion: () => {
-        EventBus.emit('navegarA', { pagina: 'calendario' });
-      },
+      silent: false,
+      actionType: 'navigate',
+      payload: { pagina: 'calendario' },
     },
   ];
 }
@@ -405,10 +400,9 @@ function generarPulsoRecordatorioRacha(fechaActual, horaConfig) {
       titulo: '¡No pierdas la racha!',
       preview: '¡Aún puedes completar una tarea hoy para iniciar tu racha!',
       mostrarNotificacion: true,
-      silent: false, // ¡Ahora suena!
-      accion: () => {
-        EventBus.emit('navegarA', { pagina: 'tareas' });
-      },
+      silent: false,
+      actionType: 'navigate',
+      payload: { pagina: 'tareas' },
     },
   ];
 }
@@ -430,14 +424,22 @@ export function inicializarPulsos() {
       marcarPulsosComoLeidos();
     }
 
-    // (Modificado Etapa 15) Clic en item ahora también elimina
+    // (Modificado Etapa 18) Manejo de clics con actionType
     const pulsoItem = e.target.closest('.pulso-item[data-pulso-id]');
     if (pulsoItem) {
       const pulsoId = pulsoItem.dataset.pulsoId;
       const pulso = state.pulsosGenerados.find((p) => p.id === pulsoId);
-      if (pulso && pulso.accion) {
-        // 1. Ejecutar la acción (navegar, abrir modal)
-        pulso.accion();
+      
+      if (pulso) {
+        // 1. Ejecutar la acción según el tipo
+        if (pulso.actionType === 'modal') {
+            mostrarModal(pulso.payload);
+        } else if (pulso.actionType === 'navigate') {
+            EventBus.emit('navegarA', pulso.payload);
+        } else if (pulso.accion && typeof pulso.accion === 'function') {
+            // Fallback para pulsos antiguos o generados en tiempo de ejecución sin persistencia
+            pulso.accion();
+        }
 
         // 2. Eliminar el pulso del estado
         state.pulsosGenerados = state.pulsosGenerados.filter(
@@ -459,7 +461,7 @@ export function inicializarPulsos() {
     }
   });
   
-  // --- INICIO ETAPA 17: Gestión de Permisos ---
+  // --- Gestión de Permisos ---
   verificarPermisosNotificaciones();
   
   const btnActivar = document.getElementById('btn-activar-notificaciones');
@@ -475,7 +477,6 @@ export function inicializarPulsos() {
       });
     });
   }
-  // --- FIN ETAPA 17 ---
 }
 
 function verificarPermisosNotificaciones() {
@@ -490,7 +491,7 @@ function verificarPermisosNotificaciones() {
 }
 
 // ===================================
-// == ✨ INICIO CAMBIO ETAPA 16: Funciones Trigger para Tiempo Real
+// == ✨ Funciones Trigger para Tiempo Real
 // ===================================
 
 /**

@@ -35,6 +35,7 @@ import {
   cargarIconos,
   mostrarAlerta, // <-- AÑADIDO (ETAPA 1)
 } from '../ui.js';
+import { obtenerFechaLocalISO } from '../utils.js'; // <-- AÑADIDO
 import { ICONS } from '../icons.js';
 
 let activeDropdown = null;
@@ -372,8 +373,10 @@ async function completarTareasSeleccionadas() {
   );
   try {
     const batch = crearBatch();
-    const fechaCompletado = new Date().toISOString().split('T')[0];
+
+    const fechaCompletado = obtenerFechaLocalISO();
     const userId = state.currentUserId;
+
 
     state.tareasSeleccionadasIds.forEach((tareaId) => {
       const tarea = state.tareas.find((t) => String(t.id) === String(tareaId));
@@ -1177,8 +1180,9 @@ export function inicializarTareas() {
             ); // Typo 'ld'
             if (tarea) {
               const completada = !tarea.completada;
+
               const fechaCompletado = completada
-                ? new Date().toISOString().split('T')[0]
+                ? obtenerFechaLocalISO()
                 : null;
               try {
                 await actualizarDocumento('tareas', String(tarea.id), {
@@ -1541,8 +1545,9 @@ export function inicializarTareas() {
           const tarea = state.tareas.find((t) => String(t.id) === tareaId);
           if (tarea) {
             const completada = !tarea.completada;
+
             const fechaCompletado = completada
-              ? new Date().toISOString().split('T')[0]
+              ? obtenerFechaLocalISO()
               : null;
             try {
               await actualizarDocumento('tareas', String(tarea.id), {

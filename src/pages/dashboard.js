@@ -3,6 +3,7 @@
 // ==========================================================================
 import { state } from '../state.js';
 // import { guardarDatos } from '../utils.js'; // <-- ELIMINADO
+import { calcularRacha } from '../utils.js'; // <-- AÑADIDO
 import { EventBus } from '../eventBus.js'; // <-- AÑADIDO
 // import { cambiarPagina } from '../main.js'; // <-- ELIMINADO
 import { agregarDocumento } from '../firebase.js'; // <-- AÑADIDO
@@ -35,11 +36,27 @@ const frasesDashboard = [
   '¿Listo para organizar tu día?',
   'Un pequeño paso hoy...',
   'La clave es empezar.',
-  '¡Que la productividad te acompañe!',
+  '¡Que la productividad te acompañe!', // Star Wars
   'Organiza, enfócate, avanza.',
   '¿Qué meta conquistarás hoy?',
   'Divide y vencerás... ¡tus tareas!',
   '¡A darle con todo!',
+  'Hazlo o no lo hagas, pero no lo intentes.', // Yoda
+  '¡Hasta el infinito y más allá!', // Toy Story
+  'Just do it! (No nos demanden)',
+  'Hoy es un buen día para tener un buen día.',
+  'No dejes para mañana lo que puedes hacer hoy... o pasado.',
+  'Tu futuro yo te agradecerá este esfuerzo.',
+  '¡Corre, Forrest, corre... a terminar esa tarea!',
+  'La disciplina es el puente entre metas y logros.',
+  '¿Esa tarea me está hablando a mí?', // Taxi Driver
+  'Houston, no tenemos problemas, solo tareas.',
+  'Hakuna Matata: vive y sé feliz (pero trabaja).',
+  '¡Soy inevitable! ...dijo la fecha límite.', // Thanos
+  'El éxito es la suma de pequeños esfuerzos repetidos.',
+  'Mantén la calma y sigue organizando.',
+  '¡Por el poder de Grayskull!',
+  'Winter is coming... mejor termina eso antes.',
 ];
 let pomodoroInterval;
 let pomodoroCiclosCompletados = 0;
@@ -239,42 +256,7 @@ function renderizarWidgetRacha() {
     textoEl.textContent = '¡Completa una tarea hoy para iniciar tu racha!';
   }
 }
-function calcularRacha() {
-  const tareasRealmenteCompletadas = state.tareas.filter((t) => {
-    // Condición original: completada y con fecha
-    if (!t.completada || !t.fechaCompletado) return false;
-    // NUEVA condición: el curso NO debe estar archivado
-    const cursoAsociado = state.cursos.find((c) => c.nombre === t.curso);
-    return !cursoAsociado?.isArchivado; // `?.` es opcional chaining (seguro si cursoAsociado es null/undefined)
-  });
 
-  if (tareasRealmenteCompletadas.length === 0) return 0;
-  const fechasDeCompletado = new Set(
-    tareasRealmenteCompletadas.map((t) => t.fechaCompletado),
-  );
-  let racha = 0;
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  for (let i = 0; ; i++) {
-    const fechaAComprobar = new Date(hoy);
-    fechaAComprobar.setDate(hoy.getDate() - i);
-    const fechaFormateada = fechaAComprobar.toISOString().split('T')[0];
-    if (fechasDeCompletado.has(fechaFormateada)) {
-      racha++;
-    } else {
-      // Corrección lógica racha: si el día actual no cuenta, la racha es 0.
-      if (i === 0 && !fechasDeCompletado.has(hoy.toISOString().split('T')[0])) {
-        racha = 0; // Si hoy no se completó, la racha se rompe.
-      }
-      // Si un día anterior falta, se rompe la secuencia.
-      if (i > 0) {
-        break;
-      }
-    }
-    if (i > 366) break; // Límite de seguridad
-  }
-  return racha;
-}
 function renderizarWidgetEnfoque() {
   const lista = document.getElementById('widget-enfoque-lista');
   if (!lista) return;

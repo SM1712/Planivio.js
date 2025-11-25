@@ -4,10 +4,12 @@
   display: flex;
   align-items: center;
   gap: 15px;
-  background-color: var(--bg-content);
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 2px 5px var(--shadow-color);
+  background-color: var(--glass-bg); /* Glassmorphism */
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  padding: 12px 24px; /* More breathing room */
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-sm);
   z-index: 1000;
   position: fixed;
   width: 100%;
@@ -34,12 +36,12 @@
 .panel {
   background-color: var(--bg-content);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: var(--border-radius-large);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 5px 15px var(--shadow-color);
+  gap: 16px;
+  box-shadow: var(--shadow-md);
   transition: all var(--transition-speed) var(--transition-easing);
   position: relative;
 }
@@ -62,6 +64,7 @@
 }
 .page.visible {
   display: flex;
+  animation: fadeIn 0.4s var(--transition-easing);
 }
 
 /* --- NUEVO COMPORTAMIENTO DEL PANEL LATERAL --- */
@@ -70,12 +73,13 @@
   left: 0;
   top: 0;
   height: 100vh;
-  width: 300px;
+  width: 280px; /* Slightly narrower */
   z-index: 1100;
-  transform: translateX(-100%); /* Oculto por defecto fuera de la pantalla */
-  transition: transform 0.3s ease-in-out;
+  transform: translateX(-100%);
+  transition: transform 0.3s var(--transition-spring); /* Smooth spring */
   border-radius: 0;
   border-right: 1px solid var(--border-color);
+  background-color: var(--bg-content); /* Solid background for sidebar for readability */
 }
 
 #app-container.sidebar-visible #panel-lateral {
@@ -166,11 +170,11 @@
 .login-box {
   background-color: var(--bg-content);
   border: 1px solid var(--border-color);
-  border-radius: var(--border-radius-large, 12px);
-  box-shadow: 0 8px 25px var(--shadow-color);
-  padding: 40px;
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-xl); /* Deep shadow for login */
+  padding: 48px;
   width: 90%;
-  max-width: 400px;
+  max-width: 420px;
   text-align: center;
   transition: all var(--transition-speed) var(--transition-easing);
 }
@@ -300,4 +304,106 @@
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
+}
+
+/* =========================================
+   HEADER STREAK ICONS
+   ========================================= */
+.streak-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 15px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 5px 10px;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.streak-container:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.streak-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.streak-icon.flame {
+  animation: pulseFlame 2s infinite;
+}
+
+.streak-icon.flame.inactive {
+  animation: none;
+  filter: grayscale(100%) opacity(0.5); /* Refuerzo visual */
+}
+
+.streak-icon.crown {
+  animation: floatCrown 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px gold);
+}
+
+.streak-count {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-base);
+}
+
+@keyframes pulseFlame {
+  0% { transform: scale(1); filter: drop-shadow(0 0 2px orange); }
+  50% { transform: scale(1.2); filter: drop-shadow(0 0 8px red); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 2px orange); }
+}
+
+@keyframes floatCrown {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(5deg); }
+}
+
+/* =========================================
+   PROFILE PHOTO SETTINGS
+   ========================================= */
+.profile-photo-wrapper {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  margin-right: 15px;
+}
+
+.profile-photo-wrapper img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-color);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-cambiar-foto {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  background: var(--accent-color);
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  transition: transform 0.2s;
+}
+
+.btn-cambiar-foto:hover {
+  transform: scale(1.1);
+}
+
+.btn-cambiar-foto svg {
+  width: 16px;
+  height: 16px;
 }

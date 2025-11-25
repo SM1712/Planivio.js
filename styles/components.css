@@ -90,36 +90,50 @@ select,
 textarea {
   font-family: var(--font-family);
   font-size: 0.95rem;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px; /* Slightly larger padding */
+  border-radius: var(--border-radius-medium);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-content);
+  background-color: var(--bg-surface); /* Use surface color */
   color: var(--text-base);
   transition: all var(--transition-speed) var(--transition-easing);
+  box-shadow: var(--shadow-sm); /* Default shadow */
 }
 
 /* --- Buttons --- */
 button {
   cursor: pointer;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
+
 button:hover:not(:disabled) {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
 button:disabled {
-  background-color: #555 !important;
-  color: #aaa !important;
+  background-color: var(--bg-surface) !important;
+  color: var(--text-muted) !important;
+  border-color: var(--border-color) !important;
   cursor: not-allowed;
   box-shadow: none !important;
+  opacity: 0.7;
 }
 
 .btn-accent {
   background-color: var(--accent-color);
   color: var(--accent-text-color);
-  border: none;
-  font-weight: bold;
+  border: 1px solid transparent; /* Ensure border box sizing matches */
+  font-weight: 600;
 }
 .btn-accent:hover {
   background-color: var(--accent-color-active);
+  /* Shadow handled by generic button:hover */
 }
 
 .btn-secondary {
@@ -311,8 +325,9 @@ button:disabled {
 /* --- General Modal Styles --- */
 .modal-overlay {
   position: fixed;
-  inset: 0; /* Replaces top, left, width, height */
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4); /* Slate tint */
+  backdrop-filter: blur(4px); /* Glass effect on overlay */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -321,7 +336,7 @@ button:disabled {
   transition:
     visibility 0s linear var(--transition-speed),
     opacity var(--transition-speed) ease;
-  z-index: 1100; /* Base z-index for overlays */
+  z-index: 1100;
 }
 .modal-overlay.visible {
   visibility: visible;
@@ -331,25 +346,25 @@ button:disabled {
 
 .modal-content {
   background-color: var(--bg-content);
-  padding: 30px;
-  border-radius: 12px;
+  padding: 32px;
+  border-radius: var(--border-radius-large);
   width: 90%;
   max-width: 550px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 8px 25px var(--shadow-color);
-  position: relative; /* Needed for absolute positioning of close button */
-  transform: translateY(-20px) scale(0.95);
+  box-shadow: var(--shadow-xl);
+  position: relative;
+  transform: scale(0.95) translateY(10px); /* Start slightly smaller and lower */
   opacity: 0;
   transition:
-    transform 0.3s ease-out,
+    transform 0.4s var(--transition-spring), /* Springy entrance */
     opacity 0.3s ease-out;
-  z-index: 1110; /* Content above overlay */
+  z-index: 1110;
 }
 .modal-overlay.visible .modal-content {
-  transform: translateY(0) scale(1);
+  transform: scale(1) translateY(0);
   opacity: 1;
 }
 
